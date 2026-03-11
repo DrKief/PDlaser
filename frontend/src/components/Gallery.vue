@@ -10,24 +10,34 @@ interface Image {
 const images = ref<Image[]>([]);
 
 onMounted(async () => {
+  fetchImages();
+});
+
+const fetchImages = async () => {
   try {
     const response = await http.get('/images');
     images.value = response.data;
   } catch (error) {
     console.error("Error fetching images for gallery:", error);
   }
-});
+};
 
 const getImageUrl = (image: Image) => {
   return `/images/${image.id}`;
 };
 
-const selectImage = async (image: Image) => {
+const deleteImage = async (id: number) => {
+  if (!confirm("Are you sure you want to permanently delete this file?")) {
+    return;
+  }
+  
   try {
-    await http.get(`/images/${image.id}`);
-    console.log(`Selected and requested image ${image.id}`);
+    await http.delete(`/images/${id}`);
+    // Remove from the local array so the UI updates instantly
+    images.value = images.value.filter(img => img.id !== id);
   } catch (error) {
-    console.error(`Error requesting image ${image.id}:`, error);
+    console.error(`Error deleting image ${id}:`, error);
+    alert("Failed to delete file.");
   }
 };
 </script>
@@ -40,13 +50,13 @@ const selectImage = async (image: Image) => {
         v-for="image in images" 
         :key="image.id" 
         class="image-card"
-        @click="selectImage(image)"
       >
         <img :src="getImageUrl(image)" :alt="image.name" />
-        <p>{{ image.name }}</p>
+        <p class="image-name">{{ image.name }}</p>
+        <button class="delete-btn" @click="deleteImage(image.id)">Delete</button>
       </div>
     </div>
-    <p v-if="images.length === 0">No images found.</p>
+    <p v-if="images.length === 0">No data found.</p>
   </div>
 </template>
 
@@ -60,27 +70,45 @@ const selectImage = async (image: Image) => {
 
 .image-card {
   border: 1px solid #ddd;
-  padding: 8px;
-  border-radius: 4px;
+  padding: 12px;
+  border-radius: 6px;
   text-align: center;
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.image-card:hover {
-  transform: scale(1.05);
-  border-color: #33a06f;
+  background: #1e1e1e;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 .image-card img {
   max-width: 200px;
   max-height: 200px;
+  object-fit: contain;
   display: block;
+  margin-bottom: 10px;
 }
 
-.image-card p {
-  margin-top: 8px;
+.image-name {
+  margin: 0 0 10px 0;
   font-size: 0.9em;
-  color: #555;
+  color: #ccc;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.delete-btn {
+  background-color: #d32f2f;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  width: 100%;
+  transition: background-color 0.2s;
+}
+
+.delete-btn:hover {
+  background-color: #f44336;
 }
 </style>

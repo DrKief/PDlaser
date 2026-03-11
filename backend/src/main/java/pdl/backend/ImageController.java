@@ -57,9 +57,12 @@ public class ImageController {
 
   @RequestMapping(value = "/images", method = RequestMethod.POST)
   public ResponseEntity<?> addImage(@RequestParam("file") MultipartFile file) {
-    if (file.getContentType() == null || !file.getContentType().startsWith("image/")) {
+    String contentType = file.getContentType();
+    
+    if (contentType == null || !contentType.startsWith("image/")) {
       return new ResponseEntity<>(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
     }
+    
     try {
       Image img = new Image(file.getOriginalFilename(), file.getBytes());
       imageDao.create(img);

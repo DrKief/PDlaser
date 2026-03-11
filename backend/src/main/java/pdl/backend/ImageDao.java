@@ -30,12 +30,10 @@ public class ImageDao implements Dao<Image>, InitializingBean {
     public void afterPropertiesSet() throws Exception {
         File directory = new File(IMAGE_DIR);
         
-        // Besoin 1: Throw explicit error if folder doesn't exist from launch location
         if (!directory.exists()) {
             throw new RuntimeException("Le dossier images n'existe pas : " + directory.getAbsolutePath());
         }
 
-        // Initialize PGVector and Tables Safely
         try {
             jdbcTemplate.execute("CREATE EXTENSION IF NOT EXISTS vector");
         } catch (Exception e) {
@@ -57,7 +55,6 @@ public class ImageDao implements Dao<Image>, InitializingBean {
                 "PRIMARY KEY (image_id, keyword))"
         );
 
-        // Besoin 1: Scan and index missing images
         scanAndIndexFolder(directory);
     }
 
@@ -71,7 +68,6 @@ public class ImageDao implements Dao<Image>, InitializingBean {
 
         for (File file : files) {
             String fileName = file.getName();
-            // Check if it already exists in DB
             Integer count = jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM images WHERE name = ?", Integer.class, fileName);
                 
@@ -79,7 +75,6 @@ public class ImageDao implements Dao<Image>, InitializingBean {
                 try {
                     byte[] data = Files.readAllBytes(file.toPath());
                     Image img = new Image(fileName, data);
-                    // Force the create method to insert DB record without overwriting the file
                     insertIntoDbOnly(img);
                     System.out.println("Indexed new image found in folder: " + fileName);
                 } catch (IOException e) {
@@ -128,19 +123,30 @@ public class ImageDao implements Dao<Image>, InitializingBean {
         return jdbcTemplate.query(sql, imageRowMapper());
     }
 
+    private String getFileExtension(String filename) {
+        if (filename == null) return "";
+        int i = filename.lastIndexOf('.');
+        return (i > 0) ? filename.substring(i).toLowerCase() : "";
+    }
+
     @Override
     public void delete(final Image img) {
-        try {
-            Path path = Paths.get(IMAGE_DIR, img.getId() + ".jpg");
-            Files.deleteIfExists(path);
-        } catch (IOException e) {
-            e.printStackTrace();
+        String[] possibleExtensions = {".jpg", ".jpeg", ".png", getFileExtension(img.getName()), ""};
+        
+        for (String ext : possibleExtensions) {
+            try {
+                Path path = Paths.get(IMAGE_DIR, img.getId() + ext);
+                Files.deleteIfExists(path);
+            } catch (IOException e) {
+            }
         }
+        
         jdbcTemplate.update("DELETE FROM images WHERE id = ?", img.getId());
     }
 
     @Override
-    public void update(final Image img, final String[] params) {}
+    public void update(final Image img, final String[] params) {
+    }
 
     private RowMapper<Image> imageRowMapper() {
         return (rs, rowNum) -> {
@@ -148,7 +154,6 @@ public class ImageDao implements Dao<Image>, InitializingBean {
             String name = rs.getString("name");
             byte[] data = new byte[0];
             try {
-                // Determine format if needed, defaulting to jpg for file fetch
                 Path path = Paths.get(IMAGE_DIR, id + ".jpg");
                 if (Files.exists(path)) {
                     data = Files.readAllBytes(path);
