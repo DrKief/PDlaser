@@ -6,6 +6,8 @@ services:
       POSTGRES_USER: pdl_user
       POSTGRES_PASSWORD: pdl_secure_password
       POSTGRES_DB: pdl_db
+    ports:
+      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     restart: unless-stopped
@@ -20,6 +22,8 @@ services:
       - DATABASE_NAME=pdl_db
       - DATABASE_USER=pdl_user
       - DATABASE_PASSWORD=pdl_secure_password
+    ports:
+      - "8080:8080"
     volumes:
       - backend_images:/app/src/main/resources/images
     depends_on:
@@ -31,18 +35,12 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: pdl-frontend
+    ports:
+      - "3000:80"
     depends_on:
       - backend
     restart: unless-stopped
-    networks:
-      - default
-      - dokploy-network
 
 volumes:
   pgdata:
   backend_images:
-
-networks:
-  default:
-  dokploy-network:
-    external: true
