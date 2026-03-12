@@ -55,7 +55,7 @@ nav a {
 }
 
 nav a.router-link-active {
-  color: #42b983;
+  color: var(--color-primary);
 }
 
 
@@ -72,11 +72,12 @@ nav a.router-link-active {
   font-size: 1.2rem;
   padding: 0;
   margin-left: 20px;
-  transition: background-color 0.3s ease;
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .theme-toggle:hover {
-  background-color: rgba(128, 128, 128, 0.1);
+  background-color: var(--bg-tertiary);
 }
 
 main {
