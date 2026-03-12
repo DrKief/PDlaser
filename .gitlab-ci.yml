@@ -1,0 +1,32 @@
+image: registry.u-bordeaux.fr/pdl/jdk-mvn-node:latest
+
+variables:
+  MAVEN_CLI_OPTS: "--batch-mode"
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+
+cache:
+  paths:
+    - .m2/repository/
+    - frontend/node_modules/
+
+build_job:
+  stage: build
+  script:
+    - cd backend
+    - mvn $MAVEN_CLI_OPTS compile
+  artifacts:
+    expire_in: 10 min
+    paths: 
+      - backend/target/
+  tags:
+      - Docker
+      - Quirrel
+
+test_job:
+  stage: test
+  script:
+    - cd backend
+    - mvn $MAVEN_CLI_OPTS test
+  tags:
+      - Docker
+      - Quirrel
