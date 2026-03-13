@@ -62,7 +62,7 @@ const uploadImage = async () => {
 <style scoped>
 .upload-form {
   margin: 20px 0;
-  border: 1px solid #555;
+  border: 1px solid var(--border-color);
   padding: 8px;
   border-radius: 8px;
   display: flex;
@@ -74,29 +74,30 @@ const uploadImage = async () => {
 input[type="file"] {
   font-family: inherit;
   font-size: 0.9rem;
+  color: var(--text-primary);
 }
 
 input[type="file"]::file-selector-button {
   margin-right: 12px;
-  border: 1px solid #555;
+  border: 1px solid var(--border-color);
   padding: 8px 16px;
   border-radius: 4px;
   background: transparent;
-  color: #e0e0e0;
+  color: var(--text-primary);
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
 
 input[type="file"]::file-selector-button:hover {
-  background: #333;
+  background: var(--bg-tertiary);
 }
 
 button {
-  border: 1px solid #33a06f;
+  border: 1px solid var(--color-primary);
   padding: 8px 24px;
   border-radius: 4px;
-  background: #33a06f;
-  color: #fff;
+  background: var(--color-primary);
+  color: var(--text-on-primary);
   cursor: pointer;
   transition: opacity 0.2s;
 }
@@ -106,9 +107,9 @@ button:hover:not(:disabled) {
 }
 
 button:disabled {
-  background: #333;
-  border-color: #333;
-  color: #888;
+  background: var(--bg-tertiary);
+  border-color: var(--bg-tertiary);
+  color: var(--text-muted);
   cursor: not-allowed;
 }
 </style>

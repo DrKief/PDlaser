@@ -58,7 +58,7 @@ nav a {
 }
 
 nav a.router-link-active {
-  color: #42b983;
+  color: var(--color-primary);
 }
 
 .theme-toggle {
@@ -82,7 +82,7 @@ nav a.router-link-active {
 }
 
 .theme-toggle:hover {
-  background-color: rgba(128, 128, 128, 0.3);
+  background-color: var(--bg-tertiary);
   transform: scale(1.1);
 }
 

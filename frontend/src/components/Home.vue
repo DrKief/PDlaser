@@ -69,7 +69,7 @@
 
 .selection-container {
   margin: 20px 0;
-  border: 1px solid #555;
+  border: 1px solid var(--border-color);
   padding: 8px;
   border-radius: 8px;
   display: flex;
@@ -82,17 +82,17 @@ select {
   -webkit-appearance: none;
   -moz-appearance: none;
   background-color: transparent;
-  color: #e0e0e0;
-  border: 1px solid #555;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
   padding: 8px 36px 8px 16px;
   border-radius: 4px;
   font-family: inherit;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
   
-  /* Custom Arrow */
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e0e0e0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  /* Use variable for arrow to switch between light/dark versions */
+  background-image: var(--arrow-icon);
   background-repeat: no-repeat;
   background-position: right 10px center;
   background-size: 16px;
@@ -100,17 +100,17 @@ select {
 }
 
 select:hover {
-  background-color: #333;
+  background-color: var(--bg-tertiary);
 }
 
 select:focus {
   outline: none;
-  border-color: #33a06f;
+  border-color: var(--color-primary);
 }
 
 option {
-  background-color: #222;
-  color: #fff;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
 }
 
 .image-display {
@@ -124,7 +124,7 @@ option {
 .image-display img {
   max-width: 100%;
   max-height: 500px;
-  border: 1px solid #555;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   margin-top: 10px;
 }
