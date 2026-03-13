@@ -4,92 +4,31 @@
   font-weight: 400;
 
   color-scheme: light dark;
+  color: rgba(255, 255, 255, 0.87);
+  background-color: #242424;
+
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  /* --- Variables (Dark / Default) --- */
-  --bg-primary: #242424;
-  --bg-secondary: #1a1a1a;
-  --bg-tertiary: #2a2a2a;
-  
-  --text-primary: rgba(255, 255, 255, 0.87);
-  --text-secondary: #ebebeb;
-  --text-muted: #888;
-  --text-on-primary: #fff;
-  
-  --color-primary: #42b983;
-  --color-primary-hover: #33a06f;
-  
-  --color-link: #fff;
-  --color-link-hover: #53f2b5;
-  
-  --border-color: #555;
-  --border-focus: #53f2b5;
-  
-  --color-danger: #f44336;
-  --color-danger-hover: #d32f2f;
-
-  /* SVG Arrow for Dark Mode (Light Gray Stroke) */
-  --arrow-icon: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e0e0e0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-
-  /* Apply Body Defaults */
-  color: var(--text-primary);
-  background-color: var(--bg-primary);
 }
 
-:root.light {
-  color-scheme: light;
-  
-  /* --- Variables (Light Mode Overrides) --- */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f9f9f9;
-  --bg-tertiary: #f0f0f0;
-  
-  --text-primary: #213547;
-  --text-secondary: #4a4a4a;
-  --text-muted: #666;
-  --text-on-primary: #fff;
-  
-  --color-primary: #42b983;
-  --color-primary-hover: #33a06f;
-  
-  --color-link: #213547;
-  --color-link-hover: #42b983; 
-  
-  --border-color: #ccc;
-  --border-focus: #42b983;
-  
-  --color-danger: #d32f2f;
-  --color-danger-hover: #b71c1c;
-
-  /* SVG Arrow for Light Mode (Dark Stroke) */
-  --arrow-icon: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23213547' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+a {
+  font-weight: 500;
+  color: #fff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #53f2b5;
+  transition: 0.3s;
 }
 
-:root.dark {
-  color-scheme: dark;
-}
-
-/* Base Elements */
 body {
   margin: 0;
   display: flex;
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
-  transition: background-color 0.3s, color 0.3s;
-}
-
-a {
-  font-weight: 500;
-  color: var(--color-link);
-  text-decoration: inherit;
-  transition: color 0.3s;
-}
-a:hover {
-  color: var(--color-link-hover);
 }
 
 h1 {
@@ -104,13 +43,13 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
+  background-color: #1a1a1a;
   cursor: pointer;
-  transition: border-color 0.25s, background-color 0.3s, color 0.3s;
+  transition: border-color 0.25s;
 }
 button:hover {
-  border-color: var(--border-focus);
+  border-color: #53f2b5;
+  transition: 0.3s;
 }
 button:focus,
 button:focus-visible {
@@ -119,9 +58,6 @@ button:focus-visible {
 
 .card {
   padding: 2em;
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
 }
 
 #app {
@@ -129,4 +65,21 @@ button:focus-visible {
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
+}
+
+
+:root.dark {
+  color-scheme: dark;
+}
+
+:root.light {
+  color-scheme: light;
+  color: #213547;
+  background-color: #ffffff;
+}
+:root.light a:hover {
+  color: #747bff;
+}
+:root.light button {
+  background-color: #f9f9f9;
 }
