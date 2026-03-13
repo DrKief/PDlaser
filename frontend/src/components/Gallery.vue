@@ -69,15 +69,14 @@ const deleteImage = async (id: number) => {
 }
 
 .image-card {
-  border: 1px solid var(--border-color);
+  border: 1px solid #ddd;
   padding: 12px;
   border-radius: 6px;
   text-align: center;
-  background: var(--bg-secondary);
+  background: #1e1e1e;
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: background-color 0.3s, border-color 0.3s;
 }
 
 .image-card img {
@@ -91,7 +90,7 @@ const deleteImage = async (id: number) => {
 .image-name {
   margin: 0 0 10px 0;
   font-size: 0.9em;
-  color: var(--text-secondary);
+  color: #ccc;
   max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -99,8 +98,8 @@ const deleteImage = async (id: number) => {
 }
 
 .delete-btn {
-  background-color: var(--color-danger);
-  color: var(--text-on-primary);
+  background-color: #d32f2f;
+  color: white;
   border: none;
   padding: 6px 12px;
   border-radius: 4px;
@@ -110,6 +109,6 @@ const deleteImage = async (id: number) => {
 }
 
 .delete-btn:hover {
-  background-color: var(--color-danger-hover);
+  background-color: #f44336;
 }
 </style>
