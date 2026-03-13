@@ -41,7 +41,7 @@
 </script>
 
 <template>
-  <div>
+  <div class="home-container">
     <h2>Available images:</h2>
     <div class="selection-container">
       <select v-model="selectedImageId" @change="onSelectChange">
@@ -60,6 +60,13 @@
 </template>
 
 <style scoped>
+.home-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
 .selection-container {
   margin: 20px 0;
   border: 1px solid #555;
@@ -104,6 +111,14 @@ select:focus {
 option {
   background-color: #222;
   color: #fff;
+}
+
+.image-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 20px;
+  width: 100%;
 }
 
 .image-display img {
