@@ -94,7 +94,7 @@ public class ImageDao implements Dao<Image>, InitializingBean {
             return ps;
         }, keyHolder);
 
-        if (keyHolder.getKeys() != null) {
+        if (keyHolder.getKeys() != null && keyHolder.getKeys().get("id") != null) {
             img.setId(((Number) keyHolder.getKeys().get("id")).longValue());
         }
     }
@@ -113,9 +113,9 @@ public class ImageDao implements Dao<Image>, InitializingBean {
     @Override
     public Optional<Image> retrieve(final long id) {
         String sql = "SELECT * FROM images WHERE id = ?";
-        List<Image> images = jdbcTemplate.query(sql, new Object[]{id}, imageRowMapper());
+        List<Image> images = jdbcTemplate.query(sql, imageRowMapper(), id);
         return images.isEmpty() ? Optional.empty() : Optional.of(images.get(0));
-    }
+}
 
     @Override
     public List<Image> retrieveAll() {

@@ -36,11 +36,11 @@ public class ImageController {
   public ResponseEntity<?> getImage(@PathVariable long id) {
     Optional<Image> image = imageDao.retrieve(id);
     if (image.isPresent()) {
-      org.springframework.http.MediaType mediaType = org.springframework.http.MediaTypeFactory.getMediaType(image.get().getName())
-          .orElse(org.springframework.http.MediaType.IMAGE_JPEG);
-      return ResponseEntity.ok()
-          .contentType(mediaType)
-          .body(image.get().getData());
+        MediaType mediaType = org.springframework.http.MediaTypeFactory.getMediaType(image.get().getName())
+            .orElse(MediaType.IMAGE_JPEG);
+        return ResponseEntity.ok()
+            .contentType(mediaType)
+            .body(image.get().getData());
     }
     return new ResponseEntity<>(HttpStatus.NOT_FOUND);
   }
