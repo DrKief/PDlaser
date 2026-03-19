@@ -1,13 +1,17 @@
 image: registry.u-bordeaux.fr/pdl/jdk-mvn-node:latest
 
 variables:
-  MAVEN_CLI_OPTS: "--batch-mode"
+  MAVEN_CLI_OPTS: "--batch-mode --errors --fail-at-end --show-version"
   MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
 
 cache:
   paths:
     - .m2/repository/
     - frontend/node_modules/
+
+stages:
+  - build
+  - test
 
 build_job:
   stage: build
@@ -24,8 +28,13 @@ build_job:
 
 test_job:
   stage: test
+  dependencies:
+    - build_job
+  variables:
+    APP_IMAGE_DIRECTORY: "src/main/resources/images"
   script:
     - cd backend
+    - mkdir -p src/main/resources/images
     - mvn $MAVEN_CLI_OPTS test
   tags:
       - Docker
