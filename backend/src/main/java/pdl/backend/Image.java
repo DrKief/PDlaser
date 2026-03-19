@@ -4,6 +4,7 @@ public class Image {
   private Long id;
   private String name;
   private byte[] data;
+  private String hash;
 
   public Image(final String name, final byte[] data) {
     this.name = name;
@@ -15,7 +16,7 @@ public class Image {
   }
 
   public long getId() {
-    return id != null ? id : 0;
+    return (id != null) ? id : 0;
   }
 
   public String getName() {
@@ -28,5 +29,13 @@ public class Image {
 
   public byte[] getData() {
     return data;
+  }
+
+  public String getHash() {
+    return hash;
+  }
+
+  public void setHash(String hash) {
+    this.hash = hash;
   }
 }
