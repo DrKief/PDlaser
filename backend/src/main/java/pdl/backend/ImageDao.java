@@ -22,6 +22,7 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public class ImageDao implements Dao<Image> {
@@ -119,6 +120,7 @@ public class ImageDao implements Dao<Image> {
   }
 
   @Override
+  @Transactional
   public void create(Image img) {
     String hash = calculateSHA256(img.getData());
 
@@ -138,7 +140,7 @@ public class ImageDao implements Dao<Image> {
     try {
       Files.write(path, img.getData());
     } catch (IOException e) {
-      e.printStackTrace();
+      throw new RuntimeException("Failed to write image file to disk, rolling back DB insert", e);
     }
   }
 
