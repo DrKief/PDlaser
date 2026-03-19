@@ -68,6 +68,138 @@
   --arrow-icon: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23213547' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
 }
 
+/* --- CRUELTY SQUAD AESTHETIC --- */
+:root.cruelty {
+  color-scheme: light; /* or dark, doesn't matter, it's pain */
+
+  /* Variables Override */
+  --bg-primary: #00ff00; /* Acid Green */
+  --bg-secondary: #ff00ff; /* Hot Pink */
+  --bg-tertiary: #0000ff; /* Pure Blue */
+  
+  --text-primary: #ff0000; /* Red text on Green bg */
+  --text-secondary: #ffff00; /* Yellow */
+  --text-muted: #00ffff; /* Cyan */
+  --text-on-primary: #000000;
+  
+  --color-primary: #ff00ff; /* Pink button */
+  --color-primary-hover: #ffffff;
+  
+  --color-link: #0000ff; /* Blue link */
+  --color-link-hover: #ff0000; /* Red hover */
+  
+  --border-color: #ff0000;
+  --border-focus: #ffff00;
+  
+  --font-main: "Impact", "Comic Sans MS", "Chalkboard SE", sans-serif;
+  --font-code: "Courier New", monospace;
+
+  /* Global Props */
+  image-rendering: pixelated;
+  cursor: crosshair;
+}
+
+/* Cruelty Specific Styles - Scoped to .cruelty class on root/body */
+
+:root.cruelty body {
+  font-family: var(--font-main);
+  background-image: repeating-linear-gradient(45deg, #00ff00 0px, #00ff00 10px, #00ee00 10px, #00ee00 20px);
+  animation: bg-throb 0.2s infinite;
+  overflow-x: hidden;
+}
+
+@keyframes bg-throb {
+  0% { filter: hue-rotate(0deg); }
+  50% { filter: hue-rotate(20deg); }
+  100% { filter: hue-rotate(0deg); }
+}
+
+:root.cruelty a {
+  color: blue !important;
+  background: yellow !important;
+  text-decoration: underline overline !important;
+  font-weight: bold;
+  padding: 2px;
+  border: 2px dashed red;
+  display: inline-block;
+}
+
+:root.cruelty a:hover {
+  color: red !important;
+  background: black !important;
+  transform: rotate(5deg) scale(1.2);
+}
+
+:root.cruelty h1, 
+:root.cruelty h2, 
+:root.cruelty h3 {
+  font-family: "Times New Roman", serif;
+  text-transform: uppercase;
+  letter-spacing: -2px;
+  color: blue;
+  text-shadow: 3px 3px 0px #00ff00, -3px -3px 0px #ff0000;
+  transform: skewX(-15deg);
+  border-bottom: 5px ridge #ffff00;
+  background: white;
+  display: table;
+  margin: 10px auto;
+}
+
+:root.cruelty button {
+  background: radial-gradient(circle, red, yellow, green);
+  border: 6px outset #0000ff !important;
+  color: white !important;
+  font-family: "Courier New", monospace;
+  font-weight: 900;
+  text-transform: uppercase;
+  cursor: help;
+  box-shadow: 5px 5px 0px black;
+  transition: none !important;
+}
+
+:root.cruelty button:active {
+  border-style: inset !important;
+  transform: translate(5px, 5px);
+  box-shadow: none;
+}
+
+:root.cruelty input {
+  background-color: black !important;
+  color: #00ff00 !important;
+  border: 3px double #ff00ff !important;
+  font-family: "Courier New", monospace;
+  border-radius: 0;
+}
+
+:root.cruelty * {
+  border-radius: 0 !important;
+}
+
+:root.cruelty img {
+  filter: contrast(200%) saturate(200%) noise(100%);
+  border: 10px solid gold;
+  /* image-rendering: pixelated; already on root */ 
+  transform: rotate(0.5deg);
+}
+
+:root.cruelty nav {
+  background: repeating-linear-gradient(90deg, black, black 10px, darkred 10px, darkred 20px);
+  border: 5px groove cyan;
+  padding: 20px;
+}
+
+:root.cruelty footer {
+  background: #ffff00;
+  color: black;
+  border-top: 5px dotted red;
+  animation: footer-bounce 1s infinite;
+}
+
+@keyframes footer-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
 /* Base Elements */
 body {
   margin: 0;

@@ -2,19 +2,38 @@
 import { ref } from "vue";
 import http from "../http-api";
 
+const props = defineProps({
+  mode: {
+    type: String,
+    default: "upload", // 'upload' or 'search'
+  },
+});
+
+const emit = defineEmits(["file-selected"]);
+
 const selectedFile = ref<File | null>(null);
+const previewUrl = ref<string | null>(null);
 const message = ref("");
 
 const onFileChange = (event: Event) => {
   const target = event.target as HTMLInputElement;
   if (target.files && target.files.length > 0) {
+    if (previewUrl.value) {
+      URL.revokeObjectURL(previewUrl.value);
+    }
     selectedFile.value = target.files[0] as File;
+    previewUrl.value = URL.createObjectURL(selectedFile.value);
   }
 };
 
-const uploadImage = async () => {
+const handleAction = async () => {
   if (!selectedFile.value) {
     message.value = "Please select a file first!";
+    return;
+  }
+
+  if (props.mode === "search") {
+    emit("file-selected", selectedFile.value);
     return;
   }
 
@@ -32,6 +51,10 @@ const uploadImage = async () => {
     if (response.status === 200 || response.status === 201) {
       message.value = "Upload successful!";
       selectedFile.value = null;
+      if (previewUrl.value) {
+        URL.revokeObjectURL(previewUrl.value);
+        previewUrl.value = null;
+      }
       // Reset input if needed
       const input = document.getElementById("file-input") as HTMLInputElement;
       if (input) input.value = "";
@@ -45,7 +68,6 @@ const uploadImage = async () => {
 
 <template>
   <div>
-    <h2>Upload image</h2>
     <div class="upload-form">
       <input
         type="file"
@@ -53,7 +75,12 @@ const uploadImage = async () => {
         id="file-input"
         accept="image/*"
       />
-      <button @click="uploadImage" :disabled="!selectedFile">Upload</button>
+      <button @click="handleAction" :disabled="!selectedFile">
+        {{ mode === "search" ? "Search" : "Upload" }}
+      </button>
+    </div>
+    <div v-if="previewUrl" class="image-preview">
+      <img :src="previewUrl" alt="Selected image" />
     </div>
     <p v-if="message">{{ message }}</p>
   </div>
@@ -111,5 +138,20 @@ button:disabled {
   border-color: var(--bg-tertiary);
   color: var(--text-muted);
   cursor: not-allowed;
+}
+
+.image-preview {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.image-preview img {
+  max-width: 300px;
+  max-height: 300px;
+  width: auto;
+  height: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
 }
 </style>
