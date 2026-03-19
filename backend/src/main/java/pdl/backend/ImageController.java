@@ -106,10 +106,11 @@ public class ImageController {
     try {
       Image image = new Image(file.getOriginalFilename(), file.getBytes());
       imageDao.create(image);
-      return ResponseEntity.status(HttpStatus.CREATED) // 201 Created
+      return ResponseEntity.status(HttpStatus.CREATED)
           .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
           .body(Map.of("message", "Image uploaded"));
     } catch (Exception e) {
+      log.error("Failed to upload image: " + file.getOriginalFilename(), e);
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
           .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
           .body(Map.of("error", "Internal server error"));

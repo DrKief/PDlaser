@@ -16,7 +16,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -26,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public class ImageDao implements Dao<Image> {
+  private static final Logger log = LoggerFactory.getLogger(ImageDao.class);
 
   @NonNull private final JdbcTemplate jdbcTemplate;
 
@@ -163,7 +167,7 @@ public class ImageDao implements Dao<Image> {
         rgbData = ImageProcessing.extractRgbHistogram(bimg);
       }
     } catch (Exception e) {
-      System.err.println("Could not process image " + img.getName());
+      log.error("Could not process image data for: " + img.getName(), e);
     }
 
     if (hogData.length != 31) {
@@ -204,8 +208,10 @@ public class ImageDao implements Dao<Image> {
         img.setId(id);
         return Optional.of(img);
       }
-    } catch (Exception e) {
+    } catch (EmptyResultDataAccessException e) {
       return Optional.empty();
+    } catch (Exception e) {
+      log.error("Unexpected error retrieving image ID: " + id, e);
     }
     return Optional.empty();
   }
@@ -257,7 +263,10 @@ public class ImageDao implements Dao<Image> {
           id,
           normalizedTag);
       return true;
+    } catch (EmptyResultDataAccessException e) {
+      return false;
     } catch (Exception e) {
+      log.error("Failed to add keyword '" + keyword + "' to image ID: " + id, e);
       return false;
     }
   }
@@ -296,7 +305,10 @@ public class ImageDao implements Dao<Image> {
               "SELECT " + vectorColumn + " FROM imagedescriptors WHERE imageid = ?",
               PGvector.class,
               targetId);
+    } catch (EmptyResultDataAccessException e) {
+      return null;
     } catch (Exception e) {
+      log.error("Failed to retrieve vector for similarity search on ID: " + targetId, e);
       return null;
     }
 
