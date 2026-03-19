@@ -18,8 +18,10 @@ public class ImageProcessing {
     GrayF32 grayImage = ConvertBufferedImage.convertFrom(inputImage, (GrayF32) null);
 
     ConfigDenseHoG config = new ConfigDenseHoG();
-    DescribeImageDense<GrayF32, TupleDesc_F64> describer =
-        FactoryDescribeImageDense.hog(config, ImageType.single(GrayF32.class));
+    DescribeImageDense<GrayF32, TupleDesc_F64> describer = FactoryDescribeImageDense.hog(
+      config,
+      ImageType.single(GrayF32.class)
+    );
 
     describer.process(grayImage);
     List<TupleDesc_F64> descriptions = describer.getDescriptions();
@@ -42,8 +44,12 @@ public class ImageProcessing {
   }
 
   public static float[] extractHsvHistogram(BufferedImage inputImage) {
-    Planar<GrayF32> rgb =
-        ConvertBufferedImage.convertFromPlanar(inputImage, null, true, GrayF32.class);
+    Planar<GrayF32> rgb = ConvertBufferedImage.convertFromPlanar(
+      inputImage,
+      null,
+      true,
+      GrayF32.class
+    );
     Planar<GrayF32> hsv = rgb.createSameShape();
     ColorHsv.rgbToHsv(rgb, hsv);
 
@@ -70,8 +76,12 @@ public class ImageProcessing {
   }
 
   public static float[] extractRgbHistogram(BufferedImage inputImage) {
-    Planar<GrayF32> rgb =
-        ConvertBufferedImage.convertFromPlanar(inputImage, null, true, GrayF32.class);
+    Planar<GrayF32> rgb = ConvertBufferedImage.convertFromPlanar(
+      inputImage,
+      null,
+      true,
+      GrayF32.class
+    );
     int bins = 8;
     float[] histogram3D = new float[bins * bins * bins];
 

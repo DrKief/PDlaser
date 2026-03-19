@@ -1,28 +1,34 @@
 # Software Development Project - L3 (v3a)
 
 **Live Environments (Coming Soon):**
-* Production URL: `[Insert Public Production Link Here]`
-* Preview URL: `[Insert Public Preview Link Here]`
+
+- Production URL: `[Insert Public Production Link Here]`
+- Preview URL: `[Insert Public Preview Link Here]`
 
 ## Overview
+
 This repository contains the full-stack source code for the L3 Software Development Project. The application is an image management system built using Java 21 and Spring Boot for the backend, and Vue.js 3 with TypeScript for the frontend. The infrastructure uses Docker and a PostgreSQL database equipped with the pgvector extension for image descriptor storage.
 
 ## Prerequisites
+
 Ensure the following dependencies are installed on your local environment:
-* Java (JDK 21)
-* Maven (version 3.9+)
-* Node.js (version 20+) and npm
-* Docker and Docker Compose
+
+- Java (JDK 21)
+- Maven (version 3.9+)
+- Node.js (version 20+) and npm
+- Docker and Docker Compose
 
 ## Running the Project
 
 The application can be run in three different environments depending on your current development or deployment needs.
 
 ### 1. Local Development (CREMI Database Tunnel)
+
 This is the primary method for active backend development. It runs the Spring Boot application locally while connecting to the remote CREMI PostgreSQL database via an SSH tunnel.
 
 **Step 1: Establish the SSH Tunnel**
 Bind your local port 5432 to the CREMI database server. Leave this terminal window running in the background.
+
 ```bash
 ssh <your_cremi_username>@ssh.emi.u-bordeaux.fr -L 5432:pgsql:5432
 
@@ -54,7 +60,7 @@ npm run dev
 
 ### 2. Local Containerized Environment (Docker)
 
-*Note: This local deployment method is currently untested and pending validation.*
+_Note: This local deployment method is currently untested and pending validation._
 
 To launch the entire stack locally (database, backend, and frontend) without relying on the CREMI network, use Docker Compose.
 
@@ -69,13 +75,11 @@ This provisions a local PostgreSQL container, starts the backend on port 8080, a
 
 Our production and staging environments are hosted on a private Oracle Cloud Ubuntu instance, provisioned via Terraform.
 
-* **Management:** Services, reverse proxying, and domain routing are managed via Dokploy.
-* **Access:** The Dokploy instance is secured and restricted to authorized project members.
-* **Environments:**
-	* **Production:** Deploys automatically from the `main` branch.
-	* **Preview/Staging:** Deploys from the `preview` branch, utilizing a separate subdomain for testing before merging into production.
-
-
+- **Management:** Services, reverse proxying, and domain routing are managed via Dokploy.
+- **Access:** The Dokploy instance is secured and restricted to authorized project members.
+- **Environments:**
+  - **Production:** Deploys automatically from the `main` branch.
+  - **Preview/Staging:** Deploys from the `preview` branch, utilizing a separate subdomain for testing before merging into production.
 
 ## Development Workflow
 
@@ -91,12 +95,12 @@ We enforce the [Conventional Commits 1.0.0 specification](https://www.convention
 
 **Format:** `<type>[optional scope]: <description>`
 
-* Use `feat:` for new features and `fix:` for bug fixes.
-* Indicate breaking changes with a `!` after the type/scope (e.g., `feat!: upgrade framework`) or via a `BREAKING CHANGE:` footer.
+- Use `feat:` for new features and `fix:` for bug fixes.
+- Indicate breaking changes with a `!` after the type/scope (e.g., `feat!: upgrade framework`) or via a `BREAKING CHANGE:` footer.
 
 ## CI/CD Pipeline
 
 The project utilizes GitLab CI/CD, configured in `.gitlab-ci.yml`. The pipeline handles:
 
-* **Compilation:** Verifies that the backend compiles successfully on every push.
-* **Testing:** Executes automated tests (database-dependent tests are isolated or disabled until the test database container configuration is finalized).
+- **Compilation:** Verifies that the backend compiles successfully on every push.
+- **Testing:** Executes automated tests (database-dependent tests are isolated or disabled until the test database container configuration is finalized).

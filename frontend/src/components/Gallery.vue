@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import http from '../http-api';
+import { ref, onMounted } from "vue";
+import http from "../http-api";
 
 interface Image {
   id: number;
@@ -15,7 +15,7 @@ onMounted(async () => {
 
 const fetchImages = async () => {
   try {
-    const response = await http.get('/images');
+    const response = await http.get("/images");
     images.value = response.data;
   } catch (error) {
     console.error("Error fetching images for gallery:", error);
@@ -30,11 +30,11 @@ const deleteImage = async (id: number) => {
   if (!confirm("Are you sure you want to permanently delete this file?")) {
     return;
   }
-  
+
   try {
     await http.delete(`/images/${id}`);
     // Remove from the local array so the UI updates instantly
-    images.value = images.value.filter(img => img.id !== id);
+    images.value = images.value.filter((img) => img.id !== id);
   } catch (error) {
     console.error(`Error deleting image ${id}:`, error);
     alert("Failed to delete file.");
@@ -46,11 +46,7 @@ const deleteImage = async (id: number) => {
   <div>
     <h2>Gallery</h2>
     <div class="gallery-container">
-      <div 
-        v-for="image in images" 
-        :key="image.id" 
-        class="image-card"
-      >
+      <div v-for="image in images" :key="image.id" class="image-card">
         <img :src="getImageUrl(image)" :alt="image.name" />
         <p class="image-name">{{ image.name }}</p>
         <button class="delete-btn" @click="deleteImage(image.id)">Delete</button>
@@ -77,7 +73,9 @@ const deleteImage = async (id: number) => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: background-color 0.3s, border-color 0.3s;
+  transition:
+    background-color 0.3s,
+    border-color 0.3s;
 }
 
 .image-card img {

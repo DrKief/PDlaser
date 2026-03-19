@@ -29,15 +29,15 @@ public class RedirectConfiguration {
   private OncePerRequestFilter createRedirectFilter() {
     return new OncePerRequestFilter() {
       private final String REGEX =
-          "(?!/actuator|/images|/_nuxt|/static|/index\\.html|/200\\.html|/favicon\\.ico|/sw\\.js).*$";
+        "(?!/actuator|/images|/_nuxt|/static|/index\\.html|/200\\.html|/favicon\\.ico|/sw\\.js).*$";
       private Pattern pattern = Pattern.compile(REGEX);
 
       @Override
       protected void doFilterInternal(
-          @NonNull HttpServletRequest req,
-          @NonNull HttpServletResponse res,
-          @NonNull FilterChain chain)
-          throws ServletException, IOException {
+        @NonNull HttpServletRequest req,
+        @NonNull HttpServletResponse res,
+        @NonNull FilterChain chain
+      ) throws ServletException, IOException {
         if (pattern.matcher(req.getRequestURI()).matches() && !req.getRequestURI().equals("/")) {
           RequestDispatcher rd = req.getRequestDispatcher("/");
           rd.forward(req, res);

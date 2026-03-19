@@ -42,23 +42,26 @@ public class ImageController {
     if (!Files.exists(path) || !Files.isDirectory(path)) {
       log.error("FATAL: Required 'images' directory not found at {}", path.toAbsolutePath());
       throw new IllegalStateException(
-          "Besoin 1: Le dossier images n'existe pas ou n'est pas un dossier valide.");
+        "Besoin 1: Le dossier images n'existe pas ou n'est pas un dossier valide."
+      );
     }
 
     if (!Files.isWritable(path)) {
       log.error(
-          "FATAL: Required 'images' directory is not writable by the application user. Path: {}",
-          path.toAbsolutePath());
+        "FATAL: Required 'images' directory is not writable by the application user. Path: {}",
+        path.toAbsolutePath()
+      );
       throw new IllegalStateException("directory not writable");
     }
   }
 
   @ExceptionHandler(MaxUploadSizeExceededException.class)
   public ResponseEntity<Map<String, String>> handleMaxSizeException(
-      MaxUploadSizeExceededException exc) {
+    MaxUploadSizeExceededException exc
+  ) {
     return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
-        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-        .body(Map.of("error", "File too large."));
+      .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+      .body(Map.of("error", "File too large."));
   }
 
   // Besoin 6: Get all images
@@ -73,12 +76,12 @@ public class ImageController {
     Optional<Image> image = imageDao.retrieve(id);
     if (image.isPresent()) {
       return ResponseEntity.ok()
-          .header(HttpHeaders.CONTENT_TYPE, "image/" + getFileExtension(image.get().getName()))
-          .body(image.get().getData());
+        .header(HttpHeaders.CONTENT_TYPE, "image/" + getFileExtension(image.get().getName()))
+        .body(image.get().getData());
     }
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-        .body(Map.of("error", "Image not found"));
+      .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+      .body(Map.of("error", "Image not found"));
   }
 
   // Besoin 9: Delete Image
@@ -90,8 +93,8 @@ public class ImageController {
       return ResponseEntity.noContent().build(); // 204 No Content
     }
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-        .body(Map.of("error", "Image not found"));
+      .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+      .body(Map.of("error", "Image not found"));
   }
 
   // Besoin 7: Add Image
@@ -99,28 +102,28 @@ public class ImageController {
   public ResponseEntity<?> addImage(@RequestParam("file") MultipartFile file) {
     if (file.isEmpty()) {
       return ResponseEntity.badRequest()
-          .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-          .body(Map.of("error", "File is empty"));
+        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+        .body(Map.of("error", "File is empty"));
     }
 
     String contentType = file.getContentType();
     if (contentType == null || !contentType.startsWith("image/")) {
       return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
-          .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-          .body(Map.of("error", "Unsupported Media Type"));
+        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+        .body(Map.of("error", "Unsupported Media Type"));
     }
 
     try {
       Image image = new Image(file.getOriginalFilename(), file.getBytes());
       imageDao.create(image);
       return ResponseEntity.status(HttpStatus.CREATED)
-          .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-          .body(Map.of("message", "Image uploaded"));
+        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+        .body(Map.of("message", "Image uploaded"));
     } catch (Exception e) {
       log.error("Failed to upload image: " + file.getOriginalFilename(), e);
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-          .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-          .body(Map.of("error", "Internal server error"));
+        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+        .body(Map.of("error", "Internal server error"));
     }
   }
 
@@ -140,75 +143,78 @@ public class ImageController {
       response.put("Keywords", rawMeta.get("Keywords"));
 
       return ResponseEntity.ok()
-          .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-          .body(response);
+        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+        .body(response);
     } catch (EmptyResultDataAccessException e) {
       return ResponseEntity.status(HttpStatus.NOT_FOUND)
-          .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-          .body(Map.of("error", "Image not found"));
+        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+        .body(Map.of("error", "Image not found"));
     }
   }
 
   // Besoin 10: Find Similar (Standardized to use Query Params)
   @GetMapping("/{id}/similar")
   public ResponseEntity<?> getSimilarImages(
-      @PathVariable("id") long id,
-      @RequestParam(value = "number", defaultValue = "10") int number,
-      @RequestParam(value = "descriptor", defaultValue = "gradient") String descriptor) {
-
+    @PathVariable("id") long id,
+    @RequestParam(value = "number", defaultValue = "10") int number,
+    @RequestParam(value = "descriptor", defaultValue = "gradient") String descriptor
+  ) {
     List<String> validDescriptors = List.of("gradient", "saturation", "rgb");
     if (!validDescriptors.contains(descriptor.toLowerCase())) {
       return ResponseEntity.badRequest()
-          .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-          .body(Map.of("error", "Bad Request. Invalid descriptor."));
+        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+        .body(Map.of("error", "Bad Request. Invalid descriptor."));
     }
 
     List<Map<String, Object>> results = imageDao.findSimilar(id, descriptor, number);
 
     if (results == null) {
       return ResponseEntity.status(HttpStatus.NOT_FOUND)
-          .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-          .body(Map.of("error", "Image not found"));
+        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+        .body(Map.of("error", "Image not found"));
     }
 
     return ResponseEntity.ok()
-        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-        .body(results);
+      .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+      .body(results);
   }
 
   // Besoin 12: Add Keyword
   @PutMapping("/{id}/keywords")
   public ResponseEntity<?> addKeyword(
-      @PathVariable("id") long id, @RequestParam("tag") String tag) {
+    @PathVariable("id") long id,
+    @RequestParam("tag") String tag
+  ) {
     boolean success = imageDao.addKeyword(id, tag);
     if (success) {
       return ResponseEntity.noContent().build(); // 204 No Content
     }
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
-        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-        .body(Map.of("error", "Image not found"));
+      .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+      .body(Map.of("error", "Image not found"));
   }
 
   // Besoin 13: Delete Keyword
   @DeleteMapping("/{id}/keywords")
   public ResponseEntity<?> deleteKeyword(
-      @PathVariable("id") long id, @RequestParam("tag") String tag) {
+    @PathVariable("id") long id,
+    @RequestParam("tag") String tag
+  ) {
     try {
       imageDao.getImageMetadata(id);
 
       if (!imageDao.hasKeyword(id, tag)) {
         return ResponseEntity.badRequest()
-            .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-            .body(Map.of("error", "Tag not associated with this image"));
+          .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+          .body(Map.of("error", "Tag not associated with this image"));
       }
 
       imageDao.deleteKeyword(id, tag);
       return ResponseEntity.noContent().build(); // 204 No Content
-
     } catch (EmptyResultDataAccessException e) {
       return ResponseEntity.status(HttpStatus.NOT_FOUND)
-          .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-          .body(Map.of("error", "Image not found"));
+        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+        .body(Map.of("error", "Image not found"));
     }
   }
 
@@ -216,27 +222,27 @@ public class ImageController {
   @GetMapping("/keywords")
   public ResponseEntity<?> getAllKeywords() {
     return ResponseEntity.ok()
-        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-        .body(imageDao.getAllKeywords());
+      .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+      .body(imageDao.getAllKeywords());
   }
 
   // Besoin 15: Search by Attributes (Standardized to use Query Params instead of JSON Body)
   @GetMapping("/search")
   public ResponseEntity<?> searchImagesByAttributes(
-      @RequestParam(required = false) String name,
-      @RequestParam(required = false) String format,
-      @RequestParam(required = false) String size,
-      @RequestParam(required = false) List<String> keywords) {
-
+    @RequestParam(required = false) String name,
+    @RequestParam(required = false) String format,
+    @RequestParam(required = false) String size,
+    @RequestParam(required = false) List<String> keywords
+  ) {
     List<Long> ids = imageDao.searchByAttributes(name, format, size, keywords);
     if (ids.isEmpty()) {
       return ResponseEntity.status(HttpStatus.NOT_FOUND)
-          .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-          .body(Map.of("error", "Aucune image existante trouvée.")); // 404
+        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+        .body(Map.of("error", "Aucune image existante trouvée.")); // 404
     }
     return ResponseEntity.ok()
-        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-        .body(ids);
+      .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+      .body(ids);
   }
 
   private String getFileExtension(String filename) {

@@ -11,14 +11,14 @@
   </div>
   <div class="image-search">
     <Upload mode="search" @file-selected="handleFileUpload" />
-  <div class="histogram-select">
-    <label for="histogram">Select Histogram:</label>
-    <select id="histogram" v-model="selectedHistogram">
-      <option value="gradient">Gradient/Orientation (1D)</option>
-      <option value="saturation">Saturation (2D)</option>
-      <option value="rgb">RGB (3D)</option>
-    </select>
-  </div>
+    <div class="histogram-select">
+      <label for="histogram">Select Histogram:</label>
+      <select id="histogram" v-model="selectedHistogram">
+        <option value="gradient">Gradient/Orientation (1D)</option>
+        <option value="saturation">Saturation (2D)</option>
+        <option value="rgb">RGB (3D)</option>
+      </select>
+    </div>
   </div>
 </template>
 

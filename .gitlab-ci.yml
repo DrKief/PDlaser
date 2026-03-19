@@ -20,11 +20,11 @@ build_job:
     - mvn $MAVEN_CLI_OPTS compile
   artifacts:
     expire_in: 10 min
-    paths: 
+    paths:
       - backend/target/
   tags:
-      - Docker
-      - Quirrel
+    - Docker
+    - Quirrel
 
 test_job:
   stage: test
@@ -37,5 +37,5 @@ test_job:
     - mkdir -p src/main/resources/images
     - mvn $MAVEN_CLI_OPTS test
   tags:
-      - Docker
-      - Quirrel
+    - Docker
+    - Quirrel

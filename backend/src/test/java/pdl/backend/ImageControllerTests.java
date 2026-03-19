@@ -23,9 +23,11 @@ import org.springframework.test.web.servlet.MockMvc;
 @WebMvcTest(ImageController.class)
 public class ImageControllerTests {
 
-  @MockitoBean private ImageDao imageDAO;
+  @MockitoBean
+  private ImageDao imageDAO;
 
-  @Autowired private MockMvc mockMvc;
+  @Autowired
+  private MockMvc mockMvc;
 
   @BeforeEach
   public void setUp() {
@@ -36,10 +38,9 @@ public class ImageControllerTests {
   public void getImageShouldReturnSuccess() throws Exception {
     Image image = new Image("test.jpg", new byte[0]);
     when(imageDAO.retrieve(0)).thenReturn(Optional.of(image));
-    this.mockMvc
-        .perform(get("/images/0"))
-        .andExpect(status().isOk())
-        .andExpect(content().contentType(MediaType.IMAGE_JPEG_VALUE));
+    this.mockMvc.perform(get("/images/0"))
+      .andExpect(status().isOk())
+      .andExpect(content().contentType(MediaType.IMAGE_JPEG_VALUE));
     verify(imageDAO).retrieve(0);
   }
 
@@ -51,28 +52,34 @@ public class ImageControllerTests {
 
   @Test
   public void addImageShouldReturnSuccess() throws Exception {
-    MockMultipartFile file =
-        new MockMultipartFile("file", "test.jpg", MediaType.IMAGE_JPEG_VALUE, "content".getBytes());
+    MockMultipartFile file = new MockMultipartFile(
+      "file",
+      "test.jpg",
+      MediaType.IMAGE_JPEG_VALUE,
+      "content".getBytes()
+    );
     this.mockMvc.perform(multipart("/images").file(file)).andExpect(status().isCreated());
     verify(imageDAO).create(any(Image.class));
   }
 
   @Test
   public void addImageShouldReturnUnsupportedMediaType() throws Exception {
-    MockMultipartFile file =
-        new MockMultipartFile("file", "test.txt", MediaType.TEXT_PLAIN_VALUE, "content".getBytes());
-    this.mockMvc
-        .perform(multipart("/images").file(file))
-        .andExpect(status().isUnsupportedMediaType());
+    MockMultipartFile file = new MockMultipartFile(
+      "file",
+      "test.txt",
+      MediaType.TEXT_PLAIN_VALUE,
+      "content".getBytes()
+    );
+    this.mockMvc.perform(multipart("/images").file(file)).andExpect(
+      status().isUnsupportedMediaType()
+    );
   }
 
   @Test
   public void deleteImageShouldReturnSuccess() throws Exception {
     Image image = new Image("test.jpg", new byte[0]);
     when(imageDAO.retrieve(0)).thenReturn(Optional.of(image));
-    this.mockMvc
-        .perform(delete("/images/0"))
-        .andExpect(status().isNoContent()); // Previously fixed to 204 No Content
+    this.mockMvc.perform(delete("/images/0")).andExpect(status().isNoContent()); // Previously fixed to 204 No Content
     verify(imageDAO).delete(any(Image.class));
   }
 

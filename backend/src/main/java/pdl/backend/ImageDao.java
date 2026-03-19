@@ -29,9 +29,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Repository
 public class ImageDao implements Dao<Image> {
+
   private static final Logger log = LoggerFactory.getLogger(ImageDao.class);
 
-  @NonNull private final JdbcTemplate jdbcTemplate;
+  @NonNull
+  private final JdbcTemplate jdbcTemplate;
 
   @Value("${app.image.directory:images}")
   private String imageDirectoryPath;
@@ -44,34 +46,40 @@ public class ImageDao implements Dao<Image> {
   public void initDatabase() {
     jdbcTemplate.execute("CREATE EXTENSION IF NOT EXISTS vector");
     jdbcTemplate.execute(
-        "CREATE TABLE IF NOT EXISTS images ("
-            + "id BIGSERIAL PRIMARY KEY, "
-            + "filename VARCHAR(255) NOT NULL, "
-            + "format VARCHAR(10) NOT NULL, "
-            + "width INT NOT NULL DEFAULT 0, "
-            + "height INT NOT NULL DEFAULT 0, "
-            + "hash VARCHAR(64) UNIQUE)");
+      "CREATE TABLE IF NOT EXISTS images (" +
+        "id BIGSERIAL PRIMARY KEY, " +
+        "filename VARCHAR(255) NOT NULL, " +
+        "format VARCHAR(10) NOT NULL, " +
+        "width INT NOT NULL DEFAULT 0, " +
+        "height INT NOT NULL DEFAULT 0, " +
+        "hash VARCHAR(64) UNIQUE)"
+    );
 
     jdbcTemplate.execute(
-        "CREATE TABLE IF NOT EXISTS imagedescriptors ("
-            + "imageid BIGINT REFERENCES images(id) ON DELETE CASCADE, "
-            + "hogvector vector(31), "
-            + "hsvvector vector(256), "
-            + "rgbvector vector(512), "
-            + "PRIMARY KEY (imageid))");
+      "CREATE TABLE IF NOT EXISTS imagedescriptors (" +
+        "imageid BIGINT REFERENCES images(id) ON DELETE CASCADE, " +
+        "hogvector vector(31), " +
+        "hsvvector vector(256), " +
+        "rgbvector vector(512), " +
+        "PRIMARY KEY (imageid))"
+    );
 
     jdbcTemplate.execute(
-        "CREATE TABLE IF NOT EXISTS imagekeywords ("
-            + "imageid BIGINT REFERENCES images(id) ON DELETE CASCADE, "
-            + "keyword VARCHAR(255) NOT NULL, "
-            + "PRIMARY KEY (imageid, keyword))");
+      "CREATE TABLE IF NOT EXISTS imagekeywords (" +
+        "imageid BIGINT REFERENCES images(id) ON DELETE CASCADE, " +
+        "keyword VARCHAR(255) NOT NULL, " +
+        "PRIMARY KEY (imageid, keyword))"
+    );
 
     jdbcTemplate.execute(
-        "CREATE INDEX IF NOT EXISTS idx_hnsw_hog ON imagedescriptors USING hnsw (hogvector vector_l2_ops) WITH (m=16, ef_construction=64)");
+      "CREATE INDEX IF NOT EXISTS idx_hnsw_hog ON imagedescriptors USING hnsw (hogvector vector_l2_ops) WITH (m=16, ef_construction=64)"
+    );
     jdbcTemplate.execute(
-        "CREATE INDEX IF NOT EXISTS idx_hnsw_hsv ON imagedescriptors USING hnsw (hsvvector vector_l2_ops) WITH (m=16, ef_construction=64)");
+      "CREATE INDEX IF NOT EXISTS idx_hnsw_hsv ON imagedescriptors USING hnsw (hsvvector vector_l2_ops) WITH (m=16, ef_construction=64)"
+    );
     jdbcTemplate.execute(
-        "CREATE INDEX IF NOT EXISTS idx_hnsw_rgb ON imagedescriptors USING hnsw (rgbvector vector_l2_ops) WITH (m=16, ef_construction=64)");
+      "CREATE INDEX IF NOT EXISTS idx_hnsw_rgb ON imagedescriptors USING hnsw (rgbvector vector_l2_ops) WITH (m=16, ef_construction=64)"
+    );
 
     syncDiskAndDatabase();
   }
@@ -80,17 +88,18 @@ public class ImageDao implements Dao<Image> {
     File dir = new File(imageDirectoryPath);
     if (!dir.exists() || !dir.isDirectory()) return;
 
-    File[] files =
-        dir.listFiles(
-            (d, name) ->
-                name.toLowerCase().endsWith(".jpg")
-                    || name.toLowerCase().endsWith(".png")
-                    || name.toLowerCase().endsWith(".jpeg"));
+    File[] files = dir.listFiles(
+      (d, name) ->
+        name.toLowerCase().endsWith(".jpg") ||
+        name.toLowerCase().endsWith(".png") ||
+        name.toLowerCase().endsWith(".jpeg")
+    );
 
     if (files == null) return;
 
-    List<String> dbFiles =
-        jdbcTemplate.query("SELECT filename FROM images", (rs, rowNum) -> rs.getString("filename"));
+    List<String> dbFiles = jdbcTemplate.query("SELECT filename FROM images", (rs, rowNum) ->
+      rs.getString("filename")
+    );
 
     for (File file : files) {
       if (!dbFiles.contains(file.getName())) {
@@ -118,9 +127,7 @@ public class ImageDao implements Dao<Image> {
   // Normalization utility for tags
   private String normalizeTag(String tag) {
     if (tag == null) return null;
-    return tag.trim()
-        .toLowerCase()
-        .replaceAll("\\s+", "_"); // " nature " -> "nature", "cool dog" -> "cool_dog"
+    return tag.trim().toLowerCase().replaceAll("\\s+", "_"); // " nature " -> "nature", "cool dog" -> "cool_dog"
   }
 
   @Override
@@ -129,8 +136,11 @@ public class ImageDao implements Dao<Image> {
     String hash = calculateSHA256(img.getData());
 
     // Check if image already exists in DB
-    List<Long> existingIds =
-        jdbcTemplate.queryForList("SELECT id FROM images WHERE hash = ?", Long.class, hash);
+    List<Long> existingIds = jdbcTemplate.queryForList(
+      "SELECT id FROM images WHERE hash = ?",
+      Long.class,
+      hash
+    );
     if (!existingIds.isEmpty()) {
       img.setId(existingIds.get(0));
       img.setHash(hash);
@@ -176,31 +186,35 @@ public class ImageDao implements Dao<Image> {
       hogData = adjustedHog;
     }
 
-    Long id =
-        jdbcTemplate.queryForObject(
-            "INSERT INTO images (filename, format, width, height, hash) VALUES (?, ?, ?, ?, ?) RETURNING id",
-            Long.class,
-            img.getName(),
-            format,
-            width,
-            height,
-            img.getHash());
+    Long id = jdbcTemplate.queryForObject(
+      "INSERT INTO images (filename, format, width, height, hash) VALUES (?, ?, ?, ?, ?) RETURNING id",
+      Long.class,
+      img.getName(),
+      format,
+      width,
+      height,
+      img.getHash()
+    );
 
     img.setId(id);
 
     jdbcTemplate.update(
-        "INSERT INTO imagedescriptors (imageid, hogvector, hsvvector, rgbvector) VALUES (?, ?, ?, ?)",
-        id,
-        new PGvector(hogData),
-        new PGvector(hsvData),
-        new PGvector(rgbData));
+      "INSERT INTO imagedescriptors (imageid, hogvector, hsvvector, rgbvector) VALUES (?, ?, ?, ?)",
+      id,
+      new PGvector(hogData),
+      new PGvector(hsvData),
+      new PGvector(rgbData)
+    );
   }
 
   @Override
   public Optional<Image> retrieve(final long id) {
     try {
-      String filename =
-          jdbcTemplate.queryForObject("SELECT filename FROM images WHERE id = ?", String.class, id);
+      String filename = jdbcTemplate.queryForObject(
+        "SELECT filename FROM images WHERE id = ?",
+        String.class,
+        id
+      );
       Path path = Paths.get(imageDirectoryPath, filename);
       if (Files.exists(path)) {
         byte[] data = Files.readAllBytes(path);
@@ -218,13 +232,11 @@ public class ImageDao implements Dao<Image> {
 
   @Override
   public List<Image> retrieveAll() {
-    return jdbcTemplate.query(
-        "SELECT id, filename FROM images",
-        (rs, rowNum) -> {
-          Image img = new Image(rs.getString("filename"), new byte[0]);
-          img.setId(rs.getLong("id"));
-          return img;
-        });
+    return jdbcTemplate.query("SELECT id, filename FROM images", (rs, rowNum) -> {
+      Image img = new Image(rs.getString("filename"), new byte[0]);
+      img.setId(rs.getLong("id"));
+      return img;
+    });
   }
 
   @Override
@@ -242,12 +254,15 @@ public class ImageDao implements Dao<Image> {
   }
 
   public Map<String, Object> getImageMetadata(long id) {
-    Map<String, Object> meta =
-        jdbcTemplate.queryForMap(
-            "SELECT filename as Name, format, width, height FROM images WHERE id = ?", id);
-    List<String> keywords =
-        jdbcTemplate.queryForList(
-            "SELECT keyword FROM imagekeywords WHERE imageid = ?", String.class, id);
+    Map<String, Object> meta = jdbcTemplate.queryForMap(
+      "SELECT filename as Name, format, width, height FROM images WHERE id = ?",
+      id
+    );
+    List<String> keywords = jdbcTemplate.queryForList(
+      "SELECT keyword FROM imagekeywords WHERE imageid = ?",
+      String.class,
+      id
+    );
     meta.put("Keywords", keywords);
     return meta;
   }
@@ -259,9 +274,10 @@ public class ImageDao implements Dao<Image> {
     try {
       jdbcTemplate.queryForObject("SELECT id FROM images WHERE id = ?", Long.class, id);
       jdbcTemplate.update(
-          "INSERT INTO imagekeywords (imageid, keyword) VALUES (?, ?) ON CONFLICT DO NOTHING",
-          id,
-          normalizedTag);
+        "INSERT INTO imagekeywords (imageid, keyword) VALUES (?, ?) ON CONFLICT DO NOTHING",
+        id,
+        normalizedTag
+      );
       return true;
     } catch (EmptyResultDataAccessException e) {
       return false;
@@ -272,23 +288,28 @@ public class ImageDao implements Dao<Image> {
   }
 
   public boolean hasKeyword(long id, String keyword) {
-    Integer count =
-        jdbcTemplate.queryForObject(
-            "SELECT count(*) FROM imagekeywords WHERE imageid = ? AND keyword = ?",
-            Integer.class,
-            id,
-            normalizeTag(keyword));
+    Integer count = jdbcTemplate.queryForObject(
+      "SELECT count(*) FROM imagekeywords WHERE imageid = ? AND keyword = ?",
+      Integer.class,
+      id,
+      normalizeTag(keyword)
+    );
     return count != null && count > 0;
   }
 
   public void deleteKeyword(long id, String keyword) {
     jdbcTemplate.update(
-        "DELETE FROM imagekeywords WHERE imageid = ? AND keyword = ?", id, normalizeTag(keyword));
+      "DELETE FROM imagekeywords WHERE imageid = ? AND keyword = ?",
+      id,
+      normalizeTag(keyword)
+    );
   }
 
   public List<String> getAllKeywords() {
     return jdbcTemplate.queryForList(
-        "SELECT DISTINCT keyword FROM imagekeywords ORDER BY keyword ASC", String.class);
+      "SELECT DISTINCT keyword FROM imagekeywords ORDER BY keyword ASC",
+      String.class
+    );
   }
 
   public List<Map<String, Object>> findSimilar(long targetId, String type, int limit) {
@@ -300,11 +321,11 @@ public class ImageDao implements Dao<Image> {
 
     PGvector targetVector;
     try {
-      targetVector =
-          jdbcTemplate.queryForObject(
-              "SELECT " + vectorColumn + " FROM imagedescriptors WHERE imageid = ?",
-              PGvector.class,
-              targetId);
+      targetVector = jdbcTemplate.queryForObject(
+        "SELECT " + vectorColumn + " FROM imagedescriptors WHERE imageid = ?",
+        PGvector.class,
+        targetId
+      );
     } catch (EmptyResultDataAccessException e) {
       return null;
     } catch (Exception e) {
@@ -313,13 +334,13 @@ public class ImageDao implements Dao<Image> {
     }
 
     String sql =
-        "SELECT d.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + (d."
-            + vectorColumn
-            + " <-> ?)))) AS score "
-            + "FROM imagedescriptors d JOIN images i ON d.imageid = i.id "
-            + "WHERE imageid != ? ORDER BY d."
-            + vectorColumn
-            + " <-> ? ASC LIMIT ?";
+      "SELECT d.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + (d." +
+      vectorColumn +
+      " <-> ?)))) AS score " +
+      "FROM imagedescriptors d JOIN images i ON d.imageid = i.id " +
+      "WHERE imageid != ? ORDER BY d." +
+      vectorColumn +
+      " <-> ? ASC LIMIT ?";
 
     return jdbcTemplate.queryForList(sql, targetVector, targetId, targetVector, limit);
   }
@@ -350,13 +371,13 @@ public class ImageDao implements Dao<Image> {
       }
 
       String sql =
-          "SELECT d.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + (d."
-              + vectorColumn
-              + " <-> ?)))) AS score "
-              + "FROM imagedescriptors d JOIN images i ON d.imageid = i.id "
-              + "ORDER BY d."
-              + vectorColumn
-              + " <-> ? ASC LIMIT ?";
+        "SELECT d.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + (d." +
+        vectorColumn +
+        " <-> ?)))) AS score " +
+        "FROM imagedescriptors d JOIN images i ON d.imageid = i.id " +
+        "ORDER BY d." +
+        vectorColumn +
+        " <-> ? ASC LIMIT ?";
 
       return jdbcTemplate.queryForList(sql, targetVector, targetVector, limit);
     } catch (Exception e) {
@@ -366,7 +387,11 @@ public class ImageDao implements Dao<Image> {
   }
 
   public List<Long> searchByAttributes(
-      String name, String format, String size, List<String> keywords) {
+    String name,
+    String format,
+    String size,
+    List<String> keywords
+  ) {
     StringBuilder sql = new StringBuilder("SELECT DISTINCT i.id FROM images i ");
     MapSqlParameterSource params = new MapSqlParameterSource();
 
@@ -394,14 +419,19 @@ public class ImageDao implements Dao<Image> {
     }
     if (keywords != null && !keywords.isEmpty()) {
       // Normalize all keywords before searching
-      List<String> normalizedKeywords =
-          keywords.stream().map(this::normalizeTag).collect(Collectors.toList());
+      List<String> normalizedKeywords = keywords
+        .stream()
+        .map(this::normalizeTag)
+        .collect(Collectors.toList());
       sql.append("AND k.keyword IN (:keywords) ");
       params.addValue("keywords", normalizedKeywords);
     }
 
     NamedParameterJdbcTemplate namedTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
     return namedTemplate.queryForList(
-        java.util.Objects.requireNonNull(sql.toString()), params, Long.class);
+      java.util.Objects.requireNonNull(sql.toString()),
+      params,
+      Long.class
+    );
   }
 }

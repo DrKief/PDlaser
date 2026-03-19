@@ -69,12 +69,7 @@ const handleAction = async () => {
 <template>
   <div>
     <div class="upload-form">
-      <input
-        type="file"
-        @change="onFileChange"
-        id="file-input"
-        accept="image/*"
-      />
+      <input type="file" @change="onFileChange" id="file-input" accept="image/*" />
       <button @click="handleAction" :disabled="!selectedFile">
         {{ mode === "search" ? "Search" : "Upload" }}
       </button>
@@ -112,7 +107,10 @@ input[type="file"]::file-selector-button {
   background: transparent;
   color: var(--text-primary);
   cursor: pointer;
-  transition: background 0.2s, color 0.2s, border-color 0.2s;
+  transition:
+    background 0.2s,
+    color 0.2s,
+    border-color 0.2s;
 }
 
 input[type="file"]::file-selector-button:hover {

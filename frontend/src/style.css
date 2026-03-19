@@ -13,21 +13,21 @@
   --bg-primary: #242424;
   --bg-secondary: #1a1a1a;
   --bg-tertiary: #2a2a2a;
-  
+
   --text-primary: rgba(255, 255, 255, 0.87);
   --text-secondary: #ebebeb;
   --text-muted: #888;
   --text-on-primary: #fff;
-  
+
   --color-primary: #42b983;
   --color-primary-hover: #33a06f;
-  
+
   --color-link: #fff;
   --color-link-hover: #53f2b5;
-  
+
   --border-color: #555;
   --border-focus: #53f2b5;
-  
+
   --color-danger: #f44336;
   --color-danger-hover: #d32f2f;
 
@@ -41,26 +41,26 @@
 
 :root.light {
   color-scheme: light;
-  
+
   /* --- Variables (Light Mode Overrides) --- */
   --bg-primary: #ffffff;
   --bg-secondary: #f9f9f9;
   --bg-tertiary: #f0f0f0;
-  
+
   --text-primary: #213547;
   --text-secondary: #4a4a4a;
   --text-muted: #666;
   --text-on-primary: #fff;
-  
+
   --color-primary: #42b983;
   --color-primary-hover: #33a06f;
-  
+
   --color-link: #213547;
-  --color-link-hover: #42b983; 
-  
+  --color-link-hover: #42b983;
+
   --border-color: #ccc;
   --border-focus: #42b983;
-  
+
   --color-danger: #d32f2f;
   --color-danger-hover: #b71c1c;
 
@@ -76,21 +76,21 @@
   --bg-primary: #00ff00; /* Acid Green */
   --bg-secondary: #ff00ff; /* Hot Pink */
   --bg-tertiary: #0000ff; /* Pure Blue */
-  
+
   --text-primary: #ff0000; /* Red text on Green bg */
   --text-secondary: #ffff00; /* Yellow */
   --text-muted: #00ffff; /* Cyan */
   --text-on-primary: #000000;
-  
+
   --color-primary: #ff00ff; /* Pink button */
   --color-primary-hover: #ffffff;
-  
+
   --color-link: #0000ff; /* Blue link */
   --color-link-hover: #ff0000; /* Red hover */
-  
+
   --border-color: #ff0000;
   --border-focus: #ffff00;
-  
+
   --font-main: "Impact", "Comic Sans MS", "Chalkboard SE", sans-serif;
   --font-code: "Courier New", monospace;
 
@@ -103,15 +103,27 @@
 
 :root.cruelty body {
   font-family: var(--font-main);
-  background-image: repeating-linear-gradient(45deg, #00ff00 0px, #00ff00 10px, #00ee00 10px, #00ee00 20px);
+  background-image: repeating-linear-gradient(
+    45deg,
+    #00ff00 0px,
+    #00ff00 10px,
+    #00ee00 10px,
+    #00ee00 20px
+  );
   animation: bg-throb 0.2s infinite;
   overflow-x: hidden;
 }
 
 @keyframes bg-throb {
-  0% { filter: hue-rotate(0deg); }
-  50% { filter: hue-rotate(20deg); }
-  100% { filter: hue-rotate(0deg); }
+  0% {
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    filter: hue-rotate(20deg);
+  }
+  100% {
+    filter: hue-rotate(0deg);
+  }
 }
 
 :root.cruelty a {
@@ -130,14 +142,16 @@
   transform: rotate(5deg) scale(1.2);
 }
 
-:root.cruelty h1, 
-:root.cruelty h2, 
+:root.cruelty h1,
+:root.cruelty h2,
 :root.cruelty h3 {
   font-family: "Times New Roman", serif;
   text-transform: uppercase;
   letter-spacing: -2px;
   color: blue;
-  text-shadow: 3px 3px 0px #00ff00, -3px -3px 0px #ff0000;
+  text-shadow:
+    3px 3px 0px #00ff00,
+    -3px -3px 0px #ff0000;
   transform: skewX(-15deg);
   border-bottom: 5px ridge #ffff00;
   background: white;
@@ -178,7 +192,7 @@
 :root.cruelty img {
   filter: contrast(200%) saturate(200%) noise(100%);
   border: 10px solid gold;
-  /* image-rendering: pixelated; already on root */ 
+  /* image-rendering: pixelated; already on root */
   transform: rotate(0.5deg);
 }
 
@@ -196,8 +210,13 @@
 }
 
 @keyframes footer-bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-5px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
 }
 
 /* Base Elements */
@@ -207,7 +226,9 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
-  transition: background-color 0.3s, color 0.3s;
+  transition:
+    background-color 0.3s,
+    color 0.3s;
 }
 
 a {
@@ -235,7 +256,10 @@ button {
   background-color: var(--bg-secondary);
   color: var(--text-primary);
   cursor: pointer;
-  transition: border-color 0.25s, background-color 0.3s, color 0.3s;
+  transition:
+    border-color 0.25s,
+    background-color 0.3s,
+    color 0.3s;
 }
 button:hover {
   border-color: var(--border-focus);

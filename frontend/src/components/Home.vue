@@ -1,43 +1,43 @@
 <script setup lang="ts">
-  import { ref, onMounted, computed } from 'vue';
-  import http from '../http-api';
+import { ref, onMounted, computed } from "vue";
+import http from "../http-api";
 
-  interface Image {
-    id: number;
-    name: string;
+interface Image {
+  id: number;
+  name: string;
+}
+
+const images = ref<Image[]>([]);
+const selectedImageId = ref<number | null>(null);
+
+onMounted(async () => {
+  try {
+    const response = await http.get("/images");
+    images.value = response.data;
+  } catch (error) {
+    console.error(error);
   }
+});
 
-  const images = ref<Image[]>([]);
-  const selectedImageId = ref<number | null>(null);
+const getImageUrl = (id: number) => {
+  return `/images/${id}`;
+};
 
-  onMounted(async () => {
+const selectedImageName = computed(() => {
+  const img = images.value.find((i) => i.id === selectedImageId.value);
+  return img ? img.name : "";
+});
+
+const onSelectChange = async () => {
+  if (selectedImageId.value !== null) {
     try {
-      const response = await http.get('/images');
-      images.value = response.data;
-    } catch (error) {
-      console.error(error);
+      await http.get(`/images/${selectedImageId.value}`);
+      console.log(`Requested image ${selectedImageId.value}`);
+    } catch (e) {
+      console.error(e);
     }
-  });
-
-  const getImageUrl = (id: number) => {
-    return `/images/${id}`;
-  };
-
-  const selectedImageName = computed(() => {
-    const img = images.value.find(i => i.id === selectedImageId.value);
-    return img ? img.name : '';
-  });
-
-  const onSelectChange = async () => {
-    if (selectedImageId.value !== null) {
-      try {
-        await http.get(`/images/${selectedImageId.value}`);
-        console.log(`Requested image ${selectedImageId.value}`);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-  };
+  }
+};
 </script>
 
 <template>
@@ -89,8 +89,11 @@ select {
   font-family: inherit;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: background 0.2s, border-color 0.2s, color 0.2s;
-  
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    color 0.2s;
+
   /* Use variable for arrow to switch between light/dark versions */
   background-image: var(--arrow-icon);
   background-repeat: no-repeat;
