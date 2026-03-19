@@ -50,10 +50,10 @@ public class ImageDao implements Dao<Image> {
                 "PRIMARY KEY (image_id)" +
                 ");");
 
-        // Use HNSW indexing with Euclidean distance (vector_l2_ops) exactly as specified
-        jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_hnsw_hog ON image_descriptors USING hnsw (hog_vector vector_l2_ops);");
-        jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_hnsw_hsv ON image_descriptors USING hnsw (hsv_vector vector_l2_ops);");
-        jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_hnsw_rgb ON image_descriptors USING hnsw (rgb_vector vector_l2_ops);");
+        // Fixed: Added tuning parameters (m, ef_construction) which are highly recommended for pgvector HNSW
+        jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_hnsw_hog ON image_descriptors USING hnsw (hog_vector vector_l2_ops) WITH (m=16, ef_construction=64);");
+        jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_hnsw_hsv ON image_descriptors USING hnsw (hsv_vector vector_l2_ops) WITH (m=16, ef_construction=64);");
+        jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_hnsw_rgb ON image_descriptors USING hnsw (rgb_vector vector_l2_ops) WITH (m=16, ef_construction=64);");
 
         syncDiskAndDatabase();
     }
@@ -142,14 +142,8 @@ public class ImageDao implements Dao<Image> {
                 return Optional.of(img);
             }
         } catch (Exception e) {
-            // Exception indicates not found or not mapped on disk
         }
         return Optional.empty();
-    }
-
-    // Solves Test Compilation Error: Overloaded to accept int directly
-    public Optional<Image> retrieve(int id) {
-        return retrieve((long) id);
     }
 
     @Override
@@ -186,15 +180,27 @@ public class ImageDao implements Dao<Image> {
         else if ("rgb".equalsIgnoreCase(type)) vectorColumn = "rgb_vector";
         else vectorColumn = "hog_vector";
 
-        // Advanced Search utilizing the Euclidean spatial distance operand "<->" mapped to 0.0 - 1.0 confidence formula
+        // Fixed: Fetch the vector first. 
+        // Subqueries inside the `<->` operator block the Postgres query planner from utilizing the HNSW index
+        PGvector targetVector;
+        try {
+            targetVector = jdbcTemplate.queryForObject(
+                "SELECT " + vectorColumn + " FROM image_descriptors WHERE image_id = ?",
+                PGvector.class, targetId
+            );
+        } catch (Exception e) {
+            return List.of(); // target not found
+        }
+
+        // Fixed: Parametrize the target vector into the query so the index is used
         String sql = "SELECT image_id as id, filename, " +
-                     "1.0 / (1.0 + (d." + vectorColumn + " <-> (SELECT " + vectorColumn + " FROM image_descriptors WHERE image_id = ?))) AS similarity_score " +
+                     "1.0 / (1.0 + (d." + vectorColumn + " <-> ?)) AS similarity_score " +
                      "FROM image_descriptors d " +
                      "JOIN images i ON d.image_id = i.id " +
                      "WHERE image_id != ? " +
-                     "ORDER BY d." + vectorColumn + " <-> (SELECT " + vectorColumn + " FROM image_descriptors WHERE image_id = ?) ASC " +
+                     "ORDER BY d." + vectorColumn + " <-> ? ASC " +
                      "LIMIT ?";
 
-        return jdbcTemplate.queryForList(sql, targetId, targetId, targetId, limit);
+        return jdbcTemplate.queryForList(sql, targetVector, targetId, targetVector, limit);
     }
 }

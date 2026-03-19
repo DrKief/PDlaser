@@ -21,6 +21,7 @@ services:
       - DATABASE_NAME=pdl_db
       - DATABASE_USER=pdl_user
       - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
+      - APP_IMAGE_DIRECTORY=/app/src/main/resources/images
     expose:
       - "8080"
     volumes:
@@ -34,7 +35,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     expose:
-      - "80"
+      - "8080"
     depends_on:
       - backend
     restart: unless-stopped
