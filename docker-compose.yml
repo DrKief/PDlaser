@@ -21,6 +21,7 @@ services:
       - DATABASE_NAME=pdl_db
       - DATABASE_USER=pdl_user
       - DATABASE_PASSWORD=${POSTGRES_PASSWORD:-pdl_secure_password}
+      - APP_IMAGE_DIRECTORY=/app/src/main/resources/images
     ports:
       - "8080:8080"
     volumes:

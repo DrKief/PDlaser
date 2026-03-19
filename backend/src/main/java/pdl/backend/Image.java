@@ -7,7 +7,7 @@ public class Image {
   private byte[] data;
 
   public Image(final String name, final byte[] data) {
-    id = count++;
+    this.id = count++;
     this.name = name;
     this.data = data;
   }
@@ -31,5 +31,4 @@ public class Image {
   public byte[] getData() {
     return data;
   }
-  
 }

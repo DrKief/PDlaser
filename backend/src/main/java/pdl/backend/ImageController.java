@@ -1,88 +1,139 @@
 package pdl.backend;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.beans.factory.annotation.Value;
+
+import jakarta.annotation.PostConstruct;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 @RestController
+@RequestMapping("/images")
 public class ImageController {
 
-  @Autowired
-  private ObjectMapper mapper;
+    @Value("${app.image.directory:images}")
+    private String imageDirectoryPath;
 
-  private final ImageDao imageDao;
+    private final ImageDao imageDao;
 
-  public ImageController(ImageDao imageDao) {
-    this.imageDao = imageDao;
-  }
-
-  @RequestMapping(value = "/images/{id}", method = RequestMethod.GET)
-  public ResponseEntity<?> getImage(@PathVariable long id) {
-    Optional<Image> image = imageDao.retrieve(id);
-    if (image.isPresent()) {
-        MediaType mediaType = org.springframework.http.MediaTypeFactory.getMediaType(image.get().getName())
-            .orElse(MediaType.IMAGE_JPEG);
-        return ResponseEntity.ok()
-            .contentType(mediaType)
-            .body(image.get().getData());
+    public ImageController(ImageDao imageDao) {
+        this.imageDao = imageDao;
     }
-    return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-  }
 
-  @RequestMapping(value = "/images/{id}", method = RequestMethod.DELETE)
-  public ResponseEntity<?> deleteImage(@PathVariable long id) {
-    Optional<Image> image = imageDao.retrieve(id);
-    if (image.isPresent()) {
-      imageDao.delete(image.get());
-      return new ResponseEntity<>(HttpStatus.OK);
+    // Strict Requirement: Fail-Fast Startup State
+    @PostConstruct
+    public void verifyStartupState() {
+        Path path = Paths.get(imageDirectoryPath);
+        if (!Files.exists(path) || !Files.isDirectory(path)) {
+            System.err.println("FATAL: Required 'images' directory not found at " + path.toAbsolutePath());
+            System.err.println("Application cannot proceed without the primary data source. Exiting.");
+            System.exit(1);
+        }
     }
-    return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-  }
 
-  @RequestMapping(value = "/images", method = RequestMethod.POST)
-  public ResponseEntity<?> addImage(@RequestParam("file") MultipartFile file) {
-    String contentType = file.getContentType();
-    
-    if (contentType == null || !contentType.startsWith("image/")) {
-      return new ResponseEntity<>(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+    // Resolves Frontend 404 List Route
+    @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<Image>> getImages() {
+        return ResponseEntity.ok(imageDao.retrieveAll());
     }
-    
-    try {
-      Image img = new Image(file.getOriginalFilename(), file.getBytes());
-      imageDao.create(img);
-      return new ResponseEntity<>(HttpStatus.CREATED);
-    } catch (IOException e) {
-      return new ResponseEntity<>(HttpStatus.INTERNAL_SERVER_ERROR);
-    }
-  }
 
-  @RequestMapping(value = "/images", method = RequestMethod.GET, produces = "application/json; charset=UTF-8")
-  @ResponseBody
-  public ArrayNode getImageList() {
-    ArrayNode nodes = mapper.createArrayNode();
-    List<Image> images = imageDao.retrieveAll();
-    for (Image img : images) {
-      ObjectNode n = mapper.createObjectNode();
-      n.put("id", img.getId());
-      n.put("name", img.getName());
-      nodes.add(n);
+    // Resolves Frontend 404 Raw Bytes Fetch Route
+    @GetMapping(value = "/{id}", produces = MediaType.IMAGE_JPEG_VALUE)
+    public ResponseEntity<?> getImage(@PathVariable("id") long id) {
+        Optional<Image> image = imageDao.retrieve(id);
+        if (image.isPresent()) {
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("image/" + getFileExtension(image.get().getName())))
+                    .body(image.get().getData());
+        }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Image not found");
     }
-    return nodes;
-  }
+
+    // Resolves Frontend 404 Deletion Route
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteImage(@PathVariable("id") long id) {
+        Optional<Image> image = imageDao.retrieve(id);
+        if (image.isPresent()) {
+            imageDao.delete(image.get());
+            return ResponseEntity.ok("Image deleted");
+        }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Image not found");
+    }
+
+    // Resolves Frontend 404 Creation/Upload Route
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> addImage(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body("File is empty");
+        }
+        
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body("Only images are allowed");
+        }
+
+        try {
+            Image image = new Image(file.getOriginalFilename(), file.getBytes());
+            imageDao.create(image);
+            return ResponseEntity.status(HttpStatus.CREATED).body("Image uploaded successfully");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to upload image");
+        }
+    }
+
+    @GetMapping("/{id}/metadata")
+    public ResponseEntity<?> getMetadata(@PathVariable("id") long id) {
+        try {
+            Map<String, Object> metadata = imageDao.getImageMetadata(id);
+            String sizeFormat = metadata.get("width") + "*" + metadata.get("height");
+            return ResponseEntity.ok().body(Map.of(
+                "id", id,
+                "format", metadata.get("format"),
+                "size", sizeFormat
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Metadata not found");
+        }
+    }
+
+    // Strict Requirement: API Payload Specification Adherence (GET + RequestBody)
+    @GetMapping(value = "/search", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<?> searchImagesWithAttributes(@RequestBody SearchCriteria criteria) {
+        if (criteria == null || criteria.getImageId() == null) {
+            return ResponseEntity.badRequest().body("Request body with imageId is required for search.");
+        }
+        
+        try {
+            String algorithm = criteria.getAlgorithm() != null ? criteria.getAlgorithm() : "gradient";
+            List<Map<String, Object>> results = imageDao.findSimilar(criteria.getImageId(), algorithm, 10);
+            return ResponseEntity.ok(results);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error executing search");
+        }
+    }
+
+    public static class SearchCriteria {
+        private Long imageId;
+        private String algorithm;
+
+        public Long getImageId() { return imageId; }
+        public void setImageId(Long imageId) { this.imageId = imageId; }
+        public String getAlgorithm() { return algorithm; }
+        public void setAlgorithm(String algorithm) { this.algorithm = algorithm; }
+    }
+
+    private String getFileExtension(String filename) {
+        if (filename == null || !filename.contains(".")) return "jpeg";
+        String ext = filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
+        if (ext.equals("jpg")) return "jpeg";
+        return ext;
+    }
 }
