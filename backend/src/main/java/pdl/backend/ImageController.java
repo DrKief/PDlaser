@@ -44,11 +44,12 @@ public class ImageController {
       throw new IllegalStateException(
           "Besoin 1: Le dossier images n'existe pas ou n'est pas un dossier valide.");
     }
-    
+
     if (!Files.isWritable(path)) {
-      log.error("FATAL: Required 'images' directory is not writable by the application user. Path: {}", path.toAbsolutePath());
-      throw new IllegalStateException(
-          "directory not writable");
+      log.error(
+          "FATAL: Required 'images' directory is not writable by the application user. Path: {}",
+          path.toAbsolutePath());
+      throw new IllegalStateException("directory not writable");
     }
   }
 
