@@ -21,14 +21,8 @@ services:
       - DATABASE_NAME=pdl_db
       - DATABASE_USER=pdl_user
       - DATABASE_PASSWORD=${POSTGRES_PASSWORD:-preview_secure_password}
-      - APP_IMAGE_DIRECTORY=/app/src/main/resources/images
     expose:
       - "8080"
-    volumes:
-      - type: tmpfs
-        target: /app/src/main/resources/images
-        tmpfs:
-          mode: 0777
     depends_on:
       - db
     restart: unless-stopped
