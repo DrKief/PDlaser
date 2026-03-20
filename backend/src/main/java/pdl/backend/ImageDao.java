@@ -323,7 +323,7 @@ public class ImageDao implements Dao<Image> {
     try {
       targetVector = jdbcTemplate.queryForObject(
         "SELECT " + vectorColumn + " FROM imagedescriptors WHERE imageid = ?",
-        PGvector.class,
+        (rs, rowNum) -> new PGvector(rs.getString(1)),
         targetId
       );
     } catch (EmptyResultDataAccessException e) {
