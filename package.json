@@ -1,0 +1,21 @@
+{
+  "name": "v3a",
+  "version": "1.0.0",
+  "description": "**Live Environments (Coming Soon):** * Production URL: `[Insert Public Production Link Here]` * Preview URL: `[Insert Public Preview Link Here]`",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@gitlab.emi.u-bordeaux.fr:pdl-l3/teams/2026/v3/v3a.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "prettier": "^3.8.1",
+    "prettier-plugin-java": "^2.8.1"
+  }
+}

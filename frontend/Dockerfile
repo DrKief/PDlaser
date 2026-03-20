@@ -1,14 +1,23 @@
-# Stage 1: Build the Vue app
-FROM node:20-alpine as build
+# Stage 1: Build with cache optimization
+FROM node:20-alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm ci
+
 COPY . .
 RUN npm run build
 
-# Stage 2: Serve with Nginx
+# Stage 2: Secure Nginx Serving
 FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
+
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    chown -R nginx:nginx /etc/nginx/conf.d && \
+    touch /var/run/nginx.pid && \
+    chown -R nginx:nginx /var/run/nginx.pid
+USER nginx
+EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]

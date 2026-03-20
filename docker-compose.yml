@@ -1,10 +1,10 @@
+# docker-compose.yml
 services:
   db:
     image: pgvector/pgvector:pg16
-    container_name: pdl-db
     environment:
       POSTGRES_USER: pdl_user
-      POSTGRES_PASSWORD: pdl_secure_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pdl_secure_password}
       POSTGRES_DB: pdl_db
     ports:
       - "5432:5432"
@@ -16,12 +16,12 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: pdl-backend
     environment:
       - HOST_NAME=db
       - DATABASE_NAME=pdl_db
       - DATABASE_USER=pdl_user
-      - DATABASE_PASSWORD=pdl_secure_password
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD:-pdl_secure_password}
+      - APP_IMAGE_DIRECTORY=/app/src/main/resources/images
     ports:
       - "8080:8080"
     volumes:
@@ -34,9 +34,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: pdl-frontend
     ports:
-      - "3000:80"
+      - "3000:8080"
     depends_on:
       - backend
     restart: unless-stopped

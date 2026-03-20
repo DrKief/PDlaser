@@ -2,18 +2,17 @@ spring:
   config:
     import: optional:file:.env[.properties]
   datasource:
-    # Notice the defaults after the colons (e.g., localhost) so it never crashes if the env var is missing
     url: jdbc:postgresql://${HOST_NAME:localhost}:5432/${DATABASE_NAME:pdl-db}
     username: ${DATABASE_USER:default}
     password: ${DATABASE_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${DDL_AUTO:update}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   servlet:
     multipart:
-      max-file-size: -1
-      max-request-size: -1
+      max-file-size: 100MB
+      max-request-size: 100MB

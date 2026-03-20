@@ -10,6 +10,7 @@ Thumbs.db
 # Global IDEs
 .vscode/
 .idea/
+node_modules/
 *.suo
 *.ntvs*
 *.njsproj
