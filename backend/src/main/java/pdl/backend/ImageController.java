@@ -66,8 +66,17 @@ public class ImageController {
 
   // Besoin 6: Get all images
   @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<List<Image>> getImages() {
-    return ResponseEntity.ok(imageDao.retrieveAll());
+  public ResponseEntity<List<Map<String, Object>>> getImages() {
+    List<Image> images = imageDao.retrieveAll();
+    List<Map<String, Object>> response = new java.util.ArrayList<>();
+    for (Image img : images) {
+      Map<String, Object> item = new HashMap<>();
+      item.put("id", img.getId());
+      item.put("name", img.getName());
+      item.put("keywords", imageDao.getKeywords(img.getId()));
+      response.add(item);
+    }
+    return ResponseEntity.ok(response);
   }
 
   // Besoin 8: Get Image Data
@@ -99,7 +108,10 @@ public class ImageController {
 
   // Besoin 7: Add Image
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-  public ResponseEntity<?> addImage(@RequestParam("file") MultipartFile file) {
+  public ResponseEntity<?> addImage(
+    @RequestParam("file") MultipartFile file,
+    @RequestParam(value = "keywords", required = false) List<String> keywords
+  ) {
     if (file.isEmpty()) {
       return ResponseEntity.badRequest()
         .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
@@ -116,6 +128,19 @@ public class ImageController {
     try {
       Image image = new Image(file.getOriginalFilename(), file.getBytes());
       imageDao.create(image);
+      long id = image.getId();
+      if (keywords != null && !keywords.isEmpty()) {
+        for (String k : keywords) {
+          // Some clients might send "tag1,tag2" as a single string depending on how form data is constructed
+          // But since we use List<String>, Spring usually handles "tag1,tag2" or multiple "keywords" params.
+          // Just to be safe against "tag1, tag2" in a single entry:
+          String[] splits = k.split(",");
+          for (String tag : splits) {
+             imageDao.addKeyword(id, tag.trim());
+          }
+        }
+      }
+
       return ResponseEntity.status(HttpStatus.CREATED)
         .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
         .body(Map.of("message", "Image uploaded"));

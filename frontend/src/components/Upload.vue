@@ -13,6 +13,7 @@ const emit = defineEmits(["file-selected"]);
 
 const selectedFile = ref<File | null>(null);
 const previewUrl = ref<string | null>(null);
+const keywords = ref("");
 const message = ref("");
 
 const onFileChange = (event: Event) => {
@@ -39,6 +40,9 @@ const handleAction = async () => {
 
   const formData = new FormData();
   formData.append("file", selectedFile.value);
+  if (keywords.value) {
+    formData.append("keywords", keywords.value);
+  }
 
   try {
     message.value = "Uploading...";
@@ -51,6 +55,7 @@ const handleAction = async () => {
     if (response.status === 200 || response.status === 201) {
       message.value = "Upload successful!";
       selectedFile.value = null;
+      keywords.value = "";
       if (previewUrl.value) {
         URL.revokeObjectURL(previewUrl.value);
         previewUrl.value = null;
@@ -69,9 +74,20 @@ const handleAction = async () => {
 <template>
   <div>
     <div class="upload-form">
-      <input type="file" @change="onFileChange" id="file-input" accept="image/*" />
-      <button @click="handleAction" :disabled="!selectedFile">
-        {{ mode === "search" ? "Search" : "Upload" }}
+      <div class="input-group">
+        <input type="file" @change="onFileChange" id="file-input" accept="image/*" />
+      </div>
+      <div class="input-group" v-if="mode === 'upload'">
+        <input
+          v-model="keywords"
+          type="text"
+          placeholder="Keywords (e.g. nature, travel)"
+          class="keyword-input"
+          :disabled="!selectedFile"
+        />
+      </div>
+      <button @click="handleAction" :disabled="!selectedFile" class="upload-btn">
+        {{ mode === "search" ? "Search" : "Upload Image" }}
       </button>
     </div>
     <div v-if="previewUrl" class="image-preview">
@@ -144,6 +160,15 @@ button:disabled {
   margin-top: 16px;
 }
 
+
+.keyword-input {
+  padding: 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-width: 200px;
+}
 .image-preview img {
   max-width: 300px;
   max-height: 300px;

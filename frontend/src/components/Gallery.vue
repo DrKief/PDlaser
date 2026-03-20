@@ -5,9 +5,11 @@ import http from "../http-api";
 interface Image {
   id: number;
   name: string;
+  keywords: string[];
 }
 
 const images = ref<Image[]>([]);
+const keywordInputs = ref<Record<number, string>>({});
 
 onMounted(async () => {
   fetchImages();
@@ -16,7 +18,10 @@ onMounted(async () => {
 const fetchImages = async () => {
   try {
     const response = await http.get("/images");
-    images.value = response.data;
+    images.value = response.data.map((img: any) => ({
+      ...img,
+      keywords: img.keywords || [], // ensure array
+    }));
   } catch (error) {
     console.error("Error fetching images for gallery:", error);
   }
@@ -24,6 +29,25 @@ const fetchImages = async () => {
 
 const getImageUrl = (image: Image) => {
   return `/images/${image.id}`;
+};
+
+const addKeyword = async (image: Image) => {
+  const tag = keywordInputs.value[image.id];
+  if (!tag || !tag.trim()) return;
+
+  try {
+    await http.put(`/images/${image.id}/keywords`, null, {
+      params: { tag: tag.trim() },
+    });
+    // Update local state
+    if (!image.keywords.includes(tag.trim())) {
+      image.keywords.push(tag.trim());
+    }
+    keywordInputs.value[image.id] = ""; // Clear input
+  } catch (error) {
+    console.error(`Error adding keyword to image ${image.id}:`, error);
+    alert("Failed to add keyword.");
+  }
 };
 
 const deleteImage = async (id: number) => {
@@ -49,6 +73,22 @@ const deleteImage = async (id: number) => {
       <div v-for="image in images" :key="image.id" class="image-card">
         <img :src="getImageUrl(image)" :alt="image.name" />
         <p class="image-name">{{ image.name }}</p>
+
+        <div class="keywords-section">
+          <div class="tags">
+            <span v-for="tag in image.keywords" :key="tag" class="tag">{{ tag }}</span>
+          </div>
+          <div class="add-keyword">
+            <input
+              v-model="keywordInputs[image.id]"
+              @keyup.enter="addKeyword(image)"
+              placeholder="Add tag"
+              class="keyword-input"
+            />
+            <button class="add-btn" @click="addKeyword(image)">+</button>
+          </div>
+        </div>
+
         <button class="delete-btn" @click="deleteImage(image.id)">Delete</button>
       </div>
     </div>
@@ -66,30 +106,88 @@ const deleteImage = async (id: number) => {
 
 .image-card {
   border: 1px solid var(--border-color);
-  padding: 12px;
-  border-radius: 6px;
+  padding: 16px;
+  border-radius: var(--radius-lg, 12px);
   text-align: center;
   background: var(--bg-secondary);
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition:
-    background-color 0.3s,
-    border-color 0.3s;
+  transition: transform 0.2s, box-shadow 0.2s;
+  width: 260px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.image-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.1);
 }
 
 .image-card img {
-  max-width: 200px;
+  max-width: 100%;
   max-height: 200px;
   object-fit: contain;
   display: block;
+  margin-bottom: 12px;
+  border-radius: var(--radius-sm, 4px);
+  background-color: var(--bg-primary); /* visible if transparent png */
+}
+
+.keywords-section {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
   margin-bottom: 10px;
 }
 
-.image-name {
-  margin: 0 0 10px 0;
-  font-size: 0.9em;
+.tag {
+  background: var(--bg-tertiary);
   color: var(--text-secondary);
+  font-size: 0.75em;
+  padding: 3px 8px;
+  border-radius: 12px; /* Pill shape */
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+}
+
+.add-keyword {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+}
+
+.keyword-input {
+  width: 60%;
+  padding: 6px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 0.85em;
+}
+
+.add-btn {
+  padding: 6px 10px;
+  background: var(--color-primary);
+  color: var(--text-on-primary);
+  border: none;
+  border-radius: var(--radius-sm, 6px);
+  cursor: pointer;
+  font-size: 0.9em;
+  line-height: 1;
+}
+
+.image-name {
+  margin: 0 0 12px 0;
+  font-weight: 600;
+  color: var(--text-primary);
+
   max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;

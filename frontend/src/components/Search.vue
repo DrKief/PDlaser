@@ -241,17 +241,19 @@ h2 {
 
 .panel {
     background-color: var(--bg-secondary);
-    border: 2px solid var(--border-color);
+    border: 1px solid var(--border-color);
     padding: 30px;
     position: relative;
     z-index: 1;
+    border-radius: 0 var(--radius-lg, 12px) var(--radius-lg, 12px) var(--radius-lg, 12px); /* Check tab alignment */
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 .search-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    margin-bottom: 20px;
+    gap: 24px;
+    margin-bottom: 24px;
 }
 
 .field-group {
@@ -266,62 +268,82 @@ h2 {
 .field-group label {
     margin-bottom: 8px;
     color: var(--text-secondary);
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
+    font-weight: 600;
 }
 
 /* Inputs are styled globally but we ensure box-model fits */
 input, select {
     width: 100%;
     box-sizing: border-box; 
+    padding: 12px;
+    font-size: 1rem;
 }
 
 .action-btn {
     width: 100%;
-    padding: 15px;
+    padding: 16px;
     font-size: 1.1rem;
-    letter-spacing: 2px;
+    letter-spacing: 1px;
+    border-radius: var(--radius-md, 8px);
+    background-color: var(--color-primary);
+    color: var(--text-on-primary);
+    font-weight: 700;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+}
+.action-btn:hover {
+    background-color: var(--color-primary-hover);
 }
 
 .error {
     color: var(--color-danger);
     margin-top: 20px;
-    border: 2px dashed var(--color-danger);
+    border: 1px solid var(--color-danger); /* softer than dashed */
+    background-color: rgba(229, 115, 115, 0.1); /* light red tint */
+    border-radius: var(--radius-md, 8px);
     padding: 15px;
     text-align: center;
-    font-weight: bold;
+    font-weight: 600;
 }
 
 .results-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 20px;
+    gap: 24px;
     margin-top: 40px;
-    border-top: 2px dashed var(--border-color);
-    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+    padding-top: 24px;
 }
 
 .result-item {
-    border: 2px solid var(--border-color);
-    padding: 5px;
+    border: 1px solid var(--border-color);
+    padding: 8px;
     text-align: center;
-    background-color: var(--bg-primary);
-    transition: transform 0.2s;
+    background-color: var(--bg-secondary);
+    transition: transform 0.2s, box-shadow 0.2s;
+    border-radius: var(--radius-md, 8px);
+    overflow: hidden;
 }
 
 .result-item:hover {
-    transform: scale(1.02);
+    transform: translateY(-4px);
     border-color: var(--color-primary);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
 .result-item img {
     width: 100%;
-    height: 150px;
-    object-fit: cover;
+    height: 200px;
+    object-fit: contain;
     display: block;
-    border-bottom: 2px solid var(--border-color);
+    background-color: var(--bg-tertiary);
+    border-radius: var(--radius-sm, 4px);
     margin-bottom: 8px;
+    border-bottom: none;
 }
 
 .caption {

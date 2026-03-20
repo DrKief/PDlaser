@@ -267,6 +267,14 @@ public class ImageDao implements Dao<Image> {
     return meta;
   }
 
+  public List<String> getKeywords(long id) {
+    return jdbcTemplate.queryForList(
+      "SELECT keyword FROM imagekeywords WHERE imageid = ?",
+      String.class,
+      id
+    );
+  }
+
   public boolean addKeyword(long id, String keyword) {
     String normalizedTag = normalizeTag(keyword);
     if (normalizedTag == null || normalizedTag.isEmpty()) return false;

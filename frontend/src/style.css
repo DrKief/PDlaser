@@ -10,31 +10,37 @@
   -moz-osx-font-smoothing: grayscale;
 
   /* --- Variables (Dark / Default) --- */
-  --bg-primary: #242424;
-  --bg-secondary: #1a1a1a;
-  --bg-tertiary: #2a2a2a;
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #242424;
+  --bg-tertiary: #2f2f2f;
 
-  --text-primary: rgba(255, 255, 255, 0.87);
-  --text-secondary: #ebebeb;
-  --text-muted: #888;
-  --text-on-primary: #fff;
+  --text-primary: rgba(255, 255, 255, 0.9);
+  --text-secondary: rgba(255, 255, 255, 0.75);
+  --text-muted: rgba(255, 255, 255, 0.5);
+  --text-on-primary: #ffffff;
 
-  --color-primary: #42b983;
-  --color-primary-hover: #33a06f;
+  /* Softer Green Theme */
+  --color-primary: #55c793;
+  --color-primary-hover: #42b983;
 
-  --color-link: #fff;
-  --color-link-hover: #53f2b5;
+  --color-link: #55c793;
+  --color-link-hover: #81d8b0;
 
-  --border-color: #555;
-  --border-focus: #53f2b5;
+  --border-color: #444;
+  --border-focus: #55c793;
 
-  --color-danger: #f44336;
-  --color-danger-hover: #d32f2f;
+  --color-danger: #e57373;
+  --color-danger-hover: #ef5350;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
 
   /* SVG Arrow for Dark Mode (Light Gray Stroke) */
   --arrow-icon: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e0e0e0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
 
   /* Apply Body Defaults */
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
   color: var(--text-primary);
   background-color: var(--bg-primary);
 }
@@ -43,26 +49,26 @@
   color-scheme: light;
 
   /* --- Variables (Light Mode Overrides) --- */
-  --bg-primary: #ffffff;
-  --bg-secondary: #f9f9f9;
-  --bg-tertiary: #f0f0f0;
+  --bg-primary: #fafafa;
+  --bg-secondary: #f3f6f4; /* Very slight cool green tint to white */
+  --bg-tertiary: #eef2ef;
 
-  --text-primary: #213547;
-  --text-secondary: #4a4a4a;
-  --text-muted: #666;
-  --text-on-primary: #fff;
+  --text-primary: #2c3e50;
+  --text-secondary: #58697a;
+  --text-muted: #95a5a6;
+  --text-on-primary: #ffffff;
 
-  --color-primary: #42b983;
-  --color-primary-hover: #33a06f;
+  --color-primary: #41b883; /* Vue Green */
+  --color-primary-hover: #35495e; /* Vue Dark Blue for contrast on hover */
 
-  --color-link: #213547;
-  --color-link-hover: #42b983;
+  --color-link: #41b883;
+  --color-link-hover: #35495e;
 
-  --border-color: #ccc;
-  --border-focus: #42b983;
+  --border-color: #e2e8f0;
+  --border-focus: #41b883;
 
-  --color-danger: #d32f2f;
-  --color-danger-hover: #b71c1c;
+  --color-danger: #ea5455;
+  --color-danger-hover: #d63031;
 
   /* SVG Arrow for Light Mode (Dark Stroke) */
   --arrow-icon: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23213547' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
@@ -210,13 +216,22 @@
 }
 
 @keyframes footer-bounce {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-5px);
-  }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+/* Cruelty Floating Buttons should also be fixed if needed or let them float */
+:root.cruelty .theme-switcher {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1000;
+  /* Cruelty override for button style */
+  background: red !important;
+  color: yellow !important;
+  border: 3px solid blue !important;
+  border-radius: 0 !important;
+  font-family: inherit;
 }
 
 /* Base Elements */
@@ -226,9 +241,7 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
-  transition:
-    background-color 0.3s,
-    color 0.3s;
+  transition: background-color 0.3s, color 0.3s;
 }
 
 a {
@@ -244,25 +257,32 @@ a:hover {
 h1 {
   font-size: 3.2em;
   line-height: 1.1;
+  font-weight: 700; /* Bolder headings look nicer with Inter */
+  letter-spacing: -0.02em;
+}
+
+h2 {
+    font-weight: 600;
+    letter-spacing: -0.01em;
 }
 
 button {
-  border-radius: 8px;
+  border-radius: var(--radius-md, 8px); /* Softer, rounder buttons */
   border: 1px solid transparent;
   padding: 0.6em 1.2em;
   font-size: 1em;
-  font-weight: 500;
+  font-weight: 600;
   font-family: inherit;
   background-color: var(--bg-secondary);
   color: var(--text-primary);
   cursor: pointer;
-  transition:
-    border-color 0.25s,
-    background-color 0.3s,
-    color 0.3s;
+  transition: border-color 0.25s, background-color 0.3s, color 0.3s, transform 0.1s;
 }
 button:hover {
   border-color: var(--border-focus);
+}
+button:active {
+    transform: scale(0.98); /* Slight press effect */
 }
 button:focus,
 button:focus-visible {
@@ -273,7 +293,24 @@ button:focus-visible {
   padding: 2em;
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
+  border-radius: var(--radius-lg, 12px); /* Rounder cards */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Pleasant depth */
+}
+
+input, select, textarea {
+    border-radius: var(--radius-sm, 6px);
+    border: 1px solid var(--border-color);
+    padding: 0.6em;
+    font-family: inherit;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(66, 185, 131, 0.2); /* Soft green glow */
 }
 
 #app {
