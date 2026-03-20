@@ -1,106 +1,66 @@
-# Software Development Project - L3 (v3a)
+# PDLaser - Image Management System (v3a)
 
-**Live Environments (Coming Soon):**
-
-- Production URL: `[Insert Public Production Link Here]`
-- Preview URL: `[Insert Public Preview Link Here]`
+**Live Environments:**
+* 🟢 **Production URL:** `http://bigpdlaser.duckdns.org/`
+* 🟡 **Preview URL:** `https://bigpreviewlaser.duckdns.org/gallery`
 
 ## Overview
+PDLaser is a full-stack image management system built for the L3 Software Development Project. It allows users to upload, manage, tag, and search images based on metadata attributes or content similarity using advanced vector embeddings.
 
-This repository contains the full-stack source code for the L3 Software Development Project. The application is an image management system built using Java 21 and Spring Boot for the backend, and Vue.js 3 with TypeScript for the frontend. The infrastructure uses Docker and a PostgreSQL database equipped with the pgvector extension for image descriptor storage.
+**Tech Stack:**
+* **Backend:** Java 21, Spring Boot, Spring Data JDBC, BoofCV (Image Processing)
+* **Frontend:** Vue.js 3, TypeScript, Vite, Vue Router
+* **Database:** PostgreSQL 16 + `pgvector`
+* **Infrastructure:** Docker, Docker Compose, Nginx, Dokploy
 
-## Prerequisites
+## Documentation (Wiki)
+Detailed project documentation is maintained in our GitLab Wiki:
+* 📖 [API Reference](API-Reference)
+* 🖥️ [Frontend Architecture & Views](Frontend-Views)
+* 🗄️ [Database Schema](Database-Schema)
+* 🐳 [Docker & Deployment](Docker-Deployment)
 
-Ensure the following dependencies are installed on your local environment:
+## Getting Started
 
-- Java (JDK 21)
-- Maven (version 3.9+)
-- Node.js (version 20+) and npm
-- Docker and Docker Compose
+### Prerequisites
+* Docker & Docker Compose
+* Java JDK 21 & Maven 3.9+ (For local non-Docker dev)
+* Node.js 20+ (For local non-Docker dev)
 
-## Running the Project
-
-The application can be run in three different environments depending on your current development or deployment needs.
-
-### 1. Local Development (CREMI Database Tunnel)
-
-This is the primary method for active backend development. It runs the Spring Boot application locally while connecting to the remote CREMI PostgreSQL database via an SSH tunnel.
-
-**Step 1: Establish the SSH Tunnel**
-Bind your local port 5432 to the CREMI database server. Leave this terminal window running in the background.
-
+### Quickstart (Docker Containerized Environment)
+The easiest way to run the entire stack locally is via Docker Compose:
 ```bash
-ssh <your_cremi_username>@ssh.emi.u-bordeaux.fr -L 5432:pgsql:5432
-
-```
-
-**Step 2: Run the Backend**
-Open a new terminal, navigate to the backend directory, and start the application. Pass your CREMI credentials as environment variables.
-
-```bash
-cd backend
-DATABASE_USER="<your_cremi_username>" \
-DATABASE_PASSWORD="<your_cremi_password>" \
-DATABASE_NAME="<your_cremi_username>" \
-./mvnw clean spring-boot:run
-
-```
-
-The backend API will be available at `http://localhost:8080`.
-
-**Step 3: Run the Frontend**
-Open another terminal, navigate to the frontend directory, install dependencies, and start the Vite development server.
-
-```bash
-cd frontend
-npm install
-npm run dev
-
-```
-
-### 2. Local Containerized Environment (Docker)
-
-_Note: This local deployment method is currently untested and pending validation._
-
-To launch the entire stack locally (database, backend, and frontend) without relying on the CREMI network, use Docker Compose.
-
-```bash
+# Build and start the database, backend, and frontend
 docker-compose up --build
-
 ```
+* **Frontend:** Available at `http://localhost:3000`
+* **Backend API:** Available at `http://localhost:8080`
+* **Database:** Exposed on port `5432`
 
-This provisions a local PostgreSQL container, starts the backend on port 8080, and serves the frontend via Nginx on port 80.
+### Local Development (CREMI Database Tunnel)
+For active development without running a local database, you can tunnel into the remote CREMI PostgreSQL server:
 
-### 3. Cloud Deployment (Dokploy)
-
-Our production and staging environments are hosted on a private Oracle Cloud Ubuntu instance, provisioned via Terraform.
-
-- **Management:** Services, reverse proxying, and domain routing are managed via Dokploy.
-- **Access:** The Dokploy instance is secured and restricted to authorized project members.
-- **Environments:**
-  - **Production:** Deploys automatically from the `main` branch.
-  - **Preview/Staging:** Deploys from the `preview` branch, utilizing a separate subdomain for testing before merging into production.
+1. **Establish the SSH Tunnel:**
+   ```bash
+   ssh <your_cremi_username>@ssh.emi.u-bordeaux.fr -L 5432:pgsql:5432
+   ```
+2. **Run the Backend:**
+   ```bash
+   cd backend
+   DATABASE_USER="<your_cremi_username>" \
+   DATABASE_PASSWORD="<your_cremi_password>" \
+   DATABASE_NAME="<your_cremi_username>" \
+   ./mvnw clean spring-boot:run
+   ```
+3. **Run the Frontend:**
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
 
 ## Development Workflow
-
-Our team follows a strict issue-driven workflow.
-
-1. **Issue Tracking:** Every task or bug must be logged as a GitLab Issue, categorized with labels, assigned to a team member, and attached to a milestone.
-2. **Branching:** Work must be done on isolated feature or fix branches created directly from the corresponding issue. Direct commits to `main` are restricted.
-3. **Integration:** Code must pass the GitLab CI/CD pipeline before being merged into the `preview` or `main` branches.
-
-## Commit Standards
-
-We enforce the [Conventional Commits 1.0.0 specification](https://www.conventionalcommits.org/en/v1.0.0/#examples) to maintain a readable, machine-parseable commit history and simplify changelog generation.
-
-**Format:** `<type>[optional scope]: <description>`
-
-- Use `feat:` for new features and `fix:` for bug fixes.
-- Indicate breaking changes with a `!` after the type/scope (e.g., `feat!: upgrade framework`) or via a `BREAKING CHANGE:` footer.
-
-## CI/CD Pipeline
-
-The project utilizes GitLab CI/CD, configured in `.gitlab-ci.yml`. The pipeline handles:
-
-- **Compilation:** Verifies that the backend compiles successfully on every push.
-- **Testing:** Executes automated tests (database-dependent tests are isolated or disabled until the test database container configuration is finalized).
+1. **Issue Tracking:** Every task must be logged as a GitLab Issue.
+2. **Branching:** Work on isolated feature/fix branches directly from the issue.
+3. **Commits:** We enforce [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). (e.g., `feat: add image search`, `fix: correct nginx proxy`).
+4. **Integration:** Code must pass the GitLab CI/CD pipeline before merging to `preview` or `main`.
