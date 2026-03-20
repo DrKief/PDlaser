@@ -15,10 +15,8 @@ PDLaser is a full-stack image management system built for the L3 Software Develo
 
 ## Documentation (Wiki)
 Detailed project documentation is maintained in our GitLab Wiki:
-* 📖 [API Reference](API-Reference)
-* 🖥️ [Frontend Architecture & Views](Frontend-Views)
-* 🗄️ [Database Schema](Database-Schema)
-* 🐳 [Docker & Deployment](Docker-Deployment)
+* 📖 https://gitlab.emi.u-bordeaux.fr/pdl-l3/teams/2026/v3/v3a/-/wikis/home#api-reference
+
 
 ## Getting Started
 
