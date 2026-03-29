@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.5.12</version>
+        <version>3.5.13</version>
         <relativePath/>
     </parent>
     <groupId>pdl</groupId>
@@ -49,6 +49,24 @@
             <groupId>org.boofcv</groupId>
             <artifactId>boofcv-io</artifactId>
             <version>1.3.0</version>
+        </dependency>
+        <!-- Core TwelveMonkeys ImageIO -->
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-core</artifactId>
+            <version>3.10.1</version>
+        </dependency>
+        <!-- For Lanczos3 Resampling and Image Support -->
+        <dependency>
+            <groupId>com.twelvemonkeys.common</groupId>
+            <artifactId>common-image</artifactId>
+            <version>3.10.1</version>
+        </dependency>
+        <!-- Format Plugins (WebP, TIFF, JPEG, etc) -->
+        <dependency>
+            <groupId>com.twelvemonkeys.imageio</groupId>
+            <artifactId>imageio-jpeg</artifactId>
+            <version>3.10.1</version>
         </dependency>
     </dependencies>
 

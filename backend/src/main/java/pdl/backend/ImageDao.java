@@ -9,8 +9,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.MessageDigest;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -52,7 +50,8 @@ public class ImageDao implements Dao<Image> {
         "format VARCHAR(10) NOT NULL, " +
         "width INT NOT NULL DEFAULT 0, " +
         "height INT NOT NULL DEFAULT 0, " +
-        "hash VARCHAR(64) UNIQUE)"
+        "hash VARCHAR(64) UNIQUE, " +
+        "extraction_status VARCHAR(20) DEFAULT 'PENDING')"
     );
 
     jdbcTemplate.execute(
@@ -72,13 +71,13 @@ public class ImageDao implements Dao<Image> {
     );
 
     jdbcTemplate.execute(
-      "CREATE INDEX IF NOT EXISTS idx_hnsw_hog ON imagedescriptors USING hnsw (hogvector vector_l2_ops) WITH (m=16, ef_construction=64)"
+      "CREATE INDEX IF NOT EXISTS idx_hnsw_hog ON imagedescriptors USING hnsw (hogvector vector_l2_ops) WITH (m=4, ef_construction=32)"
     );
     jdbcTemplate.execute(
-      "CREATE INDEX IF NOT EXISTS idx_hnsw_hsv ON imagedescriptors USING hnsw (hsvvector vector_l2_ops) WITH (m=16, ef_construction=64)"
+      "CREATE INDEX IF NOT EXISTS idx_hnsw_hsv ON imagedescriptors USING hnsw (hsvvector vector_l2_ops) WITH (m=16, ef_construction=128)"
     );
     jdbcTemplate.execute(
-      "CREATE INDEX IF NOT EXISTS idx_hnsw_rgb ON imagedescriptors USING hnsw (rgbvector vector_l2_ops) WITH (m=16, ef_construction=64)"
+      "CREATE INDEX IF NOT EXISTS idx_hnsw_rgb ON imagedescriptors USING hnsw (rgbvector vector_l2_ops) WITH (m=32, ef_construction=256)"
     );
 
     syncDiskAndDatabase();
@@ -114,80 +113,20 @@ public class ImageDao implements Dao<Image> {
     }
   }
 
-  private String calculateSHA256(byte[] data) {
-    try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      byte[] hashBytes = digest.digest(data);
-      return HexFormat.of().formatHex(hashBytes);
-    } catch (Exception e) {
-      throw new RuntimeException("Failed to calculate SHA-256 hash", e);
-    }
-  }
-
-  // Normalization utility for tags
   private String normalizeTag(String tag) {
     if (tag == null) return null;
     return tag.trim().toLowerCase().replaceAll("\\s+", "_"); // " nature " -> "nature", "cool dog" -> "cool_dog"
   }
 
-  @Override
-  @Transactional
-  public void create(Image img) {
-    String hash = calculateSHA256(img.getData());
-
-    // Check if image already exists in DB
-    List<Long> existingIds = jdbcTemplate.queryForList(
-      "SELECT id FROM images WHERE hash = ?",
-      Long.class,
-      hash
-    );
-    if (!existingIds.isEmpty()) {
-      img.setId(existingIds.get(0));
-      img.setHash(hash);
-      return; // Exit early, do not save to DB or Disk
-    }
-
-    img.setHash(hash);
-    createWithoutFileSave(img);
-
-    Path path = Paths.get(imageDirectoryPath, img.getName());
-    try {
-      Files.write(path, img.getData());
-    } catch (IOException e) {
-      throw new RuntimeException("Failed to write image file to disk, rolling back DB insert", e);
-    }
+  public Long findIdByHash(String hash) {
+    List<Long> ids = jdbcTemplate.queryForList("SELECT id FROM images WHERE hash = ?", Long.class, hash);
+    return ids.isEmpty() ? null : ids.get(0);
   }
 
-  private void createWithoutFileSave(Image img) {
+  public void createBasic(Image img, int width, int height, boolean saveToDisk) {
     String format = img.getName().substring(img.getName().lastIndexOf('.') + 1);
-    int width = 0;
-    int height = 0;
-
-    float[] hogData = new float[31];
-    float[] hsvData = new float[256];
-    float[] rgbData = new float[512];
-
-    try {
-      BufferedImage bimg = ImageIO.read(new ByteArrayInputStream(img.getData()));
-      if (bimg != null) {
-        width = bimg.getWidth();
-        height = bimg.getHeight();
-        hogData = ImageProcessing.extractGlobalHog(bimg);
-        hsvData = ImageProcessing.extractHsvHistogram(bimg);
-        rgbData = ImageProcessing.extractRgbHistogram(bimg);
-      }
-    } catch (Exception e) {
-      log.error("Could not process image data for: " + img.getName(), e);
-    }
-
-    if (hogData.length != 31) {
-      float[] adjustedHog = new float[31];
-      System.arraycopy(hogData, 0, adjustedHog, 0, Math.min(hogData.length, 31));
-      hogData = adjustedHog;
-    }
-
     Long id = jdbcTemplate.queryForObject(
-      "INSERT INTO images (filename, format, width, height, hash) VALUES (?, ?, ?, ?, ?) RETURNING id",
+      "INSERT INTO images (filename, format, width, height, hash, extraction_status) VALUES (?, ?, ?, ?, ?, 'PENDING') RETURNING id",
       Long.class,
       img.getName(),
       format,
@@ -198,13 +137,36 @@ public class ImageDao implements Dao<Image> {
 
     img.setId(id);
 
-    jdbcTemplate.update(
-      "INSERT INTO imagedescriptors (imageid, hogvector, hsvvector, rgbvector) VALUES (?, ?, ?, ?)",
-      id,
-      new PGvector(hogData),
-      new PGvector(hsvData),
-      new PGvector(rgbData)
-    );
+    if (saveToDisk) {
+      Path path = Paths.get(imageDirectoryPath, img.getName());
+      try {
+        Files.write(path, img.getData());
+      } catch (IOException e) {
+        throw new RuntimeException("Failed to write image file to disk, rolling back DB insert", e);
+      }
+    }
+  }
+
+  public void updateStatus(long id, String status) {
+    jdbcTemplate.update("UPDATE images SET extraction_status = ? WHERE id = ?", status, id);
+  }
+
+  public String getStatus(long id) {
+    try {
+      return jdbcTemplate.queryForObject("SELECT extraction_status FROM images WHERE id = ?", String.class, id);
+    } catch (EmptyResultDataAccessException e) {
+      return null;
+    }
+  }
+
+  @Override
+  @Transactional
+  public void create(Image img) {
+    throw new UnsupportedOperationException("Creation via DAO directly is disabled. Use ImageService.processAndSaveImage instead");
+  }
+
+  private void createWithoutFileSave(Image img) {
+    log.warn("Skipping legacy sync for file {}. Use proper batch ingestion with async pipelines.", img.getName());
   }
 
   @Override
@@ -244,18 +206,19 @@ public class ImageDao implements Dao<Image> {
 
   @Override
   public void delete(Image image) {
-    jdbcTemplate.update("DELETE FROM images WHERE id = ?", image.getId());
+    // Architectural Patch: Delete File strictly before the Database Row to avoid storage leaks
     Path path = Paths.get(imageDirectoryPath, image.getName());
     try {
       Files.deleteIfExists(path);
     } catch (IOException e) {
-      e.printStackTrace();
+      log.error("Could not delete file from disk: " + path.toAbsolutePath(), e);
     }
+    jdbcTemplate.update("DELETE FROM images WHERE id = ?", image.getId());
   }
 
   public Map<String, Object> getImageMetadata(long id) {
     Map<String, Object> meta = jdbcTemplate.queryForMap(
-      "SELECT filename as Name, format, width, height FROM images WHERE id = ?",
+      "SELECT filename as Name, format, width, height, extraction_status FROM images WHERE id = ?",
       id
     );
     List<String> keywords = jdbcTemplate.queryForList(
@@ -342,13 +305,16 @@ public class ImageDao implements Dao<Image> {
     }
 
     String sql =
-      "SELECT d.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + (d." +
-      vectorColumn +
-      " <-> ?)))) AS score " +
-      "FROM imagedescriptors d JOIN images i ON d.imageid = i.id " +
-      "WHERE imageid != ? ORDER BY d." +
-      vectorColumn +
-      " <-> ? ASC LIMIT ?";
+      "WITH vector_matches AS (" +
+      "  SELECT imageid, " + vectorColumn + " <-> ? as distance " +
+      "  FROM imagedescriptors " +
+      "  WHERE imageid != ? " +
+      "  ORDER BY " + vectorColumn + " <-> ? ASC LIMIT ?" +
+      ") " +
+      "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
+      "FROM vector_matches v " +
+      "JOIN images i ON v.imageid = i.id " +
+      "ORDER BY v.distance ASC";
 
     return jdbcTemplate.queryForList(sql, targetVector, targetId, targetVector, limit);
   }
@@ -358,18 +324,20 @@ public class ImageDao implements Dao<Image> {
       BufferedImage bimg = ImageIO.read(new ByteArrayInputStream(imageData));
       if (bimg == null) return List.of();
 
+      BufferedImage resizedImage = ImageProcessing.resizeImageLanczos3(bimg, 256, 256);
+
       String vectorColumn;
       PGvector targetVector;
 
       if ("saturation".equalsIgnoreCase(type)) {
         vectorColumn = "hsvvector";
-        targetVector = new PGvector(ImageProcessing.extractHsvHistogram(bimg));
+        targetVector = new PGvector(ImageProcessing.extractHsvHistogram(resizedImage));
       } else if ("rgb".equalsIgnoreCase(type)) {
         vectorColumn = "rgbvector";
-        targetVector = new PGvector(ImageProcessing.extractRgbHistogram(bimg));
+        targetVector = new PGvector(ImageProcessing.extractRgbHistogram(resizedImage));
       } else {
         vectorColumn = "hogvector";
-        float[] hogData = ImageProcessing.extractGlobalHog(bimg);
+        float[] hogData = ImageProcessing.extractGlobalHog(resizedImage);
         if (hogData.length != 31) {
           float[] adjustedHog = new float[31];
           System.arraycopy(hogData, 0, adjustedHog, 0, Math.min(hogData.length, 31));
@@ -379,13 +347,15 @@ public class ImageDao implements Dao<Image> {
       }
 
       String sql =
-        "SELECT d.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + (d." +
-        vectorColumn +
-        " <-> ?)))) AS score " +
-        "FROM imagedescriptors d JOIN images i ON d.imageid = i.id " +
-        "ORDER BY d." +
-        vectorColumn +
-        " <-> ? ASC LIMIT ?";
+        "WITH vector_matches AS (" +
+        "  SELECT imageid, " + vectorColumn + " <-> ? as distance " +
+        "  FROM imagedescriptors " +
+        "  ORDER BY " + vectorColumn + " <-> ? ASC LIMIT ?" +
+        ") " +
+        "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
+        "FROM vector_matches v " +
+        "JOIN images i ON v.imageid = i.id " +
+        "ORDER BY v.distance ASC";
 
       return jdbcTemplate.queryForList(sql, targetVector, targetVector, limit);
     } catch (Exception e) {
@@ -426,7 +396,6 @@ public class ImageDao implements Dao<Image> {
       }
     }
     if (keywords != null && !keywords.isEmpty()) {
-      // Normalize all keywords before searching
       List<String> normalizedKeywords = keywords
         .stream()
         .map(this::normalizeTag)

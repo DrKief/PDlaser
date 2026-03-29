@@ -9,10 +9,16 @@ import boofcv.struct.feature.TupleDesc_F64;
 import boofcv.struct.image.GrayF32;
 import boofcv.struct.image.ImageType;
 import boofcv.struct.image.Planar;
+import com.twelvemonkeys.image.ResampleOp;
 import java.awt.image.BufferedImage;
 import java.util.List;
 
 public class ImageProcessing {
+
+  public static BufferedImage resizeImageLanczos3(BufferedImage inputImage, int targetWidth, int targetHeight) {
+    ResampleOp resampleOp = new ResampleOp(targetWidth, targetHeight, ResampleOp.FILTER_LANCZOS);
+    return resampleOp.filter(inputImage, null);
+  }
 
   public static float[] extractGlobalHog(BufferedImage inputImage) {
     GrayF32 grayImage = ConvertBufferedImage.convertFrom(inputImage, (GrayF32) null);
@@ -27,13 +33,12 @@ public class ImageProcessing {
     List<TupleDesc_F64> descriptions = describer.getDescriptions();
 
     if (descriptions.isEmpty()) {
-      return new float[31]; // Default fallback size for UoCTTI HOG descriptor
+      return new float[31];
     }
 
     int singleDescSize = descriptions.get(0).size();
     float[] globalHistogram = new float[singleDescSize];
 
-    // Requirement: Custom logic to aggregate localized data into a single 1D histogram
     for (TupleDesc_F64 desc : descriptions) {
       for (int i = 0; i < singleDescSize; i++) {
         globalHistogram[i] += (float) desc.data[i];

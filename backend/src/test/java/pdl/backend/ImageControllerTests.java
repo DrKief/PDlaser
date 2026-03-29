@@ -1,6 +1,7 @@
 package pdl.backend;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -26,12 +27,15 @@ public class ImageControllerTests {
   @MockitoBean
   private ImageDao imageDAO;
 
+  @MockitoBean
+  private ImageService imageService;
+
   @Autowired
   private MockMvc mockMvc;
 
   @BeforeEach
   public void setUp() {
-    reset(imageDAO);
+    reset(imageDAO, imageService);
   }
 
   @Test
@@ -58,8 +62,9 @@ public class ImageControllerTests {
       MediaType.IMAGE_JPEG_VALUE,
       "content".getBytes()
     );
-    this.mockMvc.perform(multipart("/images").file(file)).andExpect(status().isCreated());
-    verify(imageDAO).create(any(Image.class));
+    // Modified expectation to match 202 Accepted Async Architecture
+    this.mockMvc.perform(multipart("/images").file(file)).andExpect(status().isAccepted());
+    verify(imageService).processAndSaveImage(any(Image.class), eq(true));
   }
 
   @Test
@@ -79,7 +84,7 @@ public class ImageControllerTests {
   public void deleteImageShouldReturnSuccess() throws Exception {
     Image image = new Image("test.jpg", new byte[0]);
     when(imageDAO.retrieve(0)).thenReturn(Optional.of(image));
-    this.mockMvc.perform(delete("/images/0")).andExpect(status().isNoContent()); // Previously fixed to 204 No Content
+    this.mockMvc.perform(delete("/images/0")).andExpect(status().isNoContent());
     verify(imageDAO).delete(any(Image.class));
   }
 

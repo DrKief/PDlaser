@@ -30,12 +30,13 @@ public class ImageController {
   private String imageDirectoryPath;
 
   private final ImageDao imageDao;
+  private final ImageService imageService;
 
-  public ImageController(ImageDao imageDao) {
+  public ImageController(ImageDao imageDao, ImageService imageService) {
     this.imageDao = imageDao;
+    this.imageService = imageService;
   }
 
-  // Besoin 1: Throw explicit error if dir is missing.
   @PostConstruct
   public void verifyStartupState() {
     Path path = Paths.get(imageDirectoryPath);
@@ -64,7 +65,6 @@ public class ImageController {
       .body(Map.of("error", "File too large."));
   }
 
-  // Besoin 6: Get all images
   @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<List<Map<String, Object>>> getImages() {
     List<Image> images = imageDao.retrieveAll();
@@ -79,7 +79,6 @@ public class ImageController {
     return ResponseEntity.ok(response);
   }
 
-  // Besoin 8: Get Image Data
   @GetMapping(value = "/{id}")
   public ResponseEntity<?> getImage(@PathVariable("id") long id) {
     Optional<Image> image = imageDao.retrieve(id);
@@ -93,20 +92,18 @@ public class ImageController {
       .body(Map.of("error", "Image not found"));
   }
 
-  // Besoin 9: Delete Image
   @DeleteMapping("/{id}")
   public ResponseEntity<?> deleteImage(@PathVariable("id") long id) {
     Optional<Image> image = imageDao.retrieve(id);
     if (image.isPresent()) {
       imageDao.delete(image.get());
-      return ResponseEntity.noContent().build(); // 204 No Content
+      return ResponseEntity.noContent().build();
     }
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
       .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
       .body(Map.of("error", "Image not found"));
   }
 
-  // Besoin 7: Add Image
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<?> addImage(
     @RequestParam("file") MultipartFile file,
@@ -127,13 +124,11 @@ public class ImageController {
 
     try {
       Image image = new Image(file.getOriginalFilename(), file.getBytes());
-      imageDao.create(image);
+      imageService.processAndSaveImage(image, true);
       long id = image.getId();
+      
       if (keywords != null && !keywords.isEmpty()) {
         for (String k : keywords) {
-          // Some clients might send "tag1,tag2" as a single string depending on how form data is constructed
-          // But since we use List<String>, Spring usually handles "tag1,tag2" or multiple "keywords" params.
-          // Just to be safe against "tag1, tag2" in a single entry:
           String[] splits = k.split(",");
           for (String tag : splits) {
              imageDao.addKeyword(id, tag.trim());
@@ -141,9 +136,14 @@ public class ImageController {
         }
       }
 
-      return ResponseEntity.status(HttpStatus.CREATED)
+      // REST Polling Architecture - Returning 202 Accepted instead of 201 Created
+      return ResponseEntity.status(HttpStatus.ACCEPTED)
         .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-        .body(Map.of("message", "Image uploaded"));
+        .body(Map.of(
+          "message", "Image accepted for background processing.",
+          "id", id,
+          "status_url", "/images/" + id + "/status"
+        ));
     } catch (Exception e) {
       log.error("Failed to upload image: " + file.getOriginalFilename(), e);
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -152,7 +152,20 @@ public class ImageController {
     }
   }
 
-  // Besoin 11: Get Metadata
+  // Client State Retrieval Endpoint
+  @GetMapping("/{id}/status")
+  public ResponseEntity<?> getImageStatus(@PathVariable("id") long id) {
+    String status = imageDao.getStatus(id);
+    if (status == null) {
+      return ResponseEntity.status(HttpStatus.NOT_FOUND)
+        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+        .body(Map.of("error", "Image not found"));
+    }
+    return ResponseEntity.ok()
+      .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+      .body(Map.of("id", id, "extraction_status", status));
+  }
+
   @GetMapping("/{id}/metadata")
   public ResponseEntity<?> getMetadata(@PathVariable("id") long id) {
     try {
@@ -162,10 +175,11 @@ public class ImageController {
       response.put("Name", rawMeta.get("Name"));
 
       String ext = getFileExtension((String) rawMeta.get("Name"));
-      response.put("Type", "image/" + ext); // Maps to MediaType format
+      response.put("Type", "image/" + ext);
 
       response.put("Size", rawMeta.get("width") + "*" + rawMeta.get("height"));
       response.put("Keywords", rawMeta.get("Keywords"));
+      response.put("Extraction_Status", rawMeta.get("extraction_status"));
 
       return ResponseEntity.ok()
         .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
@@ -177,7 +191,6 @@ public class ImageController {
     }
   }
 
-  // Besoin 10: Find Similar (Standardized to use Query Params)
   @GetMapping("/{id}/similar")
   public ResponseEntity<?> getSimilarImages(
     @PathVariable("id") long id,
@@ -204,7 +217,6 @@ public class ImageController {
       .body(results);
   }
 
-  // Besoin 12: Add Keyword
   @PutMapping("/{id}/keywords")
   public ResponseEntity<?> addKeyword(
     @PathVariable("id") long id,
@@ -212,14 +224,13 @@ public class ImageController {
   ) {
     boolean success = imageDao.addKeyword(id, tag);
     if (success) {
-      return ResponseEntity.noContent().build(); // 204 No Content
+      return ResponseEntity.noContent().build();
     }
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
       .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
       .body(Map.of("error", "Image not found"));
   }
 
-  // Besoin 13: Delete Keyword
   @DeleteMapping("/{id}/keywords")
   public ResponseEntity<?> deleteKeyword(
     @PathVariable("id") long id,
@@ -235,7 +246,7 @@ public class ImageController {
       }
 
       imageDao.deleteKeyword(id, tag);
-      return ResponseEntity.noContent().build(); // 204 No Content
+      return ResponseEntity.noContent().build();
     } catch (EmptyResultDataAccessException e) {
       return ResponseEntity.status(HttpStatus.NOT_FOUND)
         .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
@@ -243,7 +254,6 @@ public class ImageController {
     }
   }
 
-  // Besoin 14: Get all keywords
   @GetMapping("/keywords")
   public ResponseEntity<?> getAllKeywords() {
     return ResponseEntity.ok()
@@ -251,7 +261,6 @@ public class ImageController {
       .body(imageDao.getAllKeywords());
   }
 
-  // Besoin 15: Search by Attributes (Standardized to use Query Params instead of JSON Body)
   @GetMapping("/search")
   public ResponseEntity<?> searchImagesByAttributes(
     @RequestParam(required = false) String name,
@@ -263,7 +272,7 @@ public class ImageController {
     if (ids.isEmpty()) {
       return ResponseEntity.status(HttpStatus.NOT_FOUND)
         .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-        .body(Map.of("error", "Aucune image existante trouvée.")); // 404
+        .body(Map.of("error", "Aucune image existante trouvée."));
     }
     return ResponseEntity.ok()
       .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
