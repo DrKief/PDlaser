@@ -25,6 +25,9 @@ import org.springframework.test.web.servlet.MockMvc;
 public class ImageControllerTests {
 
   @MockitoBean
+  private ImageRepository imageRepository;
+
+  @MockitoBean
   private ImageDao imageDAO;
 
   @MockitoBean
@@ -35,22 +38,23 @@ public class ImageControllerTests {
 
   @BeforeEach
   public void setUp() {
-    reset(imageDAO, imageService);
+    reset(imageRepository, imageDAO, imageService);
   }
 
   @Test
   public void getImageShouldReturnSuccess() throws Exception {
     Image image = new Image("test.jpg", new byte[0]);
-    when(imageDAO.retrieve(0)).thenReturn(Optional.of(image));
+    image.setFormat("jpeg");
+    when(imageService.getImageWithData(0)).thenReturn(Optional.of(image));
     this.mockMvc.perform(get("/images/0"))
       .andExpect(status().isOk())
       .andExpect(content().contentType(MediaType.IMAGE_JPEG_VALUE));
-    verify(imageDAO).retrieve(0);
+    verify(imageService).getImageWithData(0);
   }
 
   @Test
   public void getImageShouldReturnNotFound() throws Exception {
-    when(imageDAO.retrieve(99)).thenReturn(Optional.empty());
+    when(imageService.getImageWithData(99)).thenReturn(Optional.empty());
     this.mockMvc.perform(get("/images/99")).andExpect(status().isNotFound());
   }
 
@@ -62,7 +66,6 @@ public class ImageControllerTests {
       MediaType.IMAGE_JPEG_VALUE,
       "content".getBytes()
     );
-    // Modified expectation to match 202 Accepted Async Architecture
     this.mockMvc.perform(multipart("/images").file(file)).andExpect(status().isAccepted());
     verify(imageService).processAndSaveImage(any(Image.class), eq(true));
   }
@@ -82,15 +85,14 @@ public class ImageControllerTests {
 
   @Test
   public void deleteImageShouldReturnSuccess() throws Exception {
-    Image image = new Image("test.jpg", new byte[0]);
-    when(imageDAO.retrieve(0)).thenReturn(Optional.of(image));
+    when(imageService.deleteImage(0)).thenReturn(true);
     this.mockMvc.perform(delete("/images/0")).andExpect(status().isNoContent());
-    verify(imageDAO).delete(any(Image.class));
+    verify(imageService).deleteImage(0);
   }
 
   @Test
   public void deleteImageShouldReturnNotFound() throws Exception {
-    when(imageDAO.retrieve(99)).thenReturn(Optional.empty());
+    when(imageService.deleteImage(99)).thenReturn(false);
     this.mockMvc.perform(delete("/images/99")).andExpect(status().isNotFound());
   }
 }

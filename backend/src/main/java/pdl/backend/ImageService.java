@@ -1,14 +1,20 @@
 package pdl.backend;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.Iterator;
+import java.util.Optional;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -18,11 +24,14 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public class ImageService {
 
   private static final Logger log = LoggerFactory.getLogger(ImageService.class);
-  private final ImageDao imageDao;
+  private final ImageRepository imageRepository;
   private final AsyncImageProcessor asyncProcessor;
 
-  public ImageService(ImageDao imageDao, AsyncImageProcessor asyncProcessor) {
-    this.imageDao = imageDao;
+  @Value("${app.image.directory:images}")
+  private String imageDirectoryPath;
+
+  public ImageService(ImageRepository imageRepository, AsyncImageProcessor asyncProcessor) {
+    this.imageRepository = imageRepository;
     this.asyncProcessor = asyncProcessor;
   }
 
@@ -30,14 +39,16 @@ public class ImageService {
   public void processAndSaveImage(Image img, boolean saveToDisk) {
     String hash = calculateSHA256(img.getData());
 
-    Long existingId = imageDao.findIdByHash(hash);
-    if (existingId != null) {
-      img.setId(existingId);
+    Optional<Image> existing = imageRepository.findByHash(hash);
+    if (existing.isPresent()) {
+      img.setId(existing.get().getId());
       img.setHash(hash);
       return;
     }
 
     img.setHash(hash);
+    img.setFormat(getFileExtension(img.getName()));
+    img.setExtractionStatus("PENDING");
 
     // Fast header-only reading for initial metadata DB ingestion
     int width = 0;
@@ -55,7 +66,20 @@ public class ImageService {
       log.warn("Could not fast-read dimensions for image hash {}", hash);
     }
 
-    imageDao.createBasic(img, width, height, saveToDisk);
+    img.setWidth(width);
+    img.setHeight(height);
+
+    Image savedImage = imageRepository.save(img);
+    img.setId(savedImage.getId());
+
+    if (saveToDisk) {
+      try {
+        Path path = Paths.get(imageDirectoryPath, img.getName());
+        Files.write(path, img.getData());
+      } catch (IOException e) {
+        throw new RuntimeException("Failed to write image file to disk, rolling back DB insert", e);
+      }
+    }
 
     // Ensure async thread runs strictly AFTER data is globally committed
     TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -66,6 +90,40 @@ public class ImageService {
     });
   }
 
+  public Optional<Image> getImageWithData(long id) {
+    Optional<Image> imageOpt = imageRepository.findById(id);
+    if (imageOpt.isPresent()) {
+      Image img = imageOpt.get();
+      try {
+        Path path = Paths.get(imageDirectoryPath, img.getName());
+        if (Files.exists(path)) {
+          img.setData(Files.readAllBytes(path));
+          return Optional.of(img);
+        }
+      } catch (IOException e) {
+        log.error("Found DB record but failed to load physical file for ID: " + id, e);
+      }
+    }
+    return Optional.empty();
+  }
+
+  @Transactional
+  public boolean deleteImage(long id) {
+    Optional<Image> imageOpt = imageRepository.findById(id);
+    if (imageOpt.isPresent()) {
+      Image img = imageOpt.get();
+      // Architectural Patch: Delete File strictly before the Database Row to avoid storage leaks
+      try {
+        Files.deleteIfExists(Paths.get(imageDirectoryPath, img.getName()));
+      } catch (IOException e) {
+        log.error("Could not delete file from disk for ID: " + id, e);
+      }
+      imageRepository.delete(img);
+      return true;
+    }
+    return false;
+  }
+
   private String calculateSHA256(byte[] data) {
     try {
       MessageDigest digest = MessageDigest.getInstance("SHA-256");
@@ -74,5 +132,12 @@ public class ImageService {
     } catch (Exception e) {
       throw new RuntimeException("Failed to calculate SHA-256 hash", e);
     }
+  }
+
+  private String getFileExtension(String filename) {
+    if (filename == null || !filename.contains(".")) return "jpeg";
+    String ext = filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
+    if (ext.equals("jpg")) return "jpeg";
+    return ext;
   }
 }

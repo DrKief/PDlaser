@@ -8,8 +8,8 @@ services:
       POSTGRES_DB: pdl_db
     ports:
       - "5432:5432"
-    volumes:
-      - pgdata:/var/lib/postgresql/data
+    tmpfs:
+      - /var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U pdl_user -d pdl_db"]
       interval: 5s
@@ -29,8 +29,6 @@ services:
       - APP_IMAGE_DIRECTORY=/var/lib/pdl/images
     ports:
       - "8080:8080"
-    volumes:
-      - backend_images:/var/lib/pdl/images
     depends_on:
       db:
         condition: service_healthy
@@ -45,7 +43,3 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
-
-volumes:
-  pgdata:
-  backend_images:

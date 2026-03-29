@@ -29,10 +29,12 @@ public class ImageController {
   @Value("${app.image.directory:images}")
   private String imageDirectoryPath;
 
+  private final ImageRepository imageRepository;
   private final ImageDao imageDao;
   private final ImageService imageService;
 
-  public ImageController(ImageDao imageDao, ImageService imageService) {
+  public ImageController(ImageRepository imageRepository, ImageDao imageDao, ImageService imageService) {
+    this.imageRepository = imageRepository;
     this.imageDao = imageDao;
     this.imageService = imageService;
   }
@@ -67,7 +69,7 @@ public class ImageController {
 
   @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<List<Map<String, Object>>> getImages() {
-    List<Image> images = imageDao.retrieveAll();
+    Iterable<Image> images = imageRepository.findAll();
     List<Map<String, Object>> response = new java.util.ArrayList<>();
     for (Image img : images) {
       Map<String, Object> item = new HashMap<>();
@@ -81,10 +83,10 @@ public class ImageController {
 
   @GetMapping(value = "/{id}")
   public ResponseEntity<?> getImage(@PathVariable("id") long id) {
-    Optional<Image> image = imageDao.retrieve(id);
-    if (image.isPresent()) {
+    Optional<Image> image = imageService.getImageWithData(id);
+    if (image.isPresent() && image.get().getData() != null) {
       return ResponseEntity.ok()
-        .header(HttpHeaders.CONTENT_TYPE, "image/" + getFileExtension(image.get().getName()))
+        .header(HttpHeaders.CONTENT_TYPE, "image/" + image.get().getFormat())
         .body(image.get().getData());
     }
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -94,9 +96,8 @@ public class ImageController {
 
   @DeleteMapping("/{id}")
   public ResponseEntity<?> deleteImage(@PathVariable("id") long id) {
-    Optional<Image> image = imageDao.retrieve(id);
-    if (image.isPresent()) {
-      imageDao.delete(image.get());
+    boolean deleted = imageService.deleteImage(id);
+    if (deleted) {
       return ResponseEntity.noContent().build();
     }
     return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -136,7 +137,6 @@ public class ImageController {
         }
       }
 
-      // REST Polling Architecture - Returning 202 Accepted instead of 201 Created
       return ResponseEntity.status(HttpStatus.ACCEPTED)
         .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
         .body(Map.of(
@@ -152,7 +152,6 @@ public class ImageController {
     }
   }
 
-  // Client State Retrieval Endpoint
   @GetMapping("/{id}/status")
   public ResponseEntity<?> getImageStatus(@PathVariable("id") long id) {
     String status = imageDao.getStatus(id);
@@ -173,10 +172,7 @@ public class ImageController {
 
       Map<String, Object> response = new HashMap<>();
       response.put("Name", rawMeta.get("Name"));
-
-      String ext = getFileExtension((String) rawMeta.get("Name"));
-      response.put("Type", "image/" + ext);
-
+      response.put("Type", "image/" + rawMeta.get("format"));
       response.put("Size", rawMeta.get("width") + "*" + rawMeta.get("height"));
       response.put("Keywords", rawMeta.get("Keywords"));
       response.put("Extraction_Status", rawMeta.get("extraction_status"));
@@ -277,12 +273,5 @@ public class ImageController {
     return ResponseEntity.ok()
       .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
       .body(ids);
-  }
-
-  private String getFileExtension(String filename) {
-    if (filename == null || !filename.contains(".")) return "jpeg";
-    String ext = filename.substring(filename.lastIndexOf(".") + 1).toLowerCase();
-    if (ext.equals("jpg")) return "jpeg";
-    return ext;
   }
 }
