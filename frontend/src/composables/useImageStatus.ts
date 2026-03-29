@@ -1,5 +1,5 @@
-import { reactive } from 'vue';
-import http from '../http-api';
+import { reactive } from "vue";
+import http from "../http-api";
 
 const statusCache = reactive<Record<number, string>>({});
 const activeConnections = new Set<number>();
@@ -25,16 +25,16 @@ export function useImageStatus() {
 
     try {
       while (activeConnections.has(id)) {
-        if (statusCache[id] === 'COMPLETED' || statusCache[id] === 'FAILED') {
+        if (statusCache[id] === "COMPLETED" || statusCache[id] === "FAILED") {
           break;
         }
-        
+
         // This will now "hang" securely until the server returns an update or a timeout triggers.
         const response = await http.get(`/images/${id}/status`);
         const status = response.data.extraction_status;
         statusCache[id] = status;
 
-        if (status === 'COMPLETED' || status === 'FAILED') {
+        if (status === "COMPLETED" || status === "FAILED") {
           break;
         }
       }
@@ -49,6 +49,6 @@ export function useImageStatus() {
     statusCache,
     getStatus,
     fetchStatus,
-    pollStatus
+    pollStatus,
   };
 }

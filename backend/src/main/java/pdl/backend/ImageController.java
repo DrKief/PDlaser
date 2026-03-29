@@ -49,11 +49,16 @@ public class ImageController {
     Path path = Paths.get(imageDirectoryPath);
     if (!Files.exists(path) || !Files.isDirectory(path)) {
       log.error("FATAL: Required 'images' directory not found at {}", path.toAbsolutePath());
-      throw new IllegalStateException("Besoin 1: Le dossier images n'existe pas ou n'est pas un dossier valide.");
+      throw new IllegalStateException(
+        "Besoin 1: Le dossier images n'existe pas ou n'est pas un dossier valide."
+      );
     }
 
     if (!Files.isWritable(path)) {
-      log.error("FATAL: Required 'images' directory is not writable. Path: {}", path.toAbsolutePath());
+      log.error(
+        "FATAL: Required 'images' directory is not writable. Path: {}",
+        path.toAbsolutePath()
+      );
       throw new IllegalStateException("directory not writable");
     }
   }
@@ -78,7 +83,7 @@ public class ImageController {
     if (image.isEmpty() || image.get().getData() == null) {
       throw new GlobalExceptionHandler.RecordNotFoundException("Image not found");
     }
-    
+
     return ResponseEntity.ok()
       .header(HttpHeaders.CONTENT_TYPE, "image/" + image.get().getFormat())
       .body(image.get().getData());
@@ -98,7 +103,6 @@ public class ImageController {
     @RequestParam("file") MultipartFile file,
     @RequestParam(value = "keywords", required = false) List<String> keywords
   ) throws Exception {
-    
     if (file.isEmpty()) {
       throw new GlobalExceptionHandler.BadRequestException("File is empty");
     }
@@ -123,11 +127,16 @@ public class ImageController {
 
     return ResponseEntity.status(HttpStatus.ACCEPTED)
       .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-      .body(Map.of(
-          "message", "Image accepted for background processing.",
-          "id", id,
-          "status_url", "/images/" + id + "/status"
-      ));
+      .body(
+        Map.of(
+          "message",
+          "Image accepted for background processing.",
+          "id",
+          id,
+          "status_url",
+          "/images/" + id + "/status"
+        )
+      );
   }
 
   @GetMapping(value = "/{id}/status", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -136,13 +145,13 @@ public class ImageController {
     if (status == null) {
       throw new GlobalExceptionHandler.RecordNotFoundException("Image not found");
     }
-    
+
     if ("COMPLETED".equals(status) || "FAILED".equals(status)) {
-        return ResponseEntity.ok()
-          .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-          .body(Map.of("id", id, "extraction_status", status));
+      return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+        .body(Map.of("id", id, "extraction_status", status));
     }
-    
+
     return statusNotifier.waitFor(id, 10000L);
   }
 
@@ -229,7 +238,7 @@ public class ImageController {
     if (ids.isEmpty()) {
       throw new GlobalExceptionHandler.RecordNotFoundException("Aucune image existante trouvée.");
     }
-    
+
     return ResponseEntity.ok()
       .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
       .body(ids);

@@ -14,25 +14,38 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 public class GlobalExceptionHandler {
 
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-  public abstract static sealed class DomainException extends RuntimeException 
-      permits RecordNotFoundException, BadRequestException, UnsupportedFileException {
-      
+
+  public abstract static sealed class DomainException
+    extends RuntimeException
+    permits RecordNotFoundException, BadRequestException, UnsupportedFileException
+  {
+
     protected DomainException(String message) {
       super(message, null, false, false);
     }
   }
 
   public static final class RecordNotFoundException extends DomainException {
-    public RecordNotFoundException(String message) { super(message); }
+
+    public RecordNotFoundException(String message) {
+      super(message);
+    }
   }
 
   public static final class BadRequestException extends DomainException {
-    public BadRequestException(String message) { super(message); }
+
+    public BadRequestException(String message) {
+      super(message);
+    }
   }
 
   public static final class UnsupportedFileException extends DomainException {
-    public UnsupportedFileException(String message) { super(message); }
+
+    public UnsupportedFileException(String message) {
+      super(message);
+    }
   }
+
   private ProblemDetail buildProblemDetail(HttpStatus status, String detail) {
     ProblemDetail pd = ProblemDetail.forStatusAndDetail(status, detail);
     String traceId = UUID.randomUUID().toString();
@@ -58,7 +71,10 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(MaxUploadSizeExceededException.class)
   public ProblemDetail handleMaxSizeException(MaxUploadSizeExceededException ex) {
-    return buildProblemDetail(HttpStatus.CONTENT_TOO_LARGE, "File too large. Maximum upload size exceeded.");
+    return buildProblemDetail(
+      HttpStatus.CONTENT_TOO_LARGE,
+      "File too large. Maximum upload size exceeded."
+    );
   }
 
   @ExceptionHandler(EmptyResultDataAccessException.class)
@@ -70,7 +86,10 @@ public class GlobalExceptionHandler {
   public ProblemDetail handleGenericException(Exception ex) {
     String traceId = UUID.randomUUID().toString();
     log.error("Unhandled server exception [TraceID: {}]", traceId, ex);
-    ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error");
+    ProblemDetail pd = ProblemDetail.forStatusAndDetail(
+      HttpStatus.INTERNAL_SERVER_ERROR,
+      "Internal server error"
+    );
     pd.setProperty("traceId", traceId);
     return pd;
   }

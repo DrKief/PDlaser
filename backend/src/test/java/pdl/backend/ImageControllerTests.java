@@ -15,8 +15,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Import;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -51,18 +51,18 @@ public class ImageControllerTests {
     Image image = new Image("test.jpg", new byte[0]);
     image.setFormat("jpeg");
     when(imageService.getImageWithData(0)).thenReturn(Optional.of(image));
-    
+
     this.mockMvc.perform(get("/images/0"))
       .andExpect(status().isOk())
       .andExpect(content().contentType(MediaType.IMAGE_JPEG_VALUE));
-      
+
     verify(imageService).getImageWithData(0);
   }
 
   @Test
   public void getImageShouldReturnNotFound() throws Exception {
     when(imageService.getImageWithData(99)).thenReturn(Optional.empty());
-    
+
     this.mockMvc.perform(get("/images/99")).andExpect(status().isNotFound());
   }
 
@@ -94,7 +94,7 @@ public class ImageControllerTests {
   @Test
   public void deleteImageShouldReturnSuccess() throws Exception {
     when(imageService.deleteImage(0)).thenReturn(true);
-    
+
     this.mockMvc.perform(delete("/images/0")).andExpect(status().isNoContent());
     verify(imageService).deleteImage(0);
   }
@@ -102,7 +102,7 @@ public class ImageControllerTests {
   @Test
   public void deleteImageShouldReturnNotFound() throws Exception {
     when(imageService.deleteImage(99)).thenReturn(false);
-    
+
     this.mockMvc.perform(delete("/images/99")).andExpect(status().isNotFound());
   }
 }

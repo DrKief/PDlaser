@@ -38,8 +38,12 @@ public class BackendApplication implements AsyncConfigurer {
   @Override
   public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
     return (throwable, method, params) -> {
-      log.error("CRITICAL: Unhandled async exception in method: {} with parameters: {}", 
-          method.getName(), params, throwable);
+      log.error(
+        "CRITICAL: Unhandled async exception in method: {} with parameters: {}",
+        method.getName(),
+        params,
+        throwable
+      );
     };
   }
 }

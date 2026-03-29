@@ -18,7 +18,11 @@ public class AsyncImageProcessor {
   private final ImageDao imageDao;
   private final ImageStatusNotifier statusNotifier;
 
-  public AsyncImageProcessor(JdbcTemplate jdbcTemplate, ImageDao imageDao, ImageStatusNotifier statusNotifier) {
+  public AsyncImageProcessor(
+    JdbcTemplate jdbcTemplate,
+    ImageDao imageDao,
+    ImageStatusNotifier statusNotifier
+  ) {
     this.jdbcTemplate = jdbcTemplate;
     this.imageDao = imageDao;
     this.statusNotifier = statusNotifier;

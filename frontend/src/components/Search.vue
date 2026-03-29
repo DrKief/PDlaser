@@ -68,12 +68,12 @@ const performAttributeSearch = async () => {
     const response = await http.get("/images/search", { params });
     // Response is List<Long> ids
     attributeResults.value = response.data;
-    
+
     // Check status for each found image
-    attributeResults.value.forEach(id => {
-      if (!statusCache[id] || statusCache[id] === 'PENDING') {
-        fetchStatus(id).then(status => {
-          if (status && status !== 'COMPLETE' && status !== 'FAILED') {
+    attributeResults.value.forEach((id) => {
+      if (!statusCache[id] || statusCache[id] === "PENDING") {
+        fetchStatus(id).then((status) => {
+          if (status && status !== "COMPLETE" && status !== "FAILED") {
             pollStatus(id);
           }
         });
@@ -107,13 +107,13 @@ const performSimilaritySearch = async () => {
     });
     // Response is List<Map<String, Object>> e.g. [{id: 1, score: 0.5}, ...]
     similarityResults.value = response.data;
-    
+
     // Check status for results
-    similarityResults.value.forEach(res => {
+    similarityResults.value.forEach((res) => {
       const id = res.id;
-      if (!statusCache[id] || statusCache[id] === 'PENDING') {
-        fetchStatus(id).then(status => {
-          if (status && status !== 'COMPLETE' && status !== 'FAILED') {
+      if (!statusCache[id] || statusCache[id] === "PENDING") {
+        fetchStatus(id).then((status) => {
+          if (status && status !== "COMPLETE" && status !== "FAILED") {
             pollStatus(id);
           }
         });
@@ -131,9 +131,9 @@ onMounted(() => {
 
 watch(selectedSourceImageId, (newId) => {
   if (newId !== null) {
-    if (!statusCache[newId] || statusCache[newId] === 'PENDING') {
-      fetchStatus(newId).then(status => {
-        if (status && status !== 'COMPLETE' && status !== 'FAILED') {
+    if (!statusCache[newId] || statusCache[newId] === "PENDING") {
+      fetchStatus(newId).then((status) => {
+        if (status && status !== "COMPLETE" && status !== "FAILED") {
           pollStatus(newId);
         }
       });
@@ -202,7 +202,11 @@ watch(selectedSourceImageId, (newId) => {
               {{ img.id }} - {{ img.name }}
             </option>
           </select>
-          <div v-if="selectedSourceImageId !== null && statusCache?.[selectedSourceImageId]" :class="['status-badge', statusCache[selectedSourceImageId]!.toLowerCase()]" style="margin-top: 8px; width: fit-content;">
+          <div
+            v-if="selectedSourceImageId !== null && statusCache?.[selectedSourceImageId]"
+            :class="['status-badge', statusCache[selectedSourceImageId]!.toLowerCase()]"
+            style="margin-top: 8px; width: fit-content"
+          >
             Source Status: {{ statusCache[selectedSourceImageId] }}
           </div>
         </div>
@@ -229,7 +233,10 @@ watch(selectedSourceImageId, (newId) => {
       <div v-if="similarityResults.length > 0" class="results-grid">
         <div v-for="(res, idx) in similarityResults" :key="idx" class="result-item">
           <img :src="getImageUrl(res.id)" loading="lazy" />
-          <div v-if="statusCache?.[res.id]" :class="['status-badge', statusCache[res.id]!.toLowerCase()]">
+          <div
+            v-if="statusCache?.[res.id]"
+            :class="['status-badge', statusCache[res.id]!.toLowerCase()]"
+          >
             Status: {{ statusCache[res.id] }}
           </div>
           <div class="caption">

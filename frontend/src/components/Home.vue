@@ -35,10 +35,10 @@ const onSelectChange = async () => {
     try {
       await http.get(`/images/${selectedImageId.value}`);
       console.log(`Requested image ${selectedImageId.value}`);
-      
+
       const id = selectedImageId.value;
-      fetchStatus(id).then(status => {
-        if (status && status !== 'COMPLETE' && status !== 'FAILED') {
+      fetchStatus(id).then((status) => {
+        if (status && status !== "COMPLETE" && status !== "FAILED") {
           pollStatus(id);
         }
       });
@@ -63,7 +63,10 @@ const onSelectChange = async () => {
 
     <div v-if="selectedImageId !== null" class="image-display">
       <h3>Selected: {{ selectedImageName }}</h3>
-      <div v-if="selectedImageId !== null && statusCache?.[selectedImageId]" :class="['status-badge', statusCache[selectedImageId]!.toLowerCase()]">
+      <div
+        v-if="selectedImageId !== null && statusCache?.[selectedImageId]"
+        :class="['status-badge', statusCache[selectedImageId]!.toLowerCase()]"
+      >
         Status: {{ statusCache[selectedImageId] }}
       </div>
       <img :src="getImageUrl(selectedImageId)" :alt="selectedImageName" />

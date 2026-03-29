@@ -27,7 +27,7 @@ const onFileChange = (event: Event) => {
     }
     selectedFile.value = target.files[0] as File;
     previewUrl.value = URL.createObjectURL(selectedFile.value);
-    
+
     // Hide previous status and messages when a new image is being previewed
     lastUploadedId.value = null;
     message.value = "";
@@ -63,7 +63,7 @@ const handleAction = async () => {
       const id = response.data.id;
       message.value = `Upload accepted! Processing started...`;
       lastUploadedId.value = id;
-      
+
       statusCache[id] = "PENDING";
       pollStatus(id);
 
@@ -129,7 +129,10 @@ const handleAction = async () => {
     <div class="message-container" v-if="message || lastUploadedId">
       <p v-if="message">{{ message }}</p>
       <div v-if="lastUploadedId !== null && statusCache?.[lastUploadedId]" class="status-indicator">
-        Processing Status: <span :class="['status-badge', statusCache[lastUploadedId]!.toLowerCase()]">{{ statusCache[lastUploadedId] }}</span>
+        Processing Status:
+        <span :class="['status-badge', statusCache[lastUploadedId]!.toLowerCase()]">{{
+          statusCache[lastUploadedId]
+        }}</span>
       </div>
     </div>
   </div>

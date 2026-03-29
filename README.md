@@ -2,8 +2,8 @@
 
 **Live Environments:**
 
-* 🟢 **Production URL:** `http://bigpdlaser.duckdns.org/`
-* 🟡 **Preview URL:** `https://bigpreviewlaser.duckdns.org/gallery`
+- 🟢 **Production URL:** `http://bigpdlaser.duckdns.org/`
+- 🟡 **Preview URL:** `https://bigpreviewlaser.duckdns.org/gallery`
 
 ## Overview
 
@@ -49,7 +49,7 @@ For active development without running a local database, you can tunnel into the
 
 1. **Establish the SSH Tunnel:**
    ```bash
-   ssh <your_cremi_username>@ssh.emi.u-bordeaux.fr -L 5432:pgsql:5432
+   ssh < your_cremi_username > @ssh.emi.u-bordeaux.fr -L 5432:pgsql:5432
    ```
 2. **Run the Backend:**
    ```bash
@@ -75,6 +75,6 @@ For active development without running a local database, you can tunnel into the
 
 ### Environment Database Strategies
 
-*   **Local Development (`docker-compose.yml`):** The database operates entirely in memory (`tmpfs`). This is an intentional design choice to guarantee a pristine state upon every container restart. Hardcoded fallback credentials are used to allow zero-configuration onboarding for developers. Database migrations are handled automatically via **Flyway**.
-*   **Preview Environment (`docker-compose.preview.yml`):** Similar to local development, the preview database is ephemeral (`tmpfs`). This ensures that Pull Request deployments are tested against fresh database schemas without residual data corruption.
-*   **Production Environment (`docker-compose.prod.yml`):** Utilizes persistent Docker volumes (`pgdata`) to ensure complete data durability. All credentials must be securely injected via environment variables.
+- **Local Development (`docker-compose.yml`):** The database operates entirely in memory (`tmpfs`). This is an intentional design choice to guarantee a pristine state upon every container restart. Hardcoded fallback credentials are used to allow zero-configuration onboarding for developers. Database migrations are handled automatically via **Flyway**.
+- **Preview Environment (`docker-compose.preview.yml`):** Similar to local development, the preview database is ephemeral (`tmpfs`). This ensures that Pull Request deployments are tested against fresh database schemas without residual data corruption.
+- **Production Environment (`docker-compose.prod.yml`):** Utilizes persistent Docker volumes (`pgdata`) to ensure complete data durability. All credentials must be securely injected via environment variables.

@@ -22,6 +22,17 @@ const fetchImages = async () => {
       ...img,
       keywords: img.keywords || [], // ensure array
     }));
+
+    // Check status for each image
+    images.value.forEach((img) => {
+      if (!statusCache[img.id] || statusCache[img.id] === "PENDING") {
+        fetchStatus(img.id).then((status) => {
+          if (status && status !== "COMPLETE" && status !== "FAILED") {
+            pollStatus(img.id);
+          }
+        });
+      }
+    });
   } catch (error) {
     console.error("Error fetching images for gallery:", error);
   }
@@ -86,6 +97,13 @@ const deleteImage = async (id: number) => {
       <div v-for="image in images" :key="image.id" class="image-card">
         <img :src="getImageUrl(image)" :alt="image.name" />
         <p class="image-name">{{ image.name }}</p>
+
+        <div
+          v-if="statusCache?.[image.id]"
+          :class="['status-badge', statusCache[image.id]!.toLowerCase()]"
+        >
+          Status: {{ statusCache[image.id] }}
+        </div>
 
         <div class="keywords-section">
           <div class="tags">
