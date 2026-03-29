@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import http from "../http-api";
+import { useImageStatus } from "../composables/useImageStatus";
 
 interface Image {
   id: number;
@@ -10,6 +11,7 @@ interface Image {
 
 const images = ref<Image[]>([]);
 const keywordInputs = ref<Record<number, string>>({});
+const { statusCache, fetchStatus, pollStatus } = useImageStatus();
 
 onMounted(async () => {
   fetchImages();
@@ -64,7 +66,7 @@ const addKeyword = async (image: Image) => {
 const removeKeyword = async (image: Image, tag: string) => {
   try {
     await http.delete(`/images/${image.id}/keywords`, {
-      params: { tag }
+      params: { tag },
     });
     // Remove from local state
     image.keywords = image.keywords.filter((t: string) => t !== tag);
@@ -109,7 +111,9 @@ const deleteImage = async (id: number) => {
           <div class="tags">
             <span v-for="tag in image.keywords" :key="tag" class="tag">
               {{ tag }}
-              <button class="remove-tag-btn" @click="removeKeyword(image, tag)" title="Remove tag">&times;</button>
+              <button class="remove-tag-btn" @click="removeKeyword(image, tag)" title="Remove tag">
+                &times;
+              </button>
             </span>
           </div>
           <div class="add-keyword">
