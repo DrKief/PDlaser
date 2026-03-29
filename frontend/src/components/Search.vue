@@ -52,7 +52,7 @@ const performAttributeSearch = async () => {
   if (searchKeywords.value) params.keywords = searchKeywords.value;
 
   if (Object.keys(params).length === 0) {
-    attributeError.value = "ERR: MISSING_PARAMETERS";
+    attributeError.value = "Please enter at least one criteria.";
     return;
   }
 
@@ -71,10 +71,9 @@ const performAttributeSearch = async () => {
     });
   } catch (e: any) {
     if (e.response && e.response.status === 404) {
-      // Not strictly an error in UX, just 0 results
       attributeResults.value = [];
     } else {
-      attributeError.value = "ERR: QUERY_FAILED";
+      attributeError.value = "Search failed due to a network or server error.";
       console.error(e);
     }
   }
@@ -86,7 +85,7 @@ const performSimilaritySearch = async () => {
   hasSearchedSim.value = true;
 
   if (selectedSourceImageId.value === null) {
-    similarityError.value = "ERR: NO_SOURCE_SELECTED";
+    similarityError.value = "Please select a reference image.";
     return;
   }
 
@@ -110,7 +109,7 @@ const performSimilaritySearch = async () => {
       }
     });
   } catch (e: any) {
-    similarityError.value = "ERR: SIMILARITY_SCAN_FAILED";
+    similarityError.value = "Similarity scan failed.";
     console.error(e);
   }
 };
@@ -134,13 +133,13 @@ watch(selectedSourceImageId, (newId) => {
 
 <template>
   <div class="view-header">
-    <h2>Query Interface</h2>
-    <p class="view-description">Filter database by specific parameters or visual algorithms.</p>
+    <h2>Search</h2>
+    <p class="view-description">Find images by specific parameters or visual similarity.</p>
   </div>
 
   <div class="query-layout">
     
-    <!-- Segmented Control for Tabs -->
+    <!-- Physical-style Segmented Control -->
     <div class="segmented-control" role="tablist">
       <button 
         role="tab" 
@@ -148,7 +147,7 @@ watch(selectedSourceImageId, (newId) => {
         :class="['segment-btn', { active: activeTab === 'attributes' }]" 
         @click="activeTab = 'attributes'"
       >
-        PARAMETRIC_FILTER
+        By Attributes
       </button>
       <button 
         role="tab"
@@ -156,7 +155,7 @@ watch(selectedSourceImageId, (newId) => {
         :class="['segment-btn', { active: activeTab === 'similarity' }]" 
         @click="activeTab = 'similarity'"
       >
-        ALGORITHMIC_MATCH
+        By Similarity
       </button>
     </div>
 
@@ -164,8 +163,8 @@ watch(selectedSourceImageId, (newId) => {
     <div v-show="activeTab === 'attributes'" class="panel query-panel">
       <div class="search-form">
         <div class="field-group">
-          <label>Identifier (Contains)</label>
-          <input v-model="searchName" placeholder="e.g. subject_alpha" @keyup.enter="performAttributeSearch" />
+          <label>Name contains</label>
+          <input v-model="searchName" placeholder="e.g. landscape" @keyup.enter="performAttributeSearch" />
         </div>
         <div class="field-group">
           <label>File Format</label>
@@ -176,75 +175,75 @@ watch(selectedSourceImageId, (newId) => {
           <input v-model="searchSize" placeholder="e.g. 800*600" @keyup.enter="performAttributeSearch" />
         </div>
         <div class="field-group">
-          <label>Assigned Tags</label>
-          <input v-model="searchKeywords" placeholder="e.g. confidential, verified" @keyup.enter="performAttributeSearch"/>
+          <label>Tags</label>
+          <input v-model="searchKeywords" placeholder="e.g. nature, outdoors" @keyup.enter="performAttributeSearch"/>
         </div>
       </div>
 
-      <button @click="performAttributeSearch" class="btn btn-primary full-width mt-lg">
-        EXECUTE FILTER
-      </button>
+      <div class="action-row">
+        <button @click="performAttributeSearch" class="btn btn-primary">
+          Search Images
+        </button>
+      </div>
 
-      <div v-if="attributeError" class="system-error mt-md">> {{ attributeError }}</div>
+      <div v-if="attributeError" class="error-msg">{{ attributeError }}</div>
     </div>
 
     <!-- SIMILARITY SEARCH PANEL -->
     <div v-show="activeTab === 'similarity'" class="panel query-panel">
       <div class="search-form">
         <div class="field-group span-full">
-          <label>Reference Source</label>
+          <label>Reference Image</label>
           <select v-model="selectedSourceImageId">
-            <option :value="null">-- SELECT REFERENCE TARGET --</option>
+            <option :value="null">Choose reference image...</option>
             <option v-for="img in allImages" :key="img.id" :value="img.id">
-              REC_{{ String(img.id).padStart(4, '0') }} : {{ img.name }}
+              {{ img.name }} (ID: {{ img.id }})
             </option>
           </select>
-          <div
-            v-if="selectedSourceImageId !== null && statusCache?.[selectedSourceImageId]"
-            :class="['status-badge', 'mt-sm', statusCache[selectedSourceImageId]!.toLowerCase()]"
-          >
-            SRC_STATE: {{ statusCache[selectedSourceImageId] }}
+          <div v-if="selectedSourceImageId !== null && statusCache?.[selectedSourceImageId]" class="source-status">
+            Source status: <span :class="['status-badge', statusCache[selectedSourceImageId]!.toLowerCase()]">{{ statusCache[selectedSourceImageId] }}</span>
           </div>
         </div>
 
         <div class="field-group">
-          <label>Heuristic Vector</label>
+          <label>Algorithm</label>
           <select v-model="similarityAlgorithm">
-            <option value="gradient">SHAPE (GRADIENT_ORIENT)</option>
-            <option value="saturation">INTENSITY (SATURATION)</option>
-            <option value="rgb">SPECTRUM (RGB_DISTRIB)</option>
+            <option value="gradient">Gradient / Shape</option>
+            <option value="saturation">Saturation Intensity</option>
+            <option value="rgb">RGB Distribution</option>
           </select>
         </div>
 
         <div class="field-group">
-          <label>Limit Returns</label>
+          <label>Results Limit</label>
           <input v-model.number="similarityCount" type="number" min="1" max="50" @keyup.enter="performSimilaritySearch"/>
         </div>
       </div>
 
-      <button @click="performSimilaritySearch" class="btn btn-primary full-width mt-lg">
-        INITIATE DEEP SCAN
-      </button>
+      <div class="action-row">
+        <button @click="performSimilaritySearch" class="btn btn-primary">
+          Find Similar
+        </button>
+      </div>
 
-      <div v-if="similarityError" class="system-error mt-md">> {{ similarityError }}</div>
+      <div v-if="similarityError" class="error-msg">{{ similarityError }}</div>
     </div>
 
     <!-- RESULTS AREA -->
     <div class="results-area" v-if="(activeTab === 'attributes' && hasSearchedAttr) || (activeTab === 'similarity' && hasSearchedSim)">
-      <h3 class="results-header">Output Buffer</h3>
+      <h3 class="results-header">Results</h3>
       
-      <!-- Attribute Results -->
       <template v-if="activeTab === 'attributes'">
         <div v-if="attributeResults.length === 0 && !attributeError" class="empty-state">
-          No records match specified parameters.
+          No matches found for the specified criteria.
         </div>
         <div v-else class="results-grid">
-          <article v-for="id in attributeResults" :key="id" class="result-card">
+          <article v-for="id in attributeResults" :key="id" class="result-card panel">
             <div class="image-wrapper">
               <img :src="getImageUrl(id)" loading="lazy" />
             </div>
             <div class="result-meta">
-              <span class="record-id">REC_{{ String(id).padStart(4, '0') }}</span>
+              <span class="record-id">ID: {{ id }}</span>
               <div v-if="statusCache?.[id]" :class="['status-badge', statusCache[id]!.toLowerCase()]">
                 {{ statusCache[id] }}
               </div>
@@ -253,20 +252,19 @@ watch(selectedSourceImageId, (newId) => {
         </div>
       </template>
 
-      <!-- Similarity Results -->
       <template v-if="activeTab === 'similarity'">
         <div v-if="similarityResults.length === 0 && !similarityError" class="empty-state">
-          Scan complete. Zero matches found.
+          No similar images found.
         </div>
         <div v-else class="results-grid">
-          <article v-for="(res, idx) in similarityResults" :key="idx" class="result-card">
+          <article v-for="(res, idx) in similarityResults" :key="idx" class="result-card panel">
             <div class="image-wrapper">
               <img :src="getImageUrl(res.id)" loading="lazy" />
             </div>
             <div class="result-meta">
               <div class="meta-row">
-                <span class="record-id">REC_{{ String(res.id).padStart(4, '0') }}</span>
-                <span class="score">DEV: {{ typeof res.score === "number" ? res.score.toFixed(4) : res.score }}</span>
+                <span class="record-id">ID: {{ res.id }}</span>
+                <span class="score">Score: {{ typeof res.score === "number" ? res.score.toFixed(3) : res.score }}</span>
               </div>
               <div v-if="statusCache?.[res.id]" :class="['status-badge', statusCache[res.id]!.toLowerCase()]">
                 {{ statusCache[res.id] }}
@@ -287,9 +285,7 @@ watch(selectedSourceImageId, (newId) => {
 
 .view-description {
   color: var(--text-secondary);
-  font-family: var(--font-mono);
   font-size: 0.875rem;
-  margin-top: -0.5rem;
 }
 
 .query-layout {
@@ -299,36 +295,35 @@ watch(selectedSourceImageId, (newId) => {
   max-width: 900px;
 }
 
-/* Segmented Control */
+/* Segmented Control (Braun switch style) */
 .segmented-control {
   display: flex;
-  background: var(--bg-tertiary);
+  background: var(--bg-element);
   padding: 4px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-inset);
+  width: fit-content;
 }
 
 .segment-btn {
   flex: 1;
   background: transparent;
-  border: none;
-  box-shadow: none;
   color: var(--text-muted);
-  padding: 0.75rem;
+  padding: 0.5rem 1.5rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.875rem;
+  box-shadow: none;
 }
 
 .segment-btn:hover {
-  color: var(--text-primary);
   background: transparent;
-  box-shadow: none;
-  transform: none;
+  color: var(--text-primary);
 }
 
 .segment-btn.active {
-  background: var(--bg-primary);
-  color: var(--color-primary);
-  border: 1px solid var(--border-color);
-  box-shadow: 2px 2px 0 var(--border-color);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
 .query-panel {
@@ -339,6 +334,7 @@ watch(selectedSourceImageId, (newId) => {
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--space-md);
+  margin-bottom: var(--space-xl);
 }
 
 @media (min-width: 640px) {
@@ -351,63 +347,69 @@ watch(selectedSourceImageId, (newId) => {
   grid-column: 1 / -1;
 }
 
-.system-error {
+.source-status {
+  margin-top: var(--space-sm);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.error-msg {
   color: var(--color-danger);
-  font-family: var(--font-mono);
   font-size: 0.875rem;
-  padding: var(--space-sm);
-  background: color-mix(in oklch, var(--color-danger) 10%, transparent);
-  border: 1px dashed var(--color-danger);
+  margin-top: var(--space-md);
 }
 
 .results-header {
-  border-bottom: 2px solid var(--border-color);
+  border-bottom: 1px solid var(--border-subtle);
   padding-bottom: var(--space-sm);
   margin-top: var(--space-2xl);
-  font-family: var(--font-mono);
-  text-transform: uppercase;
+  font-size: 1.125rem;
 }
 
 .results-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: var(--space-md);
   margin-top: var(--space-lg);
 }
 
 .result-card {
-  border: 1px solid var(--border-color);
-  background: var(--bg-secondary);
+  padding: var(--space-sm);
   display: flex;
   flex-direction: column;
-  transition: transform 0.2s var(--ease-out-expo);
-}
-
-.result-card:hover {
-  border-color: var(--color-primary);
 }
 
 .image-wrapper {
   aspect-ratio: 1;
-  background: var(--bg-primary);
-  border-bottom: 1px solid var(--border-color);
+  background: var(--bg-element);
+  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-xs);
+  margin-bottom: var(--space-sm);
 }
 
 .image-wrapper img {
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
+  border-radius: 4px;
 }
 
 .result-meta {
-  padding: var(--space-sm);
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
+  padding: 0 var(--space-xs);
 }
 
 .meta-row {
@@ -416,19 +418,14 @@ watch(selectedSourceImageId, (newId) => {
   align-items: center;
 }
 
-.record-id, .score {
-  font-family: var(--font-mono);
+.record-id {
   font-size: 0.75rem;
-  color: var(--text-primary);
+  color: var(--text-secondary);
 }
 
 .score {
-  color: var(--color-primary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-accent);
 }
-
-/* Utilities */
-.full-width { width: 100%; }
-.mt-sm { margin-top: var(--space-sm); }
-.mt-md { margin-top: var(--space-md); }
-.mt-lg { margin-top: var(--space-lg); }
 </style>

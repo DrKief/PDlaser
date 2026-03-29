@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 
-const theme = ref("dark");
+const theme = ref("light"); // Defaulting to light as it best shows the Braun beige
 let audioCtx: AudioContext | null = null;
 
 const playPainSound = () => {
@@ -39,7 +39,7 @@ const handleGlobalClick = () => {
 
 const toggleCruelty = () => {
   if (theme.value === "cruelty") {
-    const prev = localStorage.getItem("lastNormalTheme") || "dark";
+    const prev = localStorage.getItem("lastNormalTheme") || "light";
     theme.value = prev;
   } else {
     localStorage.setItem("lastNormalTheme", theme.value);
@@ -51,13 +51,13 @@ const toggleCruelty = () => {
 
 const toggleTheme = () => {
   if (theme.value === "cruelty") {
-    const currentStored = localStorage.getItem("lastNormalTheme") || "dark";
-    const newTheme = currentStored === "dark" ? "light" : "dark";
+    const currentStored = localStorage.getItem("lastNormalTheme") || "light";
+    const newTheme = currentStored === "light" ? "dark" : "light";
     localStorage.setItem("lastNormalTheme", newTheme);
     return;
   }
 
-  theme.value = theme.value === "dark" ? "light" : "dark";
+  theme.value = theme.value === "light" ? "dark" : "light";
   document.documentElement.className = theme.value;
   localStorage.setItem("theme", theme.value);
 };
@@ -66,10 +66,10 @@ onMounted(() => {
   const savedTheme = localStorage.getItem("theme");
   if (savedTheme) {
     theme.value = savedTheme;
-  } else if (window.matchMedia("(prefers-color-scheme: light)").matches) {
-    theme.value = "light";
-  } else {
+  } else if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
     theme.value = "dark";
+  } else {
+    theme.value = "light";
   }
   document.documentElement.className = theme.value;
   document.addEventListener("click", handleGlobalClick);
@@ -80,22 +80,22 @@ onMounted(() => {
   <div class="app-layout">
     <header class="app-header">
       <div class="logo">
-        <h1>{{ theme === "cruelty" ? "პდლ-ლ3" : "PDL_L3" }}</h1>
-        <span class="system-status">SYS.ONLINE</span>
+        <div class="logo-mark"></div>
+        <h1>{{ theme === "cruelty" ? "პდლ-ლ3" : "pdl." }}</h1>
       </div>
       
       <nav class="main-nav" aria-label="Main Navigation">
         <router-link class="nav-item" to="/">
-          {{ theme === "cruelty" ? "PADDED CELL" : "INDEX" }}
+          {{ theme === "cruelty" ? "PADDED CELL" : "Overview" }}
         </router-link>
         <router-link class="nav-item" to="/upload">
-          {{ theme === "cruelty" ? "CRANIAL INTRUSION" : "INGEST" }}
+          {{ theme === "cruelty" ? "CRANIAL INTRUSION" : "Upload" }}
         </router-link>
         <router-link class="nav-item" to="/gallery">
-          {{ theme === "cruelty" ? "FADED MEMORIES" : "ARCHIVE" }}
+          {{ theme === "cruelty" ? "FADED MEMORIES" : "Gallery" }}
         </router-link>
         <router-link class="nav-item" to="/search">
-          {{ theme === "cruelty" ? "PAVLOVIAN RECALL" : "QUERY" }}
+          {{ theme === "cruelty" ? "PAVLOVIAN RECALL" : "Search" }}
         </router-link>
       </nav>
     </header>
@@ -106,25 +106,15 @@ onMounted(() => {
       </suspense>
     </main>
 
-    <footer class="app-footer">
-      <p class="footer-text">
-        {{
-          theme === "cruelty"
-            ? "CONSUMER SOFTPRODUCTS // L3 // 666"
-            : "CONSUMER SOFTPRODUCTS // L3 // CREATED BY L. KOUMASONAS & N. SEMENOV"
-        }}
-      </p>
-    </footer>
-
     <!-- Floating System Controls -->
     <div class="system-controls">
-      <button class="control-btn cruelty-toggle" @click="toggleCruelty" title="Override Protocol" aria-label="Toggle Cruelty Theme">
-        <span v-if="theme === 'cruelty'">😇</span>
-        <span v-else>⚠️</span>
+      <button class="control-btn" @click="toggleCruelty" aria-label="Toggle Cruelty Theme">
+        <span v-if="theme === 'cruelty'">○</span>
+        <span v-else>●</span>
       </button>
-      <button class="control-btn theme-toggle" @click="toggleTheme" title="Cycle Optics" aria-label="Toggle Light/Dark Theme">
-        <span v-if="theme === 'light'">🌙</span>
-        <span v-else>☀️</span>
+      <button class="control-btn" @click="toggleTheme" aria-label="Toggle Theme">
+        <span v-if="theme === 'light'">◐</span>
+        <span v-else>◑</span>
       </button>
     </div>
   </div>
@@ -134,7 +124,7 @@ onMounted(() => {
 .app-layout {
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 4rem);
+  min-height: calc(100vh - 5rem);
 }
 
 .app-header {
@@ -142,7 +132,6 @@ onMounted(() => {
   flex-direction: column;
   gap: var(--space-lg);
   margin-bottom: var(--space-2xl);
-  border-bottom: 2px solid var(--border-color);
   padding-bottom: var(--space-md);
 }
 
@@ -150,94 +139,88 @@ onMounted(() => {
   .app-header {
     flex-direction: row;
     justify-content: space-between;
-    align-items: flex-end;
+    align-items: center;
   }
 }
 
 .logo {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-md);
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.logo-mark {
+  width: 16px;
+  height: 16px;
+  background-color: var(--color-accent);
+  border-radius: 50%;
 }
 
 .logo h1 {
   margin: 0;
-  color: var(--color-primary);
-}
-
-.system-status {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--text-secondary);
-  background: var(--bg-tertiary);
-  padding: 2px 6px;
-  border: 1px solid var(--border-color);
+  font-size: 1.5rem;
+  letter-spacing: -0.05em;
+  font-weight: 700;
 }
 
 .main-nav {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-sm);
+  gap: var(--space-xs);
+  background: var(--bg-surface);
+  padding: 4px;
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-surface);
 }
 
 .nav-item {
-  font-family: var(--font-mono);
   font-size: 0.875rem;
-  font-weight: bold;
-  text-transform: uppercase;
+  font-weight: 500;
   color: var(--text-secondary);
   text-decoration: none;
-  padding: var(--space-xs) var(--space-sm);
-  border: 1px solid transparent;
-  transition: all 0.2s var(--ease-out-expo);
+  padding: 6px 16px;
+  border-radius: var(--radius-pill);
+  transition: all 0.2s var(--ease-standard);
 }
 
 .nav-item:hover {
   color: var(--text-primary);
-  border-color: var(--border-color);
-  background: var(--bg-secondary);
 }
 
 .nav-item.router-link-active {
-  color: var(--color-primary);
-  border-color: var(--color-primary);
-  background: color-mix(in oklch, var(--color-primary) 10%, transparent);
+  color: var(--text-on-accent);
+  background: var(--color-accent);
+  box-shadow: 0 2px 8px color-mix(in oklch, var(--color-accent) 40%, transparent);
 }
 
 .app-main {
   flex: 1;
 }
 
-.app-footer {
-  margin-top: var(--space-2xl);
-  padding-top: var(--space-lg);
-  border-top: 1px solid var(--border-color);
-}
-
-.footer-text {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  text-align: right;
-  margin: 0;
-}
-
-/* Floating Controls */
+/* Floating Controls (designed like physical dials/buttons) */
 .system-controls {
   position: fixed;
   bottom: var(--space-lg);
-  right: var(--space-lg);
+  left: var(--space-lg);
   display: flex;
-  flex-direction: column;
   gap: var(--space-sm);
   z-index: 50;
 }
 
 .control-btn {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   padding: 0;
-  border-radius: 0;
-  background: var(--bg-primary);
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow-surface);
+  font-size: 1.2rem;
+}
+
+.control-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
 }
 </style>

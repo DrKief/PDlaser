@@ -35,7 +35,7 @@ const onFileChange = (event: Event) => {
 
 const handleAction = async () => {
   if (!selectedFile.value) {
-    message.value = "ERR: NO_FILE_SELECTED";
+    message.value = "Please select a file first.";
     return;
   }
 
@@ -51,14 +51,14 @@ const handleAction = async () => {
   }
 
   try {
-    message.value = "UPLOADING...";
+    message.value = "Uploading...";
     const response = await http.post("/images", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
 
     if (response.status === 202) {
       const id = response.data.id;
-      message.value = `ACCEPTED. ASSIGNED ID_${id}`;
+      message.value = `Upload complete. Processing image...`;
       lastUploadedId.value = id;
 
       statusCache[id] = "PENDING";
@@ -66,7 +66,7 @@ const handleAction = async () => {
 
       resetForm();
     } else if (response.status === 200 || response.status === 201) {
-      message.value = "UPLOAD SUCCESSFUL.";
+      message.value = "Upload successful.";
       resetForm();
     }
   } catch (error: any) {
@@ -74,11 +74,11 @@ const handleAction = async () => {
     if (error.response) {
       const status = error.response.status;
       const data = error.response.data;
-      if (status === 413) message.value = "ERR: PAYLOAD_TOO_LARGE";
-      else if (status === 415) message.value = "ERR: UNSUPPORTED_MEDIA_TYPE";
-      else message.value = `ERR: ${data.error || "UPLOAD_FAILED"}`;
+      if (status === 413) message.value = "File is too large.";
+      else if (status === 415) message.value = "Unsupported media type. Please upload an image.";
+      else message.value = data.error || "Upload failed.";
     } else {
-      message.value = "ERR: NETWORK_FAILURE";
+      message.value = "Network error. Upload failed.";
     }
   }
 };
@@ -97,18 +97,18 @@ const resetForm = () => {
 
 <template>
   <div class="view-header" v-if="mode === 'upload'">
-    <h2>Ingest Protocol</h2>
-    <p class="view-description">Submit visual data for processing and storage.</p>
+    <h2>Upload</h2>
+    <p class="view-description">Add new images to the database.</p>
   </div>
 
-  <div class="upload-container panel">
-    <div class="form-layout">
+  <div class="upload-container">
+    <div class="form-layout panel">
       
-      <!-- Custom File Input -->
+      <!-- Minimalist File Input -->
       <div class="file-drop-zone" :class="{ 'has-file': selectedFile }">
         <label for="file-input" class="file-label">
-          <span class="icon">⇪</span>
-          <span class="text" v-if="!selectedFile">SELECT TARGET FILE</span>
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <span class="text" v-if="!selectedFile">Choose a file</span>
           <span class="text success" v-else>{{ selectedFile.name }} ({{ (selectedFile.size / 1024).toFixed(1) }}KB)</span>
         </label>
         <input type="file" id="file-input" class="sr-only" @change="onFileChange" accept="image/*" />
@@ -120,36 +120,33 @@ const resetForm = () => {
           id="keywords-input"
           v-model="keywords"
           type="text"
-          placeholder="e.g. classification, target, scan"
+          placeholder="e.g. landscape, architecture"
           :disabled="!selectedFile"
         />
       </div>
 
       <button class="btn btn-primary btn-large" @click="handleAction" :disabled="!selectedFile">
-        {{ mode === "search" ? "EXECUTE QUERY" : "INITIALIZE INGEST" }}
+        {{ mode === "search" ? "Select for Search" : "Upload Image" }}
       </button>
 
       <!-- Feedback Area -->
       <div class="feedback-area" v-if="message || lastUploadedId">
-        <div class="system-message" :class="{'error': message.startsWith('ERR')}">
-          > {{ message }}
-        </div>
+        <p class="system-message" :class="{'error': message.toLowerCase().includes('fail') || message.toLowerCase().includes('large')}">
+          {{ message }}
+        </p>
         
         <div v-if="lastUploadedId !== null && statusCache?.[lastUploadedId]" class="status-tracker">
-          <span>PROCESS_STATE:</span>
           <span :class="['status-badge', statusCache[lastUploadedId]!.toLowerCase()]">
             {{ statusCache[lastUploadedId] }}
           </span>
         </div>
       </div>
-
     </div>
 
     <!-- Preview -->
-    <div v-if="previewUrl" class="preview-panel">
-      <div class="preview-header">OPTICAL_PREVIEW</div>
+    <div v-if="previewUrl" class="preview-panel panel">
       <div class="image-frame">
-        <img :src="previewUrl" alt="Target preview" />
+        <img :src="previewUrl" alt="Image preview" />
       </div>
     </div>
   </div>
@@ -162,16 +159,14 @@ const resetForm = () => {
 
 .view-description {
   color: var(--text-secondary);
-  font-family: var(--font-mono);
   font-size: 0.875rem;
-  margin-top: -0.5rem;
 }
 
 .upload-container {
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--space-xl);
-  max-width: 800px;
+  gap: var(--space-lg);
+  max-width: 900px;
 }
 
 @media (min-width: 768px) {
@@ -187,21 +182,21 @@ const resetForm = () => {
 }
 
 .file-drop-zone {
-  border: 2px dashed var(--border-color);
-  border-radius: var(--radius-sm);
-  background: var(--bg-primary);
-  transition: all 0.2s var(--ease-out-expo);
+  border-radius: var(--radius-md);
+  background: var(--bg-element);
+  transition: all 0.2s var(--ease-standard);
   text-align: center;
+  box-shadow: var(--shadow-inset);
 }
 
 .file-drop-zone:hover {
-  border-color: var(--color-primary);
-  background: color-mix(in oklch, var(--color-primary) 5%, var(--bg-primary));
+  background: var(--bg-element-hover);
 }
 
 .file-drop-zone.has-file {
-  border-style: solid;
-  border-color: var(--color-success);
+  background: color-mix(in oklch, var(--color-success) 10%, var(--bg-surface));
+  box-shadow: none;
+  border: 1px solid color-mix(in oklch, var(--color-success) 30%, transparent);
 }
 
 .file-label {
@@ -209,19 +204,21 @@ const resetForm = () => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--space-xl);
+  padding: var(--space-2xl) var(--space-md);
   cursor: pointer;
   margin: 0;
 }
 
 .file-label .icon {
-  font-size: 2rem;
+  width: 32px;
+  height: 32px;
   margin-bottom: var(--space-sm);
   color: var(--text-muted);
+  transition: color 0.2s;
 }
 
 .file-drop-zone:hover .icon {
-  color: var(--color-primary);
+  color: var(--color-accent);
 }
 
 .file-drop-zone.has-file .icon {
@@ -229,9 +226,8 @@ const resetForm = () => {
 }
 
 .file-label .text {
-  font-family: var(--font-mono);
   font-size: 0.875rem;
-  font-weight: bold;
+  font-weight: 500;
 }
 
 .file-label .success {
@@ -239,20 +235,18 @@ const resetForm = () => {
 }
 
 .btn-large {
-  padding: 1rem;
+  padding: 0.875rem;
   font-size: 1rem;
 }
 
 .feedback-area {
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  padding: var(--space-md);
-  font-family: var(--font-mono);
-  font-size: 0.875rem;
+  margin-top: var(--space-sm);
+  text-align: center;
 }
 
 .system-message {
   color: var(--text-secondary);
+  font-size: 0.875rem;
   margin-bottom: var(--space-sm);
 }
 
@@ -262,38 +256,32 @@ const resetForm = () => {
 
 .status-tracker {
   display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  color: var(--text-muted);
+  justify-content: center;
 }
 
 .preview-panel {
-  border: 1px solid var(--border-color);
-  background: var(--bg-primary);
-  display: flex;
-  flex-direction: column;
-}
-
-.preview-header {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  padding: var(--space-xs) var(--space-sm);
-  background: var(--bg-tertiary);
-  border-bottom: 1px solid var(--border-color);
-  color: var(--text-secondary);
-}
-
-.image-frame {
-  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--space-md);
 }
 
+.image-frame {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-element);
+  border-radius: var(--radius-sm);
+  padding: var(--space-md);
+  box-shadow: var(--shadow-inset);
+}
+
 .image-frame img {
   max-width: 100%;
-  max-height: 300px;
+  max-height: 400px;
   object-fit: contain;
+  border-radius: 4px;
 }
 </style>
