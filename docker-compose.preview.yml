@@ -10,6 +10,11 @@ services:
       - "5432"
     tmpfs:
       - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pdl_user -d pdl_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
   backend:
@@ -21,11 +26,12 @@ services:
       - DATABASE_NAME=pdl_db
       - DATABASE_USER=pdl_user
       - DATABASE_PASSWORD=${POSTGRES_PASSWORD:-preview_secure_password}
-      - APP_IMAGE_DIRECTORY=/app/src/main/resources/images
+      - APP_IMAGE_DIRECTORY=/var/lib/pdl/images
     expose:
       - "8080"
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
   frontend:
