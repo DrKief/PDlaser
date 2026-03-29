@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, watch } from "vue";
 import http from "../http-api";
+import { useImageStatus } from "../composables/useImageStatus";
 
 interface Image {
   id: number;
@@ -8,6 +9,7 @@ interface Image {
 }
 
 const activeTab = ref<"attributes" | "similarity">("attributes");
+const { statusCache, fetchStatus, pollStatus } = useImageStatus();
 
 // --- Attribute Search State ---
 const searchName = ref("");
@@ -66,6 +68,17 @@ const performAttributeSearch = async () => {
     const response = await http.get("/images/search", { params });
     // Response is List<Long> ids
     attributeResults.value = response.data;
+    
+    // Check status for each found image
+    attributeResults.value.forEach(id => {
+      if (!statusCache[id] || statusCache[id] === 'PENDING') {
+        fetchStatus(id).then(status => {
+          if (status && status !== 'COMPLETE' && status !== 'FAILED') {
+            pollStatus(id);
+          }
+        });
+      }
+    });
   } catch (e: any) {
     if (e.response && e.response.status === 404) {
       attributeError.value = "No images found matching criteria.";
@@ -94,6 +107,18 @@ const performSimilaritySearch = async () => {
     });
     // Response is List<Map<String, Object>> e.g. [{id: 1, score: 0.5}, ...]
     similarityResults.value = response.data;
+    
+    // Check status for results
+    similarityResults.value.forEach(res => {
+      const id = res.id;
+      if (!statusCache[id] || statusCache[id] === 'PENDING') {
+        fetchStatus(id).then(status => {
+          if (status && status !== 'COMPLETE' && status !== 'FAILED') {
+            pollStatus(id);
+          }
+        });
+      }
+    });
   } catch (e: any) {
     similarityError.value = "Similarity search failed.";
     console.error(e);
@@ -102,6 +127,18 @@ const performSimilaritySearch = async () => {
 
 onMounted(() => {
   fetchAllImages();
+});
+
+watch(selectedSourceImageId, (newId) => {
+  if (newId !== null) {
+    if (!statusCache[newId] || statusCache[newId] === 'PENDING') {
+      fetchStatus(newId).then(status => {
+        if (status && status !== 'COMPLETE' && status !== 'FAILED') {
+          pollStatus(newId);
+        }
+      });
+    }
+  }
 });
 </script>
 
@@ -146,6 +183,9 @@ onMounted(() => {
       <div v-if="attributeResults.length > 0" class="results-grid">
         <div v-for="id in attributeResults" :key="id" class="result-item">
           <img :src="getImageUrl(id)" loading="lazy" />
+          <div v-if="statusCache?.[id]" :class="['status-badge', statusCache[id]!.toLowerCase()]">
+            Status: {{ statusCache[id] }}
+          </div>
           <div class="caption">ID: {{ id }}</div>
         </div>
       </div>
@@ -162,6 +202,9 @@ onMounted(() => {
               {{ img.id }} - {{ img.name }}
             </option>
           </select>
+          <div v-if="selectedSourceImageId !== null && statusCache?.[selectedSourceImageId]" :class="['status-badge', statusCache[selectedSourceImageId]!.toLowerCase()]" style="margin-top: 8px; width: fit-content;">
+            Source Status: {{ statusCache[selectedSourceImageId] }}
+          </div>
         </div>
 
         <div class="field-group">
@@ -186,6 +229,9 @@ onMounted(() => {
       <div v-if="similarityResults.length > 0" class="results-grid">
         <div v-for="(res, idx) in similarityResults" :key="idx" class="result-item">
           <img :src="getImageUrl(res.id)" loading="lazy" />
+          <div v-if="statusCache?.[res.id]" :class="['status-badge', statusCache[res.id]!.toLowerCase()]">
+            Status: {{ statusCache[res.id] }}
+          </div>
           <div class="caption">
             Score: {{ typeof res.score === "number" ? res.score.toFixed(4) : res.score }}
           </div>
@@ -347,5 +393,32 @@ select {
   font-size: 0.9rem;
   padding: 0 5px 5px;
   font-family: var(--font-code, monospace);
+}
+
+.status-badge {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 12px;
+  margin: 0 auto 8px auto;
+  font-weight: bold;
+  text-transform: uppercase;
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+  display: inline-block;
+}
+
+.status-badge.complete {
+  background-color: #e6f4ea;
+  color: #2e7d32;
+}
+
+.status-badge.pending {
+  background-color: #fff3e0;
+  color: #f57c00;
+}
+
+.status-badge.failed {
+  background-color: #ffebee;
+  color: #c62828;
 }
 </style>

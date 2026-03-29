@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import http from "../http-api";
+import { useImageStatus } from "../composables/useImageStatus";
 
 interface Image {
   id: number;
@@ -10,6 +11,7 @@ interface Image {
 
 const images = ref<Image[]>([]);
 const keywordInputs = ref<Record<number, string>>({});
+const { statusCache, fetchStatus, pollStatus } = useImageStatus();
 
 onMounted(async () => {
   fetchImages();
@@ -22,6 +24,17 @@ const fetchImages = async () => {
       ...img,
       keywords: img.keywords || [], // ensure array
     }));
+
+    // Check status for each image
+    images.value.forEach(img => {
+      if (!statusCache[img.id] || statusCache[img.id] === 'PENDING') {
+        fetchStatus(img.id).then(status => {
+          if (status && status !== 'COMPLETE' && status !== 'FAILED') {
+            pollStatus(img.id);
+          }
+        });
+      }
+    });
   } catch (error) {
     console.error("Error fetching images for gallery:", error);
   }
@@ -73,6 +86,10 @@ const deleteImage = async (id: number) => {
       <div v-for="image in images" :key="image.id" class="image-card">
         <img :src="getImageUrl(image)" :alt="image.name" />
         <p class="image-name">{{ image.name }}</p>
+
+        <div v-if="statusCache?.[image.id]" :class="['status-badge', statusCache[image.id]!.toLowerCase()]">
+          Status: {{ statusCache[image.id] }}
+        </div>
 
         <div class="keywords-section">
           <div class="tags">
@@ -194,6 +211,32 @@ const deleteImage = async (id: number) => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.status-badge {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.status-badge.complete {
+  background-color: #e6f4ea;
+  color: #2e7d32;
+}
+
+.status-badge.pending {
+  background-color: #fff3e0;
+  color: #f57c00;
+}
+
+.status-badge.failed {
+  background-color: #ffebee;
+  color: #c62828;
 }
 
 .delete-btn {

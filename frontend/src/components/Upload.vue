@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import http from "../http-api";
+import { useImageStatus } from "../composables/useImageStatus";
 
 const props = defineProps({
   mode: {
@@ -15,6 +16,8 @@ const selectedFile = ref<File | null>(null);
 const previewUrl = ref<string | null>(null);
 const keywords = ref("");
 const message = ref("");
+const lastUploadedId = ref<number | null>(null);
+const { statusCache, pollStatus } = useImageStatus();
 
 const onFileChange = (event: Event) => {
   const target = event.target as HTMLInputElement;
@@ -24,6 +27,10 @@ const onFileChange = (event: Event) => {
     }
     selectedFile.value = target.files[0] as File;
     previewUrl.value = URL.createObjectURL(selectedFile.value);
+    
+    // Hide previous status and messages when a new image is being previewed
+    lastUploadedId.value = null;
+    message.value = "";
   }
 };
 
@@ -52,8 +59,14 @@ const handleAction = async () => {
       },
     });
 
-    if (response.status === 200 || response.status === 201) {
-      message.value = "Upload successful!";
+    if (response.status === 202) {
+      const id = response.data.id;
+      message.value = `Upload accepted! Processing started...`;
+      lastUploadedId.value = id;
+      
+      statusCache[id] = "PENDING";
+      pollStatus(id);
+
       selectedFile.value = null;
       keywords.value = "";
       if (previewUrl.value) {
@@ -63,10 +76,30 @@ const handleAction = async () => {
       // Reset input if needed
       const input = document.getElementById("file-input") as HTMLInputElement;
       if (input) input.value = "";
+    } else if (response.status === 200 || response.status === 201) {
+      // Fallback in case it somehow still returns 200/201 without async
+      message.value = "Upload successful!";
+      selectedFile.value = null;
+      keywords.value = "";
+      if (previewUrl.value) {
+        URL.revokeObjectURL(previewUrl.value);
+        previewUrl.value = null;
+      }
+      const input = document.getElementById("file-input") as HTMLInputElement;
+      if (input) input.value = "";
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
-    message.value = "Upload failed.";
+    if (error.response) {
+      const status = error.response.status;
+      const data = error.response.data;
+      if (status === 413) message.value = "File too large.";
+      else if (status === 415) message.value = "Unsupported Media Type. Must be an image.";
+      else if (status === 400) message.value = data.error || "Bad Request.";
+      else message.value = data.error || "Upload failed.";
+    } else {
+      message.value = "Upload failed.";
+    }
   }
 };
 </script>
@@ -93,7 +126,12 @@ const handleAction = async () => {
     <div v-if="previewUrl" class="image-preview">
       <img :src="previewUrl" alt="Selected image" />
     </div>
-    <p v-if="message">{{ message }}</p>
+    <div class="message-container" v-if="message || lastUploadedId">
+      <p v-if="message">{{ message }}</p>
+      <div v-if="lastUploadedId !== null && statusCache?.[lastUploadedId]" class="status-indicator">
+        Processing Status: <span :class="['status-badge', statusCache[lastUploadedId]!.toLowerCase()]">{{ statusCache[lastUploadedId] }}</span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -175,5 +213,40 @@ button:disabled {
   height: auto;
   border-radius: 8px;
   border: 1px solid var(--border-color);
+}
+
+.message-container {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.status-indicator {
+  margin-top: 8px;
+  font-size: 0.9rem;
+}
+
+.status-badge {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.status-badge.complete {
+  background-color: #e6f4ea;
+  color: #2e7d32;
+}
+
+.status-badge.pending {
+  background-color: #fff3e0;
+  color: #f57c00;
+}
+
+.status-badge.failed {
+  background-color: #ffebee;
+  color: #c62828;
 }
 </style>

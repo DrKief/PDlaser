@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
 import http from "../http-api";
+import { useImageStatus } from "../composables/useImageStatus";
 
 interface Image {
   id: number;
@@ -9,6 +10,7 @@ interface Image {
 
 const images = ref<Image[]>([]);
 const selectedImageId = ref<number | null>(null);
+const { statusCache, fetchStatus, pollStatus } = useImageStatus();
 
 onMounted(async () => {
   try {
@@ -33,6 +35,13 @@ const onSelectChange = async () => {
     try {
       await http.get(`/images/${selectedImageId.value}`);
       console.log(`Requested image ${selectedImageId.value}`);
+      
+      const id = selectedImageId.value;
+      fetchStatus(id).then(status => {
+        if (status && status !== 'COMPLETE' && status !== 'FAILED') {
+          pollStatus(id);
+        }
+      });
     } catch (e) {
       console.error(e);
     }
@@ -54,6 +63,9 @@ const onSelectChange = async () => {
 
     <div v-if="selectedImageId !== null" class="image-display">
       <h3>Selected: {{ selectedImageName }}</h3>
+      <div v-if="selectedImageId !== null && statusCache?.[selectedImageId]" :class="['status-badge', statusCache[selectedImageId]!.toLowerCase()]">
+        Status: {{ statusCache[selectedImageId] }}
+      </div>
       <img :src="getImageUrl(selectedImageId)" :alt="selectedImageName" />
     </div>
   </div>
@@ -130,5 +142,31 @@ option {
   border: 1px solid var(--border-color);
   border-radius: 4px;
   margin-top: 10px;
+}
+
+.status-badge {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 12px;
+  margin-top: 8px;
+  font-weight: bold;
+  text-transform: uppercase;
+  background-color: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.status-badge.complete {
+  background-color: #e6f4ea;
+  color: #2e7d32;
+}
+
+.status-badge.pending {
+  background-color: #fff3e0;
+  color: #f57c00;
+}
+
+.status-badge.failed {
+  background-color: #ffebee;
+  color: #c62828;
 }
 </style>
