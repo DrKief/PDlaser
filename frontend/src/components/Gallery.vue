@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import http from "../http-api";
-import { useImageStatus } from "../composables/useImageStatus";
 
 interface Image {
   id: number;
@@ -11,7 +10,6 @@ interface Image {
 
 const images = ref<Image[]>([]);
 const keywordInputs = ref<Record<number, string>>({});
-const { statusCache, fetchStatus, pollStatus } = useImageStatus();
 
 onMounted(async () => {
   fetchImages();
@@ -24,17 +22,6 @@ const fetchImages = async () => {
       ...img,
       keywords: img.keywords || [], // ensure array
     }));
-
-    // Check status for each image
-    images.value.forEach(img => {
-      if (!statusCache[img.id] || statusCache[img.id] === 'PENDING') {
-        fetchStatus(img.id).then(status => {
-          if (status && status !== 'COMPLETE' && status !== 'FAILED') {
-            pollStatus(img.id);
-          }
-        });
-      }
-    });
   } catch (error) {
     console.error("Error fetching images for gallery:", error);
   }
@@ -63,6 +50,19 @@ const addKeyword = async (image: Image) => {
   }
 };
 
+const removeKeyword = async (image: Image, tag: string) => {
+  try {
+    await http.delete(`/images/${image.id}/keywords`, {
+      params: { tag }
+    });
+    // Remove from local state
+    image.keywords = image.keywords.filter((t: string) => t !== tag);
+  } catch (error) {
+    console.error(`Error removing keyword from image ${image.id}:`, error);
+    alert("Failed to remove keyword.");
+  }
+};
+
 const deleteImage = async (id: number) => {
   if (!confirm("Are you sure you want to permanently delete this file?")) {
     return;
@@ -87,13 +87,12 @@ const deleteImage = async (id: number) => {
         <img :src="getImageUrl(image)" :alt="image.name" />
         <p class="image-name">{{ image.name }}</p>
 
-        <div v-if="statusCache?.[image.id]" :class="['status-badge', statusCache[image.id]!.toLowerCase()]">
-          Status: {{ statusCache[image.id] }}
-        </div>
-
         <div class="keywords-section">
           <div class="tags">
-            <span v-for="tag in image.keywords" :key="tag" class="tag">{{ tag }}</span>
+            <span v-for="tag in image.keywords" :key="tag" class="tag">
+              {{ tag }}
+              <button class="remove-tag-btn" @click="removeKeyword(image, tag)" title="Remove tag">&times;</button>
+            </span>
           </div>
           <div class="add-keyword">
             <input
@@ -173,6 +172,27 @@ const deleteImage = async (id: number) => {
   border-radius: 12px; /* Pill shape */
   font-weight: 500;
   border: 1px solid var(--border-color);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.remove-tag-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 1.1em;
+  line-height: 0.5;
+  padding: 0;
+  cursor: pointer;
+  margin: 0;
+  box-shadow: none;
+}
+
+.remove-tag-btn:hover {
+  color: var(--color-danger);
+  transform: none;
+  background: none;
 }
 
 .add-keyword {
@@ -211,32 +231,6 @@ const deleteImage = async (id: number) => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.status-badge {
-  font-size: 0.75rem;
-  padding: 4px 8px;
-  border-radius: 12px;
-  margin-bottom: 12px;
-  font-weight: bold;
-  text-transform: uppercase;
-  background-color: var(--bg-tertiary);
-  color: var(--text-secondary);
-}
-
-.status-badge.complete {
-  background-color: #e6f4ea;
-  color: #2e7d32;
-}
-
-.status-badge.pending {
-  background-color: #fff3e0;
-  color: #f57c00;
-}
-
-.status-badge.failed {
-  background-color: #ffebee;
-  color: #c62828;
 }
 
 .delete-btn {
