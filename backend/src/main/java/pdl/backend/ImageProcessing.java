@@ -15,7 +15,11 @@ import java.util.List;
 
 public class ImageProcessing {
 
-  public static BufferedImage resizeImageLanczos3(BufferedImage inputImage, int targetWidth, int targetHeight) {
+  public static BufferedImage resizeImageLanczos3(
+    BufferedImage inputImage,
+    int targetWidth,
+    int targetHeight
+  ) {
     ResampleOp resampleOp = new ResampleOp(targetWidth, targetHeight, ResampleOp.FILTER_LANCZOS);
     return resampleOp.filter(inputImage, null);
   }

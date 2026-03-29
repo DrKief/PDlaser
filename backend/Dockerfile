@@ -12,8 +12,8 @@ WORKDIR /app
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 # Fix: Create /var/lib/pdl/images and assign ownership to appuser
-RUN mkdir -p /app/src/main/resources/images /var/lib/pdl/images && \
-    chown -R appuser:appgroup /app /var/lib/pdl/images
+RUN mkdir -p /app/src/main/resources/images /var/lib/pdl/images \
+  && chown -R appuser:appgroup /app /var/lib/pdl/images
 
 USER appuser
 COPY --from=build --chown=appuser:appgroup /app/target/*.jar app.jar

@@ -40,7 +40,19 @@
   --arrow-icon: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23e0e0e0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
 
   /* Apply Body Defaults */
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Oxygen,
+    Ubuntu,
+    Cantarell,
+    "Open Sans",
+    "Helvetica Neue",
+    sans-serif;
   color: var(--text-primary);
   background-color: var(--bg-primary);
 }
@@ -216,8 +228,13 @@
 }
 
 @keyframes footer-bounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
 }
 
 /* Cruelty Floating Buttons should also be fixed if needed or let them float */
@@ -241,7 +258,9 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
-  transition: background-color 0.3s, color 0.3s;
+  transition:
+    background-color 0.3s,
+    color 0.3s;
 }
 
 a {
@@ -262,8 +281,8 @@ h1 {
 }
 
 h2 {
-    font-weight: 600;
-    letter-spacing: -0.01em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 button {
@@ -276,13 +295,17 @@ button {
   background-color: var(--bg-secondary);
   color: var(--text-primary);
   cursor: pointer;
-  transition: border-color 0.25s, background-color 0.3s, color 0.3s, transform 0.1s;
+  transition:
+    border-color 0.25s,
+    background-color 0.3s,
+    color 0.3s,
+    transform 0.1s;
 }
 button:hover {
   border-color: var(--border-focus);
 }
 button:active {
-    transform: scale(0.98); /* Slight press effect */
+  transform: scale(0.98); /* Slight press effect */
 }
 button:focus,
 button:focus-visible {
@@ -294,23 +317,31 @@ button:focus-visible {
   background-color: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg, 12px); /* Rounder cards */
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Pleasant depth */
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.1),
+    0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Pleasant depth */
 }
 
-input, select, textarea {
-    border-radius: var(--radius-sm, 6px);
-    border: 1px solid var(--border-color);
-    padding: 0.6em;
-    font-family: inherit;
-    background-color: var(--bg-primary);
-    color: var(--text-primary);
-    transition: border-color 0.2s, box-shadow 0.2s;
+input,
+select,
+textarea {
+  border-radius: var(--radius-sm, 6px);
+  border: 1px solid var(--border-color);
+  padding: 0.6em;
+  font-family: inherit;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
 }
 
-input:focus, select:focus, textarea:focus {
-    outline: none;
-    border-color: var(--border-focus);
-    box-shadow: 0 0 0 3px rgba(66, 185, 131, 0.2); /* Soft green glow */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(66, 185, 131, 0.2); /* Soft green glow */
 }
 
 #app {

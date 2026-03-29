@@ -53,7 +53,9 @@ public class ImageService {
     // Fast header-only reading for initial metadata DB ingestion
     int width = 0;
     int height = 0;
-    try (ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(img.getData()))) {
+    try (
+      ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(img.getData()))
+    ) {
       Iterator<ImageReader> readers = ImageIO.getImageReaders(in);
       if (readers.hasNext()) {
         ImageReader reader = readers.next();
@@ -82,12 +84,14 @@ public class ImageService {
     }
 
     // Ensure async thread runs strictly AFTER data is globally committed
-    TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-      @Override
-      public void afterCommit() {
-        asyncProcessor.processImageDescriptors(img.getId(), img.getData());
+    TransactionSynchronizationManager.registerSynchronization(
+      new TransactionSynchronization() {
+        @Override
+        public void afterCommit() {
+          asyncProcessor.processImageDescriptors(img.getId(), img.getData());
+        }
       }
-    });
+    );
   }
 
   public Optional<Image> getImageWithData(long id) {

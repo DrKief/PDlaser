@@ -160,7 +160,6 @@ button:disabled {
   margin-top: 16px;
 }
 
-
 .keyword-input {
   padding: 8px;
   border: 1px solid var(--border-color);

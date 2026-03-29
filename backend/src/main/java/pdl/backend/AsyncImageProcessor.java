@@ -48,7 +48,7 @@ public class AsyncImageProcessor {
 
       jdbcTemplate.update(
         "INSERT INTO imagedescriptors (imageid, hogvector, hsvvector, rgbvector) VALUES (?, ?, ?, ?) " +
-        "ON CONFLICT (imageid) DO UPDATE SET hogvector = EXCLUDED.hogvector, hsvvector = EXCLUDED.hsvvector, rgbvector = EXCLUDED.rgbvector",
+          "ON CONFLICT (imageid) DO UPDATE SET hogvector = EXCLUDED.hogvector, hsvvector = EXCLUDED.hsvvector, rgbvector = EXCLUDED.rgbvector",
         id,
         new PGvector(hogData),
         new PGvector(hsvData),

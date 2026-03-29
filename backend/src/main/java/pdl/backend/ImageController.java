@@ -33,7 +33,11 @@ public class ImageController {
   private final ImageDao imageDao;
   private final ImageService imageService;
 
-  public ImageController(ImageRepository imageRepository, ImageDao imageDao, ImageService imageService) {
+  public ImageController(
+    ImageRepository imageRepository,
+    ImageDao imageDao,
+    ImageService imageService
+  ) {
     this.imageRepository = imageRepository;
     this.imageDao = imageDao;
     this.imageService = imageService;
@@ -127,23 +131,28 @@ public class ImageController {
       Image image = new Image(file.getOriginalFilename(), file.getBytes());
       imageService.processAndSaveImage(image, true);
       long id = image.getId();
-      
+
       if (keywords != null && !keywords.isEmpty()) {
         for (String k : keywords) {
           String[] splits = k.split(",");
           for (String tag : splits) {
-             imageDao.addKeyword(id, tag.trim());
+            imageDao.addKeyword(id, tag.trim());
           }
         }
       }
 
       return ResponseEntity.status(HttpStatus.ACCEPTED)
         .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-        .body(Map.of(
-          "message", "Image accepted for background processing.",
-          "id", id,
-          "status_url", "/images/" + id + "/status"
-        ));
+        .body(
+          Map.of(
+            "message",
+            "Image accepted for background processing.",
+            "id",
+            id,
+            "status_url",
+            "/images/" + id + "/status"
+          )
+        );
     } catch (Exception e) {
       log.error("Failed to upload image: " + file.getOriginalFilename(), e);
       return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

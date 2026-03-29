@@ -1,54 +1,63 @@
 # PDLaser - Image Management System (v3a)
 
 **Live Environments:**
-* 🟢 **Production URL:** `http://bigpdlaser.duckdns.org/`
-* 🟡 **Preview URL:** `https://bigpreviewlaser.duckdns.org/gallery`
+
+- 🟢 **Production URL:** `http://bigpdlaser.duckdns.org/`
+- 🟡 **Preview URL:** `https://bigpreviewlaser.duckdns.org/gallery`
 
 ## Overview
+
 PDLaser is a full-stack image management system built for the L3 Software Development Project. It allows users to upload, manage, tag, and search images based on metadata attributes or content similarity using advanced vector embeddings.
 
 **Tech Stack:**
-* **Backend:** Java 21, Spring Boot, Spring Data JDBC, BoofCV (Image Processing)
-* **Frontend:** Vue.js 3, TypeScript, Vite, Vue Router
-* **Database:** PostgreSQL 16 + `pgvector`
-* **Infrastructure:** Docker, Docker Compose, Nginx, Dokploy
+
+- **Backend:** Java 21, Spring Boot, Spring Data JDBC, BoofCV (Image Processing)
+- **Frontend:** Vue.js 3, TypeScript, Vite, Vue Router
+- **Database:** PostgreSQL 16 + `pgvector`
+- **Infrastructure:** Docker, Docker Compose, Nginx, Dokploy
 
 ## Documentation (Wiki)
-Detailed project documentation is maintained in our GitLab Wiki:
-* 📖 https://gitlab.emi.u-bordeaux.fr/pdl-l3/teams/2026/v3/v3a/-/wikis/home#api-reference
 
+Detailed project documentation is maintained in our GitLab Wiki:
+
+- 📖 https://gitlab.emi.u-bordeaux.fr/pdl-l3/teams/2026/v3/v3a/-/wikis/home#api-reference
 
 ## Getting Started
 
 ### Prerequisites
-* Docker & Docker Compose
-* Java JDK 21 & Maven 3.9+ (For local non-Docker dev)
-* Node.js 20+ (For local non-Docker dev)
+
+- Docker & Docker Compose
+- Java JDK 21 & Maven 3.9+ (For local non-Docker dev)
+- Node.js 20+ (For local non-Docker dev)
 
 ### Quickstart (Docker Containerized Environment)
+
 The easiest way to run the entire stack locally is via Docker Compose:
+
 ```bash
 # Build and start the database, backend, and frontend
 docker-compose up --build
 ```
-* **Frontend:** Available at `http://localhost:3000`
-* **Backend API:** Available at `http://localhost:8080`
-* **Database:** Exposed on port `5432`
+
+- **Frontend:** Available at `http://localhost:3000`
+- **Backend API:** Available at `http://localhost:8080`
+- **Database:** Exposed on port `5432`
 
 ### Local Development (CREMI Database Tunnel)
+
 For active development without running a local database, you can tunnel into the remote CREMI PostgreSQL server:
 
 1. **Establish the SSH Tunnel:**
    ```bash
-   ssh <your_cremi_username>@ssh.emi.u-bordeaux.fr -L 5432:pgsql:5432
+   ssh < your_cremi_username > @ssh.emi.u-bordeaux.fr -L 5432:pgsql:5432
    ```
 2. **Run the Backend:**
    ```bash
    cd backend
    DATABASE_USER="<your_cremi_username>" \
-   DATABASE_PASSWORD="<your_cremi_password>" \
-   DATABASE_NAME="<your_cremi_username>" \
-   ./mvnw clean spring-boot:run
+     DATABASE_PASSWORD="<your_cremi_password>" \
+     DATABASE_NAME="<your_cremi_username>" \
+     ./mvnw clean spring-boot:run
    ```
 3. **Run the Frontend:**
    ```bash
@@ -58,6 +67,7 @@ For active development without running a local database, you can tunnel into the
    ```
 
 ## Development Workflow
+
 1. **Issue Tracking:** Every task must be logged as a GitLab Issue.
 2. **Branching:** Work on isolated feature/fix branches directly from the issue.
 3. **Commits:** We enforce [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). (e.g., `feat: add image search`, `fix: correct nginx proxy`).

@@ -39,7 +39,11 @@ public class ImageDao {
 
   public String getStatus(long id) {
     try {
-      return jdbcTemplate.queryForObject("SELECT extraction_status FROM images WHERE id = ?", String.class, id);
+      return jdbcTemplate.queryForObject(
+        "SELECT extraction_status FROM images WHERE id = ?",
+        String.class,
+        id
+      );
     } catch (EmptyResultDataAccessException e) {
       return null;
     }
@@ -135,10 +139,14 @@ public class ImageDao {
 
     String sql =
       "WITH vector_matches AS (" +
-      "  SELECT imageid, " + vectorColumn + " <-> ? as distance " +
+      "  SELECT imageid, " +
+      vectorColumn +
+      " <-> ? as distance " +
       "  FROM imagedescriptors " +
       "  WHERE imageid != ? " +
-      "  ORDER BY " + vectorColumn + " <-> ? ASC LIMIT ?" +
+      "  ORDER BY " +
+      vectorColumn +
+      " <-> ? ASC LIMIT ?" +
       ") " +
       "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
       "FROM vector_matches v " +
@@ -177,9 +185,13 @@ public class ImageDao {
 
       String sql =
         "WITH vector_matches AS (" +
-        "  SELECT imageid, " + vectorColumn + " <-> ? as distance " +
+        "  SELECT imageid, " +
+        vectorColumn +
+        " <-> ? as distance " +
         "  FROM imagedescriptors " +
-        "  ORDER BY " + vectorColumn + " <-> ? ASC LIMIT ?" +
+        "  ORDER BY " +
+        vectorColumn +
+        " <-> ? ASC LIMIT ?" +
         ") " +
         "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
         "FROM vector_matches v " +
