@@ -2,8 +2,8 @@
 
 **Live Environments:**
 
-- 🟢 **Production URL:** `http://bigpdlaser.duckdns.org/`
-- 🟡 **Preview URL:** `https://bigpreviewlaser.duckdns.org/gallery`
+* 🟢 **Production URL:** `http://bigpdlaser.duckdns.org/`
+* 🟡 **Preview URL:** `https://bigpreviewlaser.duckdns.org/gallery`
 
 ## Overview
 
@@ -11,16 +11,16 @@ PDLaser is a full-stack image management system built for the L3 Software Develo
 
 **Tech Stack:**
 
-- **Backend:** Java 21, Spring Boot, Spring Data JDBC, BoofCV (Image Processing)
+- **Backend:** Java 21, Spring Boot, Spring Data JDBC, Flyway (Migrations), BoofCV (Image Processing)
 - **Frontend:** Vue.js 3, TypeScript, Vite, Vue Router
-- **Database:** PostgreSQL 16 + `pgvector`
+- **Database:** PostgreSQL 18 + `pgvector`
 - **Infrastructure:** Docker, Docker Compose, Nginx, Dokploy
 
 ## Documentation (Wiki)
 
 Detailed project documentation is maintained in our GitLab Wiki:
 
-- 📖 https://gitlab.emi.u-bordeaux.fr/pdl-l3/teams/2026/v3/v3a/-/wikis/home#api-reference
+- 📖 https://gitlab.emi.u-bordeaux.fr/pdl-l3/teams/2026/v3/v3a/-/wikis/home
 
 ## Getting Started
 
@@ -49,7 +49,7 @@ For active development without running a local database, you can tunnel into the
 
 1. **Establish the SSH Tunnel:**
    ```bash
-   ssh < your_cremi_username > @ssh.emi.u-bordeaux.fr -L 5432:pgsql:5432
+   ssh <your_cremi_username>@ssh.emi.u-bordeaux.fr -L 5432:pgsql:5432
    ```
 2. **Run the Backend:**
    ```bash
@@ -70,12 +70,11 @@ For active development without running a local database, you can tunnel into the
 
 1. **Issue Tracking:** Every task must be logged as a GitLab Issue.
 2. **Branching:** Work on isolated feature/fix branches directly from the issue.
-3. **Commits:** We enforce [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). (e.g., `feat: add image search`, `fix: correct nginx proxy`).
+3. **Commits:** We enforce [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
 4. **Integration:** Code must pass the GitLab CI/CD pipeline before merging to `preview` or `main`.
-
 
 ### Environment Database Strategies
 
-*   **Local Development (`docker-compose.yml`):** The database operates entirely in memory (`tmpfs`). This is an intentional design choice to guarantee a pristine state upon every container restart. Hardcoded fallback credentials are used to allow zero-configuration onboarding for developers.
-*   **Preview Environment (`docker-compose.preview.yml`):** Similar to local development, the preview database is ephemeral (`tmpfs`). This ensures that Pull Request deployments are tested against fresh database schemas without residual data corruption. Credentials and configurations (like `DDL_AUTO=validate`) are injected via CI/CD environment variables.
-*   **Production Environment (`docker-compose.prod.yml`):** Utilizes persistent Docker volumes (`pgdata`) to ensure complete data durability. All credentials must be securely injected via environment variables; there are no hardcoded fallbacks in this configuration.
+*   **Local Development (`docker-compose.yml`):** The database operates entirely in memory (`tmpfs`). This is an intentional design choice to guarantee a pristine state upon every container restart. Hardcoded fallback credentials are used to allow zero-configuration onboarding for developers. Database migrations are handled automatically via **Flyway**.
+*   **Preview Environment (`docker-compose.preview.yml`):** Similar to local development, the preview database is ephemeral (`tmpfs`). This ensures that Pull Request deployments are tested against fresh database schemas without residual data corruption.
+*   **Production Environment (`docker-compose.prod.yml`):** Utilizes persistent Docker volumes (`pgdata`) to ensure complete data durability. All credentials must be securely injected via environment variables.
