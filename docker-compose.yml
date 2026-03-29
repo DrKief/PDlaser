@@ -4,10 +4,12 @@ services:
     image: pgvector/pgvector:pg18
     environment:
       POSTGRES_USER: pdl_user
+      # Hardcoded fallback intended STRICTLY for local zero-config development
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pdl_secure_password}
       POSTGRES_DB: pdl_db
     ports:
       - "5432:5432"
+    # Ephemeral storage by design: ensures a clean database state on every local restart
     tmpfs:
       - /var/lib/postgresql
     healthcheck:

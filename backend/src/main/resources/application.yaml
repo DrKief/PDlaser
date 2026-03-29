@@ -1,6 +1,9 @@
 spring:
   config:
     import: optional:file:.env.properties
+  mvc:
+    problemdetails:
+      enabled: true
   datasource:
     url: jdbc:postgresql://${HOST_NAME:localhost}:5432/${DATABASE_NAME:pdl-db}
     username: ${DATABASE_USER:default}

@@ -24,17 +24,20 @@ public class AsyncImageProcessor {
 
   @Async("taskExecutor")
   public void processImageDescriptors(Long id, byte[] data) {
+    BufferedImage bimg = null;
+    BufferedImage resizedImage = null;
+
     try {
       imageDao.updateStatus(id, "PROCESSING");
 
-      BufferedImage bimg = ImageIO.read(new ByteArrayInputStream(data));
+      bimg = ImageIO.read(new ByteArrayInputStream(data));
       if (bimg == null) {
         log.warn("Could not decode image for ID: {}", id);
         imageDao.updateStatus(id, "FAILED");
         return;
       }
 
-      BufferedImage resizedImage = ImageProcessing.resizeImageLanczos3(bimg, 256, 256);
+      resizedImage = ImageProcessing.resizeImageLanczos3(bimg, 256, 256);
 
       float[] hogData = ImageProcessing.extractGlobalHog(resizedImage);
       float[] hsvData = ImageProcessing.extractHsvHistogram(resizedImage);
@@ -60,6 +63,13 @@ public class AsyncImageProcessor {
     } catch (Exception e) {
       log.error("Failed to process image descriptors asynchronously for ID: " + id, e);
       imageDao.updateStatus(id, "FAILED");
+    } finally {
+      if (bimg != null) {
+        bimg.flush();
+      }
+      if (resizedImage != null) {
+        resizedImage.flush();
+      }
     }
   }
 }

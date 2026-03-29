@@ -72,3 +72,10 @@ For active development without running a local database, you can tunnel into the
 2. **Branching:** Work on isolated feature/fix branches directly from the issue.
 3. **Commits:** We enforce [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/). (e.g., `feat: add image search`, `fix: correct nginx proxy`).
 4. **Integration:** Code must pass the GitLab CI/CD pipeline before merging to `preview` or `main`.
+
+
+### Environment Database Strategies
+
+*   **Local Development (`docker-compose.yml`):** The database operates entirely in memory (`tmpfs`). This is an intentional design choice to guarantee a pristine state upon every container restart. Hardcoded fallback credentials are used to allow zero-configuration onboarding for developers.
+*   **Preview Environment (`docker-compose.preview.yml`):** Similar to local development, the preview database is ephemeral (`tmpfs`). This ensures that Pull Request deployments are tested against fresh database schemas without residual data corruption. Credentials and configurations (like `DDL_AUTO=validate`) are injected via CI/CD environment variables.
+*   **Production Environment (`docker-compose.prod.yml`):** Utilizes persistent Docker volumes (`pgdata`) to ensure complete data durability. All credentials must be securely injected via environment variables; there are no hardcoded fallbacks in this configuration.
