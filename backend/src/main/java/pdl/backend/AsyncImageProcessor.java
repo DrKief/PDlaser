@@ -16,10 +16,12 @@ public class AsyncImageProcessor {
   private static final Logger log = LoggerFactory.getLogger(AsyncImageProcessor.class);
   private final JdbcTemplate jdbcTemplate;
   private final ImageDao imageDao;
+  private final ImageStatusNotifier statusNotifier;
 
-  public AsyncImageProcessor(JdbcTemplate jdbcTemplate, ImageDao imageDao) {
+  public AsyncImageProcessor(JdbcTemplate jdbcTemplate, ImageDao imageDao, ImageStatusNotifier statusNotifier) {
     this.jdbcTemplate = jdbcTemplate;
     this.imageDao = imageDao;
+    this.statusNotifier = statusNotifier;
   }
 
   @Async("taskExecutor")
@@ -29,11 +31,13 @@ public class AsyncImageProcessor {
 
     try {
       imageDao.updateStatus(id, "PROCESSING");
+      statusNotifier.notify(id, "PROCESSING");
 
       bimg = ImageIO.read(new ByteArrayInputStream(data));
       if (bimg == null) {
         log.warn("Could not decode image for ID: {}", id);
         imageDao.updateStatus(id, "FAILED");
+        statusNotifier.notify(id, "FAILED");
         return;
       }
 
@@ -59,10 +63,12 @@ public class AsyncImageProcessor {
       );
 
       imageDao.updateStatus(id, "COMPLETED");
+      statusNotifier.notify(id, "COMPLETED");
       log.info("Successfully processed descriptors asynchronously for image ID: {}", id);
     } catch (Exception e) {
       log.error("Failed to process image descriptors asynchronously for ID: " + id, e);
       imageDao.updateStatus(id, "FAILED");
+      statusNotifier.notify(id, "FAILED");
     } finally {
       if (bimg != null) {
         bimg.flush();

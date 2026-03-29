@@ -30,15 +30,18 @@ public class ImageController {
   private final ImageRepository imageRepository;
   private final ImageDao imageDao;
   private final ImageService imageService;
+  private final ImageStatusNotifier statusNotifier;
 
   public ImageController(
     ImageRepository imageRepository,
     ImageDao imageDao,
-    ImageService imageService
+    ImageService imageService,
+    ImageStatusNotifier statusNotifier
   ) {
     this.imageRepository = imageRepository;
     this.imageDao = imageDao;
     this.imageService = imageService;
+    this.statusNotifier = statusNotifier;
   }
 
   @PostConstruct
@@ -127,16 +130,20 @@ public class ImageController {
       ));
   }
 
-  @GetMapping("/{id}/status")
-  public ResponseEntity<?> getImageStatus(@PathVariable("id") long id) {
+  @GetMapping(value = "/{id}/status", produces = MediaType.APPLICATION_JSON_VALUE)
+  public Object getImageStatus(@PathVariable("id") long id) {
     String status = imageDao.getStatus(id);
     if (status == null) {
       throw new GlobalExceptionHandler.RecordNotFoundException("Image not found");
     }
     
-    return ResponseEntity.ok()
-      .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-      .body(Map.of("id", id, "extraction_status", status));
+    if ("COMPLETED".equals(status) || "FAILED".equals(status)) {
+        return ResponseEntity.ok()
+          .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+          .body(Map.of("id", id, "extraction_status", status));
+    }
+    
+    return statusNotifier.waitFor(id, 10000L);
   }
 
   @GetMapping("/{id}/metadata")

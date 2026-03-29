@@ -35,12 +35,15 @@ public class ImageControllerTests {
   @MockitoBean
   private ImageService imageService;
 
+  @MockitoBean
+  private ImageStatusNotifier statusNotifier;
+
   @Autowired
   private MockMvc mockMvc;
 
   @BeforeEach
   public void setUp() {
-    reset(imageRepository, imageDAO, imageService);
+    reset(imageRepository, imageDAO, imageService, statusNotifier);
   }
 
   @Test
