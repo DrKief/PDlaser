@@ -12,12 +12,16 @@ const images = ref<Image[]>([]);
 const selectedImageId = ref<number | null>(null);
 const { statusCache, fetchStatus, pollStatus } = useImageStatus();
 
+const isLoading = ref(true);
+
 onMounted(async () => {
   try {
     const response = await http.get("/images");
     images.value = response.data;
   } catch (error) {
     console.error(error);
+  } finally {
+    isLoading.value = false;
   }
 });
 
@@ -34,8 +38,6 @@ const onSelectChange = async () => {
   if (selectedImageId.value !== null) {
     try {
       await http.get(`/images/${selectedImageId.value}`);
-      console.log(`Requested image ${selectedImageId.value}`);
-
       const id = selectedImageId.value;
       fetchStatus(id).then((status) => {
         if (status && status !== "COMPLETE" && status !== "FAILED") {
@@ -50,126 +52,118 @@ const onSelectChange = async () => {
 </script>
 
 <template>
-  <div class="home-container">
-    <h2>Available images:</h2>
-    <div class="selection-container">
-      <select v-model="selectedImageId" @change="onSelectChange">
-        <option disabled :value="null">Please select an image</option>
+  <div class="view-header">
+    <h2>System Inspector</h2>
+    <p class="view-description">Select an ingested record to view current status and optics.</p>
+  </div>
+
+  <div v-if="isLoading" class="empty-state">Initializing datalink...</div>
+  <div v-else-if="images.length === 0" class="empty-state">
+    No records available. Navigate to INGEST to process a new image.
+  </div>
+  
+  <div v-else class="inspector-layout">
+    <div class="control-panel panel">
+      <label for="image-selector">Target Record</label>
+      <select id="image-selector" v-model="selectedImageId" @change="onSelectChange">
+        <option disabled :value="null">-- SELECT RECORD --</option>
         <option v-for="image in images" :key="image.id" :value="image.id">
-          {{ image.name }}
+          ID:{{ String(image.id).padStart(4, '0') }} - {{ image.name }}
         </option>
       </select>
     </div>
 
-    <div v-if="selectedImageId !== null" class="image-display">
-      <h3>Selected: {{ selectedImageName }}</h3>
-      <div
-        v-if="selectedImageId !== null && statusCache?.[selectedImageId]"
-        :class="['status-badge', statusCache[selectedImageId]!.toLowerCase()]"
-      >
-        Status: {{ statusCache[selectedImageId] }}
+    <div v-if="selectedImageId !== null" class="display-panel panel">
+      <div class="display-header">
+        <div class="record-info">
+          <h3>{{ selectedImageName }}</h3>
+          <span class="record-id">REC_{{ String(selectedImageId).padStart(4, '0') }}</span>
+        </div>
+        
+        <div
+          v-if="statusCache?.[selectedImageId]"
+          :class="['status-badge', statusCache[selectedImageId]!.toLowerCase()]"
+        >
+          {{ statusCache[selectedImageId] }}
+        </div>
       </div>
-      <img :src="getImageUrl(selectedImageId)" :alt="selectedImageName" />
+      
+      <div class="image-frame">
+        <img :src="getImageUrl(selectedImageId)" :alt="selectedImageName" loading="lazy" />
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.home-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  width: 100%;
+.view-header {
+  margin-bottom: var(--space-xl);
 }
 
-.selection-container {
-  margin: 20px 0;
-  border: 1px solid var(--border-color);
-  padding: 8px;
-  border-radius: 8px;
+.view-description {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  margin-top: -0.5rem;
+}
+
+.inspector-layout {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.control-panel {
+  max-width: 400px;
+}
+
+.display-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.display-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: var(--space-sm);
+}
+
+.record-info h3 {
+  margin: 0 0 4px 0;
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+}
+
+.record-id {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.image-frame {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  padding: var(--space-sm);
+  display: flex;
+  justify-content: center;
   align-items: center;
-  width: fit-content;
+  min-height: 300px;
+}
+
+.image-frame img {
+  max-width: 100%;
+  max-height: 60vh;
+  object-fit: contain;
 }
 
 select {
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background-color: transparent;
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  padding: 8px 36px 8px 16px;
-  border-radius: 4px;
-  font-family: inherit;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition:
-    background 0.2s,
-    border-color 0.2s,
-    color 0.2s;
-
-  /* Use variable for arrow to switch between light/dark versions */
   background-image: var(--arrow-icon);
   background-repeat: no-repeat;
-  background-position: right 10px center;
+  background-position: right 12px center;
   background-size: 16px;
-  min-width: 250px;
-}
-
-select:hover {
-  background-color: var(--bg-tertiary);
-}
-
-select:focus {
-  outline: none;
-  border-color: var(--color-primary);
-}
-
-option {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-}
-
-.image-display {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: 20px;
-  width: 100%;
-}
-
-.image-display img {
-  max-width: 100%;
-  max-height: 500px;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  margin-top: 10px;
-}
-
-.status-badge {
-  font-size: 0.75rem;
-  padding: 4px 8px;
-  border-radius: 12px;
-  margin-top: 8px;
-  font-weight: bold;
-  text-transform: uppercase;
-  background-color: var(--bg-tertiary);
-  color: var(--text-secondary);
-}
-
-.status-badge.complete {
-  background-color: #e6f4ea;
-  color: #2e7d32;
-}
-
-.status-badge.pending {
-  background-color: #fff3e0;
-  color: #f57c00;
-}
-
-.status-badge.failed {
-  background-color: #ffebee;
-  color: #c62828;
+  appearance: none;
 }
 </style>

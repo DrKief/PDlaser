@@ -15,21 +15,20 @@ const { statusCache, fetchStatus, pollStatus } = useImageStatus();
 const searchName = ref("");
 const searchFormat = ref("");
 const searchSize = ref("");
-const searchKeywords = ref(""); // comma separated
+const searchKeywords = ref("");
 const attributeResults = ref<number[]>([]);
 const attributeError = ref("");
+const hasSearchedAttr = ref(false);
 
 // --- Similarity Search State ---
 const allImages = ref<Image[]>([]);
 const selectedSourceImageId = ref<number | null>(null);
-// Set default to 'gradient' as in Controller
 const similarityAlgorithm = ref("gradient");
-// Set default min to 10 as in Controller
 const similarityCount = ref(10);
-const similarityResults = ref<any[]>([]); // API returns objects list
+const similarityResults = ref<any[]>([]);
 const similarityError = ref("");
+const hasSearchedSim = ref(false);
 
-// --- Helpers ---
 const fetchAllImages = async () => {
   try {
     const response = await http.get("/images");
@@ -41,35 +40,26 @@ const fetchAllImages = async () => {
 
 const getImageUrl = (id: number) => `/images/${id}`;
 
-// --- Actions ---
-
 const performAttributeSearch = async () => {
   attributeError.value = "";
   attributeResults.value = [];
+  hasSearchedAttr.value = true;
 
   const params: any = {};
   if (searchName.value) params.name = searchName.value;
   if (searchFormat.value) params.format = searchFormat.value;
   if (searchSize.value) params.size = searchSize.value;
-  if (searchKeywords.value) {
-    // Splitting manually to ensure proper list format if needed,
-    // though Spring often handles comma-separated strings for lists.
-    // Let's pass it as a comma-separated string first.
-    params.keywords = searchKeywords.value;
-  }
+  if (searchKeywords.value) params.keywords = searchKeywords.value;
 
-  // Don't search if empty
   if (Object.keys(params).length === 0) {
-    attributeError.value = "Please enter at least one search criteria.";
+    attributeError.value = "ERR: MISSING_PARAMETERS";
     return;
   }
 
   try {
     const response = await http.get("/images/search", { params });
-    // Response is List<Long> ids
     attributeResults.value = response.data;
 
-    // Check status for each found image
     attributeResults.value.forEach((id) => {
       if (!statusCache[id] || statusCache[id] === "PENDING") {
         fetchStatus(id).then((status) => {
@@ -81,9 +71,10 @@ const performAttributeSearch = async () => {
     });
   } catch (e: any) {
     if (e.response && e.response.status === 404) {
-      attributeError.value = "No images found matching criteria.";
+      // Not strictly an error in UX, just 0 results
+      attributeResults.value = [];
     } else {
-      attributeError.value = "Search failed.";
+      attributeError.value = "ERR: QUERY_FAILED";
       console.error(e);
     }
   }
@@ -92,9 +83,10 @@ const performAttributeSearch = async () => {
 const performSimilaritySearch = async () => {
   similarityError.value = "";
   similarityResults.value = [];
+  hasSearchedSim.value = true;
 
   if (selectedSourceImageId.value === null) {
-    similarityError.value = "Please select a source image.";
+    similarityError.value = "ERR: NO_SOURCE_SELECTED";
     return;
   }
 
@@ -105,10 +97,8 @@ const performSimilaritySearch = async () => {
         descriptor: similarityAlgorithm.value,
       },
     });
-    // Response is List<Map<String, Object>> e.g. [{id: 1, score: 0.5}, ...]
     similarityResults.value = response.data;
 
-    // Check status for results
     similarityResults.value.forEach((res) => {
       const id = res.id;
       if (!statusCache[id] || statusCache[id] === "PENDING") {
@@ -120,7 +110,7 @@ const performSimilaritySearch = async () => {
       }
     });
   } catch (e: any) {
-    similarityError.value = "Similarity search failed.";
+    similarityError.value = "ERR: SIMILARITY_SCAN_FAILED";
     console.error(e);
   }
 };
@@ -143,289 +133,302 @@ watch(selectedSourceImageId, (newId) => {
 </script>
 
 <template>
-  <div class="search-container">
-    <h2>Search Database</h2>
+  <div class="view-header">
+    <h2>Query Interface</h2>
+    <p class="view-description">Filter database by specific parameters or visual algorithms.</p>
+  </div>
 
-    <div class="tabs">
-      <button :class="{ active: activeTab === 'attributes' }" @click="activeTab = 'attributes'">
-        by Attributes
+  <div class="query-layout">
+    
+    <!-- Segmented Control for Tabs -->
+    <div class="segmented-control" role="tablist">
+      <button 
+        role="tab" 
+        :aria-selected="activeTab === 'attributes'"
+        :class="['segment-btn', { active: activeTab === 'attributes' }]" 
+        @click="activeTab = 'attributes'"
+      >
+        PARAMETRIC_FILTER
       </button>
-      <button :class="{ active: activeTab === 'similarity' }" @click="activeTab = 'similarity'">
-        by Similarity
+      <button 
+        role="tab"
+        :aria-selected="activeTab === 'similarity'"
+        :class="['segment-btn', { active: activeTab === 'similarity' }]" 
+        @click="activeTab = 'similarity'"
+      >
+        ALGORITHMIC_MATCH
       </button>
     </div>
 
     <!-- ATTRIBUTE SEARCH PANEL -->
-    <div v-if="activeTab === 'attributes'" class="panel">
-      <div class="search-grid">
+    <div v-show="activeTab === 'attributes'" class="panel query-panel">
+      <div class="search-form">
         <div class="field-group">
-          <label>Name (contains)</label>
-          <input v-model="searchName" placeholder="e.g. vacation" />
+          <label>Identifier (Contains)</label>
+          <input v-model="searchName" placeholder="e.g. subject_alpha" @keyup.enter="performAttributeSearch" />
         </div>
         <div class="field-group">
-          <label>Format</label>
-          <input v-model="searchFormat" placeholder="e.g. jpeg, png" />
+          <label>File Format</label>
+          <input v-model="searchFormat" placeholder="e.g. jpeg, png" @keyup.enter="performAttributeSearch"/>
         </div>
         <div class="field-group">
-          <label>Size</label>
-          <input v-model="searchSize" placeholder="e.g. 800*600" />
+          <label>Resolution</label>
+          <input v-model="searchSize" placeholder="e.g. 800*600" @keyup.enter="performAttributeSearch" />
         </div>
         <div class="field-group">
-          <label>Keywords</label>
-          <input v-model="searchKeywords" placeholder="e.g. nature, outdoors" />
+          <label>Assigned Tags</label>
+          <input v-model="searchKeywords" placeholder="e.g. confidential, verified" @keyup.enter="performAttributeSearch"/>
         </div>
       </div>
 
-      <button @click="performAttributeSearch" class="action-btn">SEARCH RECORDS</button>
+      <button @click="performAttributeSearch" class="btn btn-primary full-width mt-lg">
+        EXECUTE FILTER
+      </button>
 
-      <div v-if="attributeError" class="error">{{ attributeError }}</div>
-
-      <div v-if="attributeResults.length > 0" class="results-grid">
-        <div v-for="id in attributeResults" :key="id" class="result-item">
-          <img :src="getImageUrl(id)" loading="lazy" />
-          <div v-if="statusCache?.[id]" :class="['status-badge', statusCache[id]!.toLowerCase()]">
-            Status: {{ statusCache[id] }}
-          </div>
-          <div class="caption">ID: {{ id }}</div>
-        </div>
-      </div>
+      <div v-if="attributeError" class="system-error mt-md">> {{ attributeError }}</div>
     </div>
 
     <!-- SIMILARITY SEARCH PANEL -->
-    <div v-if="activeTab === 'similarity'" class="panel">
-      <div class="search-grid">
+    <div v-show="activeTab === 'similarity'" class="panel query-panel">
+      <div class="search-form">
         <div class="field-group span-full">
-          <label>Source Image</label>
+          <label>Reference Source</label>
           <select v-model="selectedSourceImageId">
-            <option :value="null">-- Select Image --</option>
+            <option :value="null">-- SELECT REFERENCE TARGET --</option>
             <option v-for="img in allImages" :key="img.id" :value="img.id">
-              {{ img.id }} - {{ img.name }}
+              REC_{{ String(img.id).padStart(4, '0') }} : {{ img.name }}
             </option>
           </select>
           <div
             v-if="selectedSourceImageId !== null && statusCache?.[selectedSourceImageId]"
-            :class="['status-badge', statusCache[selectedSourceImageId]!.toLowerCase()]"
-            style="margin-top: 8px; width: fit-content"
+            :class="['status-badge', 'mt-sm', statusCache[selectedSourceImageId]!.toLowerCase()]"
           >
-            Source Status: {{ statusCache[selectedSourceImageId] }}
+            SRC_STATE: {{ statusCache[selectedSourceImageId] }}
           </div>
         </div>
 
         <div class="field-group">
-          <label>Algorithm</label>
+          <label>Heuristic Vector</label>
           <select v-model="similarityAlgorithm">
-            <option value="gradient">Gradient / Orientation (Shape)</option>
-            <option value="saturation">Saturation (Color Intensity)</option>
-            <option value="rgb">RGB (Color Distribution)</option>
+            <option value="gradient">SHAPE (GRADIENT_ORIENT)</option>
+            <option value="saturation">INTENSITY (SATURATION)</option>
+            <option value="rgb">SPECTRUM (RGB_DISTRIB)</option>
           </select>
         </div>
 
         <div class="field-group">
-          <label>Result Count</label>
-          <input v-model.number="similarityCount" type="number" min="1" max="50" />
+          <label>Limit Returns</label>
+          <input v-model.number="similarityCount" type="number" min="1" max="50" @keyup.enter="performSimilaritySearch"/>
         </div>
       </div>
 
-      <button @click="performSimilaritySearch" class="action-btn">INITIATE SCAN</button>
+      <button @click="performSimilaritySearch" class="btn btn-primary full-width mt-lg">
+        INITIATE DEEP SCAN
+      </button>
 
-      <div v-if="similarityError" class="error">{{ similarityError }}</div>
+      <div v-if="similarityError" class="system-error mt-md">> {{ similarityError }}</div>
+    </div>
 
-      <div v-if="similarityResults.length > 0" class="results-grid">
-        <div v-for="(res, idx) in similarityResults" :key="idx" class="result-item">
-          <img :src="getImageUrl(res.id)" loading="lazy" />
-          <div
-            v-if="statusCache?.[res.id]"
-            :class="['status-badge', statusCache[res.id]!.toLowerCase()]"
-          >
-            Status: {{ statusCache[res.id] }}
-          </div>
-          <div class="caption">
-            Score: {{ typeof res.score === "number" ? res.score.toFixed(4) : res.score }}
-          </div>
+    <!-- RESULTS AREA -->
+    <div class="results-area" v-if="(activeTab === 'attributes' && hasSearchedAttr) || (activeTab === 'similarity' && hasSearchedSim)">
+      <h3 class="results-header">Output Buffer</h3>
+      
+      <!-- Attribute Results -->
+      <template v-if="activeTab === 'attributes'">
+        <div v-if="attributeResults.length === 0 && !attributeError" class="empty-state">
+          No records match specified parameters.
         </div>
-      </div>
+        <div v-else class="results-grid">
+          <article v-for="id in attributeResults" :key="id" class="result-card">
+            <div class="image-wrapper">
+              <img :src="getImageUrl(id)" loading="lazy" />
+            </div>
+            <div class="result-meta">
+              <span class="record-id">REC_{{ String(id).padStart(4, '0') }}</span>
+              <div v-if="statusCache?.[id]" :class="['status-badge', statusCache[id]!.toLowerCase()]">
+                {{ statusCache[id] }}
+              </div>
+            </div>
+          </article>
+        </div>
+      </template>
+
+      <!-- Similarity Results -->
+      <template v-if="activeTab === 'similarity'">
+        <div v-if="similarityResults.length === 0 && !similarityError" class="empty-state">
+          Scan complete. Zero matches found.
+        </div>
+        <div v-else class="results-grid">
+          <article v-for="(res, idx) in similarityResults" :key="idx" class="result-card">
+            <div class="image-wrapper">
+              <img :src="getImageUrl(res.id)" loading="lazy" />
+            </div>
+            <div class="result-meta">
+              <div class="meta-row">
+                <span class="record-id">REC_{{ String(res.id).padStart(4, '0') }}</span>
+                <span class="score">DEV: {{ typeof res.score === "number" ? res.score.toFixed(4) : res.score }}</span>
+              </div>
+              <div v-if="statusCache?.[res.id]" :class="['status-badge', statusCache[res.id]!.toLowerCase()]">
+                {{ statusCache[res.id] }}
+              </div>
+            </div>
+          </article>
+        </div>
+      </template>
+
     </div>
   </div>
 </template>
 
 <style scoped>
-.search-container {
-  max-width: 900px;
-  margin: 0 auto;
-  text-align: left;
+.view-header {
+  margin-bottom: var(--space-xl);
 }
 
-h2 {
-  margin-bottom: 2rem;
-  text-align: center;
+.view-description {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  margin-top: -0.5rem;
 }
 
-.tabs {
-  display: flex;
-  gap: 2px; /* Slight gap for separation */
-  margin-bottom: 20px;
-}
-
-.tabs button {
-  flex: 1;
-  border-bottom: none;
-  background-color: transparent;
-  border: 2px solid transparent;
-  opacity: 0.5;
-  padding: 1rem;
-  font-size: 1.2rem;
-}
-
-.tabs button.active {
-  opacity: 1;
-  background-color: var(--bg-secondary);
-  border: 2px solid var(--border-color);
-  border-bottom: none; /* Make it look connected to panel */
-  position: relative;
-  top: 2px; /* Overlap border */
-  z-index: 2;
-}
-
-.panel {
-  background-color: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  padding: 30px;
-  position: relative;
-  z-index: 1;
-  border-radius: 0 var(--radius-lg, 12px) var(--radius-lg, 12px) var(--radius-lg, 12px); /* Check tab alignment */
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.search-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  margin-bottom: 24px;
-}
-
-.field-group {
+.query-layout {
   display: flex;
   flex-direction: column;
+  gap: var(--space-lg);
+  max-width: 900px;
 }
 
-.field-group.span-full {
+/* Segmented Control */
+.segmented-control {
+  display: flex;
+  background: var(--bg-tertiary);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+}
+
+.segment-btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--text-muted);
+  padding: 0.75rem;
+}
+
+.segment-btn:hover {
+  color: var(--text-primary);
+  background: transparent;
+  box-shadow: none;
+  transform: none;
+}
+
+.segment-btn.active {
+  background: var(--bg-primary);
+  color: var(--color-primary);
+  border: 1px solid var(--border-color);
+  box-shadow: 2px 2px 0 var(--border-color);
+}
+
+.query-panel {
+  padding: var(--space-xl);
+}
+
+.search-form {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-md);
+}
+
+@media (min-width: 640px) {
+  .search-form {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.span-full {
   grid-column: 1 / -1;
 }
 
-.field-group label {
-  margin-bottom: 8px;
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 600;
-}
-
-/* Inputs are styled globally but we ensure box-model fits */
-input,
-select {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 12px;
-  font-size: 1rem;
-}
-
-.action-btn {
-  width: 100%;
-  padding: 16px;
-  font-size: 1.1rem;
-  letter-spacing: 1px;
-  border-radius: var(--radius-md, 8px);
-  background-color: var(--color-primary);
-  color: var(--text-on-primary);
-  font-weight: 700;
-  text-transform: uppercase;
-  border: none;
-  cursor: pointer;
-}
-.action-btn:hover {
-  background-color: var(--color-primary-hover);
-}
-
-.error {
+.system-error {
   color: var(--color-danger);
-  margin-top: 20px;
-  border: 1px solid var(--color-danger); /* softer than dashed */
-  background-color: rgba(229, 115, 115, 0.1); /* light red tint */
-  border-radius: var(--radius-md, 8px);
-  padding: 15px;
-  text-align: center;
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  padding: var(--space-sm);
+  background: color-mix(in oklch, var(--color-danger) 10%, transparent);
+  border: 1px dashed var(--color-danger);
+}
+
+.results-header {
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: var(--space-sm);
+  margin-top: var(--space-2xl);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
 }
 
 .results-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 24px;
-  margin-top: 40px;
-  border-top: 1px solid var(--border-color);
-  padding-top: 24px;
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
 }
 
-.result-item {
+.result-card {
   border: 1px solid var(--border-color);
-  padding: 8px;
-  text-align: center;
-  background-color: var(--bg-secondary);
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s;
-  border-radius: var(--radius-md, 8px);
-  overflow: hidden;
+  background: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s var(--ease-out-expo);
 }
 
-.result-item:hover {
-  transform: translateY(-4px);
+.result-card:hover {
   border-color: var(--color-primary);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
-.result-item img {
-  width: 100%;
-  height: 200px;
+.image-wrapper {
+  aspect-ratio: 1;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xs);
+}
+
+.image-wrapper img {
+  max-width: 100%;
+  max-height: 100%;
   object-fit: contain;
-  display: block;
-  background-color: var(--bg-tertiary);
-  border-radius: var(--radius-sm, 4px);
-  margin-bottom: 8px;
-  border-bottom: none;
 }
 
-.caption {
-  font-size: 0.9rem;
-  padding: 0 5px 5px;
-  font-family: var(--font-code, monospace);
+.result-meta {
+  padding: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
 }
 
-.status-badge {
+.meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.record-id, .score {
+  font-family: var(--font-mono);
   font-size: 0.75rem;
-  padding: 4px 8px;
-  border-radius: 12px;
-  margin: 0 auto 8px auto;
-  font-weight: bold;
-  text-transform: uppercase;
-  background-color: var(--bg-tertiary);
-  color: var(--text-secondary);
-  display: inline-block;
+  color: var(--text-primary);
 }
 
-.status-badge.complete {
-  background-color: #e6f4ea;
-  color: #2e7d32;
+.score {
+  color: var(--color-primary);
 }
 
-.status-badge.pending {
-  background-color: #fff3e0;
-  color: #f57c00;
-}
-
-.status-badge.failed {
-  background-color: #ffebee;
-  color: #c62828;
-}
+/* Utilities */
+.full-width { width: 100%; }
+.mt-sm { margin-top: var(--space-sm); }
+.mt-md { margin-top: var(--space-md); }
+.mt-lg { margin-top: var(--space-lg); }
 </style>

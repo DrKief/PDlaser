@@ -51,7 +51,6 @@ const toggleCruelty = () => {
 
 const toggleTheme = () => {
   if (theme.value === "cruelty") {
-    // If currently cruelty, just switch normal theme setting
     const currentStored = localStorage.getItem("lastNormalTheme") || "dark";
     const newTheme = currentStored === "dark" ? "light" : "dark";
     localStorage.setItem("lastNormalTheme", newTheme);
@@ -73,120 +72,172 @@ onMounted(() => {
     theme.value = "dark";
   }
   document.documentElement.className = theme.value;
-
   document.addEventListener("click", handleGlobalClick);
 });
 </script>
 
 <template>
-  <div>
-    <h1>{{ theme === "cruelty" ? "პდლ-ლ3 " : "PDL - L3" }}</h1>
-    <nav>
-      <router-link to="/">{{ theme === "cruelty" ? "PADDED CELL" : "Home" }}</router-link> |
-      <router-link to="/upload">{{
-        theme === "cruelty" ? "CRANIAL INTRUSION" : "Upload"
-      }}</router-link>
-      |
-      <router-link to="/gallery">{{
-        theme === "cruelty" ? "FADED MEMORIES" : "Gallery"
-      }}</router-link>
-      |
-      <router-link to="/search">{{
-        theme === "cruelty" ? "PAVLOVIAN RECALL" : "Search"
-      }}</router-link>
-    </nav>
-    <main>
+  <div class="app-layout">
+    <header class="app-header">
+      <div class="logo">
+        <h1>{{ theme === "cruelty" ? "პდლ-ლ3" : "PDL_L3" }}</h1>
+        <span class="system-status">SYS.ONLINE</span>
+      </div>
+      
+      <nav class="main-nav" aria-label="Main Navigation">
+        <router-link class="nav-item" to="/">
+          {{ theme === "cruelty" ? "PADDED CELL" : "INDEX" }}
+        </router-link>
+        <router-link class="nav-item" to="/upload">
+          {{ theme === "cruelty" ? "CRANIAL INTRUSION" : "INGEST" }}
+        </router-link>
+        <router-link class="nav-item" to="/gallery">
+          {{ theme === "cruelty" ? "FADED MEMORIES" : "ARCHIVE" }}
+        </router-link>
+        <router-link class="nav-item" to="/search">
+          {{ theme === "cruelty" ? "PAVLOVIAN RECALL" : "QUERY" }}
+        </router-link>
+      </nav>
+    </header>
+
+    <main class="app-main">
       <suspense>
         <router-view />
       </suspense>
     </main>
-    <footer>
-      <p>
+
+    <footer class="app-footer">
+      <p class="footer-text">
         {{
           theme === "cruelty"
             ? "CONSUMER SOFTPRODUCTS // L3 // 666"
-            : "Created by Lucas Koumasonas and Nikita Semenov"
+            : "CONSUMER SOFTPRODUCTS // L3 // CREATED BY L. KOUMASONAS & N. SEMENOV"
         }}
       </p>
     </footer>
-    <div class="theme-controls">
-      <button class="theme-toggle" @click="toggleTheme" title="Toggle Light/Dark">
+
+    <!-- Floating System Controls -->
+    <div class="system-controls">
+      <button class="control-btn cruelty-toggle" @click="toggleCruelty" title="Override Protocol" aria-label="Toggle Cruelty Theme">
+        <span v-if="theme === 'cruelty'">😇</span>
+        <span v-else>⚠️</span>
+      </button>
+      <button class="control-btn theme-toggle" @click="toggleTheme" title="Cycle Optics" aria-label="Toggle Light/Dark Theme">
         <span v-if="theme === 'light'">🌙</span>
         <span v-else>☀️</span>
-      </button>
-    </div>
-    <div class="cruelty-control">
-      <button class="cruelty-toggle" @click="toggleCruelty" title="Toggle DIVINE LIGHT">
-        <span v-if="theme === 'cruelty'">😇</span>
-        <span v-else>👹</span>
       </button>
     </div>
   </div>
 </template>
 
 <style scoped>
-.theme-controls {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
+.app-layout {
   display: flex;
-  gap: 10px;
-  z-index: 1001;
+  flex-direction: column;
+  min-height: calc(100vh - 4rem);
 }
 
-.cruelty-control {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
-  z-index: 1001;
-}
-
-.theme-toggle,
-.cruelty-toggle {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 50%;
-  width: 50px;
-  height: 50px;
+.app-header {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 1.2rem;
-  transition: transform 0.2s;
+  flex-direction: column;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-2xl);
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: var(--space-md);
 }
 
-.theme-toggle:hover,
-.cruelty-toggle:hover {
-  transform: scale(1.1);
+@media (min-width: 768px) {
+  .app-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
 }
 
-nav {
-  margin-bottom: 20px;
-  padding: 10px;
-  border-radius: 4px;
+.logo {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-md);
 }
 
-nav a {
-  margin: 0 10px;
-  text-decoration: none;
-  font-weight: bold;
-}
-
-nav a.router-link-active {
+.logo h1 {
+  margin: 0;
   color: var(--color-primary);
 }
 
-footer {
-  text-align: center;
-  margin-top: 60px;
-  padding: 20px;
-  font-size: 0.9rem;
-  opacity: 0.7;
+.system-status {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  padding: 2px 6px;
+  border: 1px solid var(--border-color);
 }
 
-main {
-  padding: 20px;
-  min-height: 60vh;
+.main-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.nav-item {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid transparent;
+  transition: all 0.2s var(--ease-out-expo);
+}
+
+.nav-item:hover {
+  color: var(--text-primary);
+  border-color: var(--border-color);
+  background: var(--bg-secondary);
+}
+
+.nav-item.router-link-active {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+  background: color-mix(in oklch, var(--color-primary) 10%, transparent);
+}
+
+.app-main {
+  flex: 1;
+}
+
+.app-footer {
+  margin-top: var(--space-2xl);
+  padding-top: var(--space-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+.footer-text {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: right;
+  margin: 0;
+}
+
+/* Floating Controls */
+.system-controls {
+  position: fixed;
+  bottom: var(--space-lg);
+  right: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  z-index: 50;
+}
+
+.control-btn {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 0;
+  background: var(--bg-primary);
 }
 </style>

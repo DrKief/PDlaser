@@ -12,9 +12,10 @@ interface Image {
 const images = ref<Image[]>([]);
 const keywordInputs = ref<Record<number, string>>({});
 const { statusCache, fetchStatus, pollStatus } = useImageStatus();
+const isLoading = ref(true);
 
 onMounted(async () => {
-  fetchImages();
+  await fetchImages();
 });
 
 const fetchImages = async () => {
@@ -22,10 +23,9 @@ const fetchImages = async () => {
     const response = await http.get("/images");
     images.value = response.data.map((img: any) => ({
       ...img,
-      keywords: img.keywords || [], // ensure array
+      keywords: img.keywords || [],
     }));
 
-    // Check status for each image
     images.value.forEach((img) => {
       if (!statusCache[img.id] || statusCache[img.id] === "PENDING") {
         fetchStatus(img.id).then((status) => {
@@ -37,12 +37,12 @@ const fetchImages = async () => {
     });
   } catch (error) {
     console.error("Error fetching images for gallery:", error);
+  } finally {
+    isLoading.value = false;
   }
 };
 
-const getImageUrl = (image: Image) => {
-  return `/images/${image.id}`;
-};
+const getImageUrl = (image: Image) => `/images/${image.id}`;
 
 const addKeyword = async (image: Image) => {
   const tag = keywordInputs.value[image.id];
@@ -52,14 +52,13 @@ const addKeyword = async (image: Image) => {
     await http.put(`/images/${image.id}/keywords`, null, {
       params: { tag: tag.trim() },
     });
-    // Update local state
     if (!image.keywords.includes(tag.trim())) {
       image.keywords.push(tag.trim());
     }
-    keywordInputs.value[image.id] = ""; // Clear input
+    keywordInputs.value[image.id] = "";
   } catch (error) {
     console.error(`Error adding keyword to image ${image.id}:`, error);
-    alert("Failed to add keyword.");
+    alert("Failed to assign keyword to record.");
   }
 };
 
@@ -68,7 +67,6 @@ const removeKeyword = async (image: Image, tag: string) => {
     await http.delete(`/images/${image.id}/keywords`, {
       params: { tag },
     });
-    // Remove from local state
     image.keywords = image.keywords.filter((t: string) => t !== tag);
   } catch (error) {
     console.error(`Error removing keyword from image ${image.id}:`, error);
@@ -77,196 +75,222 @@ const removeKeyword = async (image: Image, tag: string) => {
 };
 
 const deleteImage = async (id: number) => {
-  if (!confirm("Are you sure you want to permanently delete this file?")) {
-    return;
-  }
+  if (!confirm("WARNING: Purge operation is irreversible. Proceed?")) return;
 
   try {
     await http.delete(`/images/${id}`);
-    // Remove from the local array so the UI updates instantly
     images.value = images.value.filter((img) => img.id !== id);
   } catch (error) {
     console.error(`Error deleting image ${id}:`, error);
-    alert("Failed to delete file.");
+    alert("Purge operation failed.");
   }
 };
 </script>
 
 <template>
-  <div>
-    <h2>Gallery</h2>
-    <div class="gallery-container">
-      <div v-for="image in images" :key="image.id" class="image-card">
-        <img :src="getImageUrl(image)" :alt="image.name" />
-        <p class="image-name">{{ image.name }}</p>
+  <div class="view-header">
+    <h2>Data Archive</h2>
+    <p class="view-description">Stored visual records and associated metadata tags.</p>
+  </div>
 
+  <div v-if="isLoading" class="empty-state">Accessing storage volume...</div>
+  <div v-else-if="images.length === 0" class="empty-state">
+    Archive is empty. Run INGEST protocol to populate.
+  </div>
+
+  <div v-else class="gallery-grid">
+    <article v-for="image in images" :key="image.id" class="record-card panel">
+      
+      <div class="card-header">
+        <h3 class="record-name" :title="image.name">{{ image.name }}</h3>
+        <span class="record-id">#{{ String(image.id).padStart(4, '0') }}</span>
+      </div>
+
+      <div class="image-wrapper">
+        <img :src="getImageUrl(image)" :alt="image.name" loading="lazy" />
         <div
           v-if="statusCache?.[image.id]"
-          :class="['status-badge', statusCache[image.id]!.toLowerCase()]"
+          :class="['status-badge', 'overlay-badge', statusCache[image.id]!.toLowerCase()]"
         >
-          Status: {{ statusCache[image.id] }}
+          {{ statusCache[image.id] }}
         </div>
-
-        <div class="keywords-section">
-          <div class="tags">
-            <span v-for="tag in image.keywords" :key="tag" class="tag">
-              {{ tag }}
-              <button class="remove-tag-btn" @click="removeKeyword(image, tag)" title="Remove tag">
-                &times;
-              </button>
-            </span>
-          </div>
-          <div class="add-keyword">
-            <input
-              v-model="keywordInputs[image.id]"
-              @keyup.enter="addKeyword(image)"
-              placeholder="Add tag"
-              class="keyword-input"
-            />
-            <button class="add-btn" @click="addKeyword(image)">+</button>
-          </div>
-        </div>
-
-        <button class="delete-btn" @click="deleteImage(image.id)">Delete</button>
       </div>
-    </div>
-    <p v-if="images.length === 0">No data found.</p>
+
+      <div class="metadata-section">
+        <div class="tags-container" v-if="image.keywords.length > 0">
+          <span v-for="tag in image.keywords" :key="tag" class="tech-tag">
+            {{ tag }}
+            <button class="tag-remove" @click="removeKeyword(image, tag)" :aria-label="`Remove tag ${tag}`">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </span>
+        </div>
+        
+        <div class="tag-input-group">
+          <input
+            v-model="keywordInputs[image.id]"
+            @keyup.enter="addKeyword(image)"
+            placeholder="Assign new tag..."
+            aria-label="New keyword"
+          />
+          <button class="btn btn-primary btn-icon" @click="addKeyword(image)" aria-label="Add tag">
+            +
+          </button>
+        </div>
+      </div>
+
+      <div class="card-footer">
+        <button class="btn btn-danger full-width" @click="deleteImage(image.id)">
+          Purge Record
+        </button>
+      </div>
+
+    </article>
   </div>
 </template>
 
 <style scoped>
-.gallery-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  justify-content: center;
+.view-header {
+  margin-bottom: var(--space-xl);
 }
 
-.image-card {
-  border: 1px solid var(--border-color);
-  padding: 16px;
-  border-radius: var(--radius-lg, 12px);
-  text-align: center;
-  background: var(--bg-secondary);
+.view-description {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  margin-top: -0.5rem;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-lg);
+}
+
+.record-card {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  transition:
-    transform 0.2s,
-    box-shadow 0.2s;
-  width: 260px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  padding: 0;
+  overflow: hidden;
+  transition: transform 0.2s var(--ease-out-expo), box-shadow 0.2s var(--ease-out-expo);
 }
 
-.image-card:hover {
+.record-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  border-color: var(--color-primary);
+  box-shadow: 4px 4px 0 var(--bg-tertiary);
 }
 
-.image-card img {
+.card-header {
+  padding: var(--space-md);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-sm);
+  background: var(--bg-primary);
+}
+
+.record-name {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.record-id {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.image-wrapper {
+  position: relative;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+  aspect-ratio: 4/3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-sm);
+}
+
+.image-wrapper img {
   max-width: 100%;
-  max-height: 200px;
+  max-height: 100%;
   object-fit: contain;
-  display: block;
-  margin-bottom: 12px;
-  border-radius: var(--radius-sm, 4px);
-  background-color: var(--bg-primary); /* visible if transparent png */
 }
 
-.keywords-section {
-  width: 100%;
-  margin-bottom: 12px;
+.overlay-badge {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  background: var(--bg-primary) !important; /* solid background for readability over image */
 }
 
-.tags {
+.metadata-section {
+  padding: var(--space-md);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.tags-container {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  justify-content: center;
-  margin-bottom: 10px;
+  gap: var(--space-xs);
 }
 
-.tag {
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-  font-size: 0.75em;
-  padding: 3px 8px;
-  border-radius: 12px; /* Pill shape */
-  font-weight: 500;
-  border: 1px solid var(--border-color);
+.tech-tag {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  background: var(--bg-primary);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  padding: 2px 6px 2px 8px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  border-radius: var(--radius-sm);
 }
 
-.remove-tag-btn {
+.tag-remove {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 1.1em;
-  line-height: 0.5;
-  padding: 0;
+  padding: 2px;
+  display: flex;
+  align-items: center;
   cursor: pointer;
-  margin: 0;
   box-shadow: none;
 }
 
-.remove-tag-btn:hover {
+.tag-remove:hover {
   color: var(--color-danger);
-  transform: none;
-  background: none;
+  transform: scale(1.1);
+  box-shadow: none;
 }
 
-.add-keyword {
+.tag-input-group {
   display: flex;
-  gap: 6px;
-  justify-content: center;
+  gap: var(--space-xs);
 }
 
-.keyword-input {
-  width: 60%;
-  padding: 6px 10px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm, 6px);
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-size: 0.85em;
+.btn-icon {
+  padding: 0 1rem;
+  font-size: 1.2rem;
 }
 
-.add-btn {
-  padding: 6px 10px;
-  background: var(--color-primary);
-  color: var(--text-on-primary);
-  border: none;
-  border-radius: var(--radius-sm, 6px);
-  cursor: pointer;
-  font-size: 0.9em;
-  line-height: 1;
+.card-footer {
+  padding: var(--space-md);
+  padding-top: 0;
 }
 
-.image-name {
-  margin: 0 0 12px 0;
-  font-weight: 600;
-  color: var(--text-primary);
-
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.delete-btn {
-  background-color: var(--color-danger);
-  color: var(--text-on-primary);
-  border: none;
-  padding: 6px 12px;
-  border-radius: 4px;
-  cursor: pointer;
+.full-width {
   width: 100%;
-  transition: background-color 0.2s;
-}
-
-.delete-btn:hover {
-  background-color: var(--color-danger-hover);
 }
 </style>

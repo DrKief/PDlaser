@@ -6,7 +6,7 @@ import { useImageStatus } from "../composables/useImageStatus";
 const props = defineProps({
   mode: {
     type: String,
-    default: "upload", // 'upload' or 'search'
+    default: "upload",
   },
 });
 
@@ -28,7 +28,6 @@ const onFileChange = (event: Event) => {
     selectedFile.value = target.files[0] as File;
     previewUrl.value = URL.createObjectURL(selectedFile.value);
 
-    // Hide previous status and messages when a new image is being previewed
     lastUploadedId.value = null;
     message.value = "";
   }
@@ -36,7 +35,7 @@ const onFileChange = (event: Event) => {
 
 const handleAction = async () => {
   if (!selectedFile.value) {
-    message.value = "Please select a file first!";
+    message.value = "ERR: NO_FILE_SELECTED";
     return;
   }
 
@@ -52,204 +51,249 @@ const handleAction = async () => {
   }
 
   try {
-    message.value = "Uploading...";
+    message.value = "UPLOADING...";
     const response = await http.post("/images", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
+      headers: { "Content-Type": "multipart/form-data" },
     });
 
     if (response.status === 202) {
       const id = response.data.id;
-      message.value = `Upload accepted! Processing started...`;
+      message.value = `ACCEPTED. ASSIGNED ID_${id}`;
       lastUploadedId.value = id;
 
       statusCache[id] = "PENDING";
       pollStatus(id);
 
-      selectedFile.value = null;
-      keywords.value = "";
-      if (previewUrl.value) {
-        URL.revokeObjectURL(previewUrl.value);
-        previewUrl.value = null;
-      }
-      // Reset input if needed
-      const input = document.getElementById("file-input") as HTMLInputElement;
-      if (input) input.value = "";
+      resetForm();
     } else if (response.status === 200 || response.status === 201) {
-      // Fallback in case it somehow still returns 200/201 without async
-      message.value = "Upload successful!";
-      selectedFile.value = null;
-      keywords.value = "";
-      if (previewUrl.value) {
-        URL.revokeObjectURL(previewUrl.value);
-        previewUrl.value = null;
-      }
-      const input = document.getElementById("file-input") as HTMLInputElement;
-      if (input) input.value = "";
+      message.value = "UPLOAD SUCCESSFUL.";
+      resetForm();
     }
   } catch (error: any) {
     console.error(error);
     if (error.response) {
       const status = error.response.status;
       const data = error.response.data;
-      if (status === 413) message.value = "File too large.";
-      else if (status === 415) message.value = "Unsupported Media Type. Must be an image.";
-      else if (status === 400) message.value = data.error || "Bad Request.";
-      else message.value = data.error || "Upload failed.";
+      if (status === 413) message.value = "ERR: PAYLOAD_TOO_LARGE";
+      else if (status === 415) message.value = "ERR: UNSUPPORTED_MEDIA_TYPE";
+      else message.value = `ERR: ${data.error || "UPLOAD_FAILED"}`;
     } else {
-      message.value = "Upload failed.";
+      message.value = "ERR: NETWORK_FAILURE";
     }
   }
 };
+
+const resetForm = () => {
+  selectedFile.value = null;
+  keywords.value = "";
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value);
+    previewUrl.value = null;
+  }
+  const input = document.getElementById("file-input") as HTMLInputElement;
+  if (input) input.value = "";
+}
 </script>
 
 <template>
-  <div>
-    <div class="upload-form">
-      <div class="input-group">
-        <input type="file" @change="onFileChange" id="file-input" accept="image/*" />
+  <div class="view-header" v-if="mode === 'upload'">
+    <h2>Ingest Protocol</h2>
+    <p class="view-description">Submit visual data for processing and storage.</p>
+  </div>
+
+  <div class="upload-container panel">
+    <div class="form-layout">
+      
+      <!-- Custom File Input -->
+      <div class="file-drop-zone" :class="{ 'has-file': selectedFile }">
+        <label for="file-input" class="file-label">
+          <span class="icon">⇪</span>
+          <span class="text" v-if="!selectedFile">SELECT TARGET FILE</span>
+          <span class="text success" v-else>{{ selectedFile.name }} ({{ (selectedFile.size / 1024).toFixed(1) }}KB)</span>
+        </label>
+        <input type="file" id="file-input" class="sr-only" @change="onFileChange" accept="image/*" />
       </div>
+
       <div class="input-group" v-if="mode === 'upload'">
+        <label for="keywords-input">Initial Tags (Comma separated)</label>
         <input
+          id="keywords-input"
           v-model="keywords"
           type="text"
-          placeholder="Keywords (e.g. nature, travel)"
-          class="keyword-input"
+          placeholder="e.g. classification, target, scan"
           :disabled="!selectedFile"
         />
       </div>
-      <button @click="handleAction" :disabled="!selectedFile" class="upload-btn">
-        {{ mode === "search" ? "Search" : "Upload Image" }}
+
+      <button class="btn btn-primary btn-large" @click="handleAction" :disabled="!selectedFile">
+        {{ mode === "search" ? "EXECUTE QUERY" : "INITIALIZE INGEST" }}
       </button>
+
+      <!-- Feedback Area -->
+      <div class="feedback-area" v-if="message || lastUploadedId">
+        <div class="system-message" :class="{'error': message.startsWith('ERR')}">
+          > {{ message }}
+        </div>
+        
+        <div v-if="lastUploadedId !== null && statusCache?.[lastUploadedId]" class="status-tracker">
+          <span>PROCESS_STATE:</span>
+          <span :class="['status-badge', statusCache[lastUploadedId]!.toLowerCase()]">
+            {{ statusCache[lastUploadedId] }}
+          </span>
+        </div>
+      </div>
+
     </div>
-    <div v-if="previewUrl" class="image-preview">
-      <img :src="previewUrl" alt="Selected image" />
-    </div>
-    <div class="message-container" v-if="message || lastUploadedId">
-      <p v-if="message">{{ message }}</p>
-      <div v-if="lastUploadedId !== null && statusCache?.[lastUploadedId]" class="status-indicator">
-        Processing Status:
-        <span :class="['status-badge', statusCache[lastUploadedId]!.toLowerCase()]">{{
-          statusCache[lastUploadedId]
-        }}</span>
+
+    <!-- Preview -->
+    <div v-if="previewUrl" class="preview-panel">
+      <div class="preview-header">OPTICAL_PREVIEW</div>
+      <div class="image-frame">
+        <img :src="previewUrl" alt="Target preview" />
       </div>
     </div>
   </div>
 </template>
 
 <style scoped>
-.upload-form {
-  margin: 20px 0;
-  border: 1px solid var(--border-color);
-  padding: 8px;
-  border-radius: 8px;
+.view-header {
+  margin-bottom: var(--space-xl);
+}
+
+.view-description {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  margin-top: -0.5rem;
+}
+
+.upload-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-xl);
+  max-width: 800px;
+}
+
+@media (min-width: 768px) {
+  .upload-container {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.form-layout {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  width: fit-content;
+  flex-direction: column;
+  gap: var(--space-lg);
 }
 
-input[type="file"] {
-  font-family: inherit;
-  font-size: 0.9rem;
-  color: var(--text-primary);
-}
-
-input[type="file"]::file-selector-button {
-  margin-right: 12px;
-  border: 1px solid var(--border-color);
-  padding: 8px 16px;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition:
-    background 0.2s,
-    color 0.2s,
-    border-color 0.2s;
-}
-
-input[type="file"]::file-selector-button:hover {
-  background: var(--bg-tertiary);
-}
-
-button {
-  border: 1px solid var(--color-primary);
-  padding: 8px 24px;
-  border-radius: 4px;
-  background: var(--color-primary);
-  color: var(--text-on-primary);
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-button:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-button:disabled {
-  background: var(--bg-tertiary);
-  border-color: var(--bg-tertiary);
-  color: var(--text-muted);
-  cursor: not-allowed;
-}
-
-.image-preview {
-  display: flex;
-  justify-content: center;
-  margin-top: 16px;
-}
-
-.keyword-input {
-  padding: 8px;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
+.file-drop-zone {
+  border: 2px dashed var(--border-color);
+  border-radius: var(--radius-sm);
   background: var(--bg-primary);
-  color: var(--text-primary);
-  min-width: 200px;
-}
-.image-preview img {
-  max-width: 300px;
-  max-height: 300px;
-  width: auto;
-  height: auto;
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-}
-
-.message-container {
-  margin-top: 16px;
+  transition: all 0.2s var(--ease-out-expo);
   text-align: center;
 }
 
-.status-indicator {
-  margin-top: 8px;
-  font-size: 0.9rem;
+.file-drop-zone:hover {
+  border-color: var(--color-primary);
+  background: color-mix(in oklch, var(--color-primary) 5%, var(--bg-primary));
 }
 
-.status-badge {
-  font-size: 0.75rem;
-  padding: 4px 8px;
-  border-radius: 12px;
+.file-drop-zone.has-file {
+  border-style: solid;
+  border-color: var(--color-success);
+}
+
+.file-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  cursor: pointer;
+  margin: 0;
+}
+
+.file-label .icon {
+  font-size: 2rem;
+  margin-bottom: var(--space-sm);
+  color: var(--text-muted);
+}
+
+.file-drop-zone:hover .icon {
+  color: var(--color-primary);
+}
+
+.file-drop-zone.has-file .icon {
+  color: var(--color-success);
+}
+
+.file-label .text {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
   font-weight: bold;
-  text-transform: uppercase;
-  background-color: var(--bg-tertiary);
+}
+
+.file-label .success {
+  color: var(--color-success);
+}
+
+.btn-large {
+  padding: 1rem;
+  font-size: 1rem;
+}
+
+.feedback-area {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  padding: var(--space-md);
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+}
+
+.system-message {
+  color: var(--text-secondary);
+  margin-bottom: var(--space-sm);
+}
+
+.system-message.error {
+  color: var(--color-danger);
+}
+
+.status-tracker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  color: var(--text-muted);
+}
+
+.preview-panel {
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+}
+
+.preview-header {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: var(--space-xs) var(--space-sm);
+  background: var(--bg-tertiary);
+  border-bottom: 1px solid var(--border-color);
   color: var(--text-secondary);
 }
 
-.status-badge.complete {
-  background-color: #e6f4ea;
-  color: #2e7d32;
+.image-frame {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md);
 }
 
-.status-badge.pending {
-  background-color: #fff3e0;
-  color: #f57c00;
-}
-
-.status-badge.failed {
-  background-color: #ffebee;
-  color: #c62828;
+.image-frame img {
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: contain;
 }
 </style>
