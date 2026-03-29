@@ -10,7 +10,6 @@ import java.util.regex.Pattern;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.lang.NonNull;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 @Configuration
@@ -34,9 +33,9 @@ public class RedirectConfiguration {
 
       @Override
       protected void doFilterInternal(
-        @NonNull HttpServletRequest req,
-        @NonNull HttpServletResponse res,
-        @NonNull FilterChain chain
+        HttpServletRequest req,
+        HttpServletResponse res,
+        FilterChain chain
       ) throws ServletException, IOException {
         if (pattern.matcher(req.getRequestURI()).matches() && !req.getRequestURI().equals("/")) {
           RequestDispatcher rd = req.getRequestDispatcher("/");

@@ -66,7 +66,7 @@ public class ImageController {
   public ResponseEntity<Map<String, String>> handleMaxSizeException(
     MaxUploadSizeExceededException exc
   ) {
-    return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+    return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE)
       .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
       .body(Map.of("error", "File too large."));
   }

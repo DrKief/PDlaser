@@ -1,13 +1,13 @@
-# Stage 1: Build with Dependency Caching
-FROM maven:3.9.6-eclipse-temurin-21-alpine AS build
+# Stage 1: Build with Dependency Caching (Upgraded to Java 25)
+FROM maven:3.9-eclipse-temurin-25-alpine AS build
 WORKDIR /app
 COPY pom.xml .
 RUN mvn dependency:go-offline -B
 COPY src ./src
 RUN mvn clean package -DskipTests
 
-# Stage 2: Optimized & Secure Runtime
-FROM eclipse-temurin:21-jre-alpine
+# Stage 2: Optimized & Secure Runtime (Upgraded to Java 25)
+FROM eclipse-temurin:25-jre-alpine
 WORKDIR /app
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 

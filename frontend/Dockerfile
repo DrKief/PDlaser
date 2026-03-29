@@ -12,6 +12,9 @@ FROM nginx:alpine
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
+# Remove the default 'user' directive to silence the super-user warning
+RUN sed -i 's/^user .*//' /etc/nginx/nginx.conf
+
 RUN chown -R nginx:nginx /usr/share/nginx/html \
   && chown -R nginx:nginx /var/cache/nginx \
   && chown -R nginx:nginx /var/log/nginx \

@@ -1,7 +1,7 @@
 # docker-compose.prod.yml
 services:
   db:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg18
     environment:
       POSTGRES_USER: pdl_user
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -30,7 +30,7 @@ services:
     expose:
       - "8080"
     volumes:
-      - backend_images:/var/lib/pdl/images
+      - pgdata:/var/lib/postgresql
     depends_on:
       db:
         condition: service_healthy
