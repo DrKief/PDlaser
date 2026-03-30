@@ -5,7 +5,7 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
 /**
- * Spring Data JDBC Repository for the Image entity.
+ * Spring Data JDBC Repository for the Metadata entity.
  * Provides basic CRUD operations (Save, FindById, FindAll, Delete) automatically.
  */
 @Repository
@@ -16,7 +16,7 @@ public interface MetadataRepository extends CrudRepository<Metadata, Long> {
    * Used during upload to detect and prevent duplicate image storage.
    *
    * @param hash The SHA-256 string.
-   * @return An Optional containing the ImageEntity if found.
+   * @return An Optional containing the Metadata record if found.
    */
   Optional<Metadata> findByHash(String hash);
 }

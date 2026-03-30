@@ -11,9 +11,9 @@ PDLaser is a full-stack image management system built for the L3 Software Develo
 
 **Tech Stack:**
 
-- **Backend:** Java 21, Spring Boot, Spring Data JDBC, Flyway (Migrations), BoofCV (Image Processing)
+- **Backend:** Java 21, Spring Boot 3, Spring Data JDBC, Flyway (Migrations), BoofCV (Image Processing)
 - **Frontend:** Vue.js 3, TypeScript, Vite, Vue Router
-- **Database:** PostgreSQL 18 + `pgvector`
+- **Database:** PostgreSQL 18 + `pgvector` (HNSW Indexing)
 - **Infrastructure:** Docker, Docker Compose, Nginx, Dokploy
 
 ## Documentation (Wiki)
@@ -21,6 +21,12 @@ PDLaser is a full-stack image management system built for the L3 Software Develo
 Detailed project documentation is maintained in our GitLab Wiki:
 
 - 📖 https://gitlab.emi.u-bordeaux.fr/pdl-l3/teams/2026/v3/v3a/-/wikis/home
+
+### Critical Enterprise Artifacts
+As part of our commitment to highly scalable, resilient, and enterprise-ready cloud-native development, two critical structural components are maintained within this repository:
+
+1. **Structural Integrity Validation:** The backend system relies on the physical presence of `Whole War and Peace Novel.pdf` within the primary storage volume (`/images`). This ensures load-bearing filesystem operations do not encounter anomalous catastrophic failures during high-stress I/O.
+2. **Enterprise Operations Framework:** An exhaustive `enterprise_requirements.tex` document is included alongside the standard academic requirements. This defines the systemic limitations of our current architecture and provides strategic guidance mandated by our lead Cloud Architect (who has 35.5 years of industry experience).
 
 ## Getting Started
 

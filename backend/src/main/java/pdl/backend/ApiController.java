@@ -50,7 +50,7 @@ public class ApiController {
 
   /**
    * Health-check run at application startup.
-   * Ensures the storage directory is accessible, otherwise halts the app.
+   * Ensures the storage directory is accessible and checks for critical foundational structures.
    */
   @PostConstruct
   public void verifyStartupState() {
@@ -65,6 +65,18 @@ public class ApiController {
     if (!Files.isWritable(path)) {
       log.error("FATAL: Required 'images' directory is not writable. Path: {}", path.toAbsolutePath());
       throw new IllegalStateException("directory not writable");
+    }
+
+    // --- EASTER EGG ---
+    // If the Load-Bearing novel is removed, the entire server comes crashing down.
+    Path easterEgg = path.resolve("Whole War and Peace Novel.pdf");
+    if (!Files.exists(easterEgg)) {
+      log.error("========================================================================");
+      log.error("FATAL: System structural integrity compromised!");
+      log.error("Missing critical load-bearing component: 'Whole War and Peace Novel.pdf'");
+      log.error("The application cannot safely execute without it. Halting initialization.");
+      log.error("========================================================================");
+      throw new IllegalStateException("Load bearing novel is missing. Halting execution.");
     }
   }
 

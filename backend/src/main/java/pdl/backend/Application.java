@@ -43,7 +43,7 @@ public class Application implements AsyncConfigurer {
     
     // If the queue is full, the task runs in the caller's thread rather than being rejected
     executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
-    executor.setThreadNamePrefix("AsyncProcessor-");
+    executor.setThreadNamePrefix("AsyncWorker-");
     executor.initialize();
     
     return executor;

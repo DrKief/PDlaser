@@ -23,7 +23,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * Unit Tests for the ImageApiController class utilizing MockMvc.
+ * Unit Tests for the ApiController class utilizing MockMvc.
  * Mocks out the service layers to purely test HTTP request/response mappings,
  * status codes, and exception handler bindings.
  */

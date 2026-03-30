@@ -48,7 +48,7 @@ public class StatusTracker {
   }
 
   /**
-   * Called by BackgroundExtractionWorker when an image finishes processing.
+   * Called by AsyncWorker when an image finishes processing.
    * Fulfills the DeferredResult, immediately answering the waiting HTTP request.
    * 
    * @param imageId The ID of the image.

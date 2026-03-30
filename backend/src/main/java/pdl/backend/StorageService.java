@@ -25,7 +25,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
- * Service layer orchestrating business logic relating to images:
+ * Service layer orchestrating storage operations and business logic relating to images:
  * - Routing algorithms, hashing, saving, deleting, and similarity requests.
  */
 @Service
@@ -54,7 +54,7 @@ public class StorageService {
    * Processes a newly uploaded image, saves it to the DB, saves to disk, 
    * and triggers async descriptor extraction.
    * 
-   * @param img The ImageEntity object containing metadata and raw bytes.
+   * @param img The Metadata object containing the image metadata and raw bytes.
    * @param saveToDisk Boolean flag indicating whether to physically save the file.
    */
   @Transactional
@@ -167,7 +167,7 @@ public class StorageService {
    * Retrieves the DB record and loads the raw file data from the disk.
    * 
    * @param id DB ID of the image.
-   * @return Optional containing the ImageEntity with loaded byte array.
+   * @return Optional containing the Metadata record with loaded byte array.
    */
   public Optional<Metadata> getImageWithData(long id) {
     Optional<Metadata> imageOpt = imageEntityRepository.findById(id);

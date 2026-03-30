@@ -6,8 +6,8 @@ import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
 /**
- * Entity class representing an Image in the database.
- * Maps to the "images" table in PostgreSQL.
+ * Entity class representing an Image metadata record in the database.
+ * Maps directly to the "images" table in PostgreSQL.
  */
 @Table("images")
 public class Metadata {
@@ -38,7 +38,7 @@ public class Metadata {
   }
 
   /**
-   * Constructor for creating a new image from an upload.
+   * Constructor for creating a new metadata record from an upload.
    * 
    * @param name The original filename.
    * @param data The raw byte data of the image.
