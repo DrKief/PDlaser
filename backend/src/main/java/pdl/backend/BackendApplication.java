@@ -12,6 +12,10 @@ import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+/**
+ * Main entry point for the Spring Boot Backend Application.
+ * Configures the application and enables asynchronous processing capabilities.
+ */
 @SpringBootApplication
 @EnableAsync
 public class BackendApplication implements AsyncConfigurer {
@@ -22,19 +26,32 @@ public class BackendApplication implements AsyncConfigurer {
     SpringApplication.run(BackendApplication.class, args);
   }
 
+  /**
+   * Configures the ThreadPool for background asynchronous tasks (e.g., image processing).
+   * 
+   * @return A custom Executor configured based on available CPU cores.
+   */
   @Bean(name = "taskExecutor")
   public Executor taskExecutor() {
     ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
     int processors = Runtime.getRuntime().availableProcessors();
+    
+    // Set pool sizes dynamically based on the host system's hardware
     executor.setCorePoolSize(processors);
     executor.setMaxPoolSize(processors);
     executor.setQueueCapacity(10);
+    
+    // If the queue is full, the task runs in the caller's thread rather than being rejected
     executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
     executor.setThreadNamePrefix("AsyncProcessor-");
     executor.initialize();
+    
     return executor;
   }
 
+  /**
+   * Handles uncaught exceptions occurring in threads running @Async methods.
+   */
   @Override
   public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
     return (throwable, method, params) -> {

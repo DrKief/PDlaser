@@ -16,6 +16,10 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+/**
+ * Data Access Object utilizing JdbcTemplate for complex queries bypassing standard ORM mappings.
+ * Handles Keyword management, dynamic searching, and complex PGvector proximity searches.
+ */
 @Repository
 public class ImageDao {
 
@@ -28,10 +32,15 @@ public class ImageDao {
     this.jdbcTemplate = jdbcTemplate;
   }
 
+  /**
+   * Normalizes tags (e.g., replaces spaces with underscores, sets to lowercase).
+   */
   private String normalizeTag(String tag) {
     if (tag == null) return null;
     return tag.trim().toLowerCase().replaceAll("\\s+", "_");
   }
+
+  // --- Processing Status ---
 
   public void updateStatus(long id, String status) {
     jdbcTemplate.update("UPDATE images SET extraction_status = ? WHERE id = ?", status, id);
@@ -48,6 +57,8 @@ public class ImageDao {
       return null;
     }
   }
+
+  // --- Metadata & Keywords ---
 
   public Map<String, Object> getImageMetadata(long id) {
     Map<String, Object> meta = jdbcTemplate.queryForMap(
@@ -84,7 +95,7 @@ public class ImageDao {
       );
       return true;
     } catch (EmptyResultDataAccessException e) {
-      return false;
+      return false; // Image doesn't exist
     } catch (Exception e) {
       log.error("Failed to add keyword '" + keyword + "' to image ID: " + id, e);
       return false;
@@ -116,6 +127,17 @@ public class ImageDao {
     );
   }
 
+  // --- Similarity Search (PGvector) ---
+
+  /**
+   * Finds similar images utilizing PGvector nearest-neighbor (<-> operator) search.
+   * Calculates similarity distance and returns formatted scores.
+   * 
+   * @param targetId DB ID of the source image.
+   * @param type Descriptor type (gradient/hog, saturation/hsv, rgb, cielab).
+   * @param limit Max results to return.
+   * @return List of matching results with score.
+   */
   public List<Map<String, Object>> findSimilar(long targetId, String type, int limit) {
     String vectorColumn = switch (type.toLowerCase()) {
       case "gradient" -> "hogvector";
@@ -124,6 +146,7 @@ public class ImageDao {
       case "cielab" -> "labvector";
       default -> "hogvector";
     };
+    
     PGvector targetVector;
     try {
       targetVector = jdbcTemplate.queryForObject(
@@ -138,16 +161,13 @@ public class ImageDao {
       return null;
     }
 
+    // SQL query utilizing PGvector operator `<->` for Euclidean L2 distance.
     String sql =
       "WITH vector_matches AS (" +
-      "  SELECT imageid, " +
-      vectorColumn +
-      " <-> ? as distance " +
+      "  SELECT imageid, " + vectorColumn + " <-> ? as distance " +
       "  FROM imagedescriptors " +
       "  WHERE imageid != ? " +
-      "  ORDER BY " +
-      vectorColumn +
-      " <-> ? ASC LIMIT ?" +
+      "  ORDER BY " + vectorColumn + " <-> ? ASC LIMIT ?" +
       ") " +
       "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
       "FROM vector_matches v " +
@@ -157,6 +177,10 @@ public class ImageDao {
     return jdbcTemplate.queryForList(sql, targetVector, targetId, targetVector, limit);
   }
 
+  /**
+   * Experimental/Feature method: Finds similar images based on an unsaved byte array upload.
+   * Extracts vectors on the fly without database insertion, then queries PGvector.
+   */
   public List<Map<String, Object>> findSimilarFromUpload(byte[] imageData, String type, int limit) {
     try {
       BufferedImage bimg = ImageIO.read(new ByteArrayInputStream(imageData));
@@ -164,12 +188,7 @@ public class ImageDao {
 
       BufferedImage resizedImage = ImageProcessing.resizeImageLanczos3(bimg, 256, 256);
 
-      String vectorColumn = switch (type.toLowerCase()) {
-        case "saturation" -> "hsvvector";
-        case "rgb" -> "rgbvector";
-        case "cielab" -> "labvector";
-        default -> "hogvector";
-      };
+      String vectorColumn;
       PGvector targetVector;
 
       if ("saturation".equalsIgnoreCase(type)) {
@@ -194,13 +213,9 @@ public class ImageDao {
 
       String sql =
         "WITH vector_matches AS (" +
-        "  SELECT imageid, " +
-        vectorColumn +
-        " <-> ? as distance " +
+        "  SELECT imageid, " + vectorColumn + " <-> ? as distance " +
         "  FROM imagedescriptors " +
-        "  ORDER BY " +
-        vectorColumn +
-        " <-> ? ASC LIMIT ?" +
+        "  ORDER BY " + vectorColumn + " <-> ? ASC LIMIT ?" +
         ") " +
         "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
         "FROM vector_matches v " +
@@ -214,6 +229,12 @@ public class ImageDao {
     }
   }
 
+  // --- Search ---
+
+  /**
+   * Complex dynamic search builder utilizing NamedParameterJdbcTemplate.
+   * Combines optional filters: name, format, resolution size, and keyword matches.
+   */
   public List<Long> searchByAttributes(
     String name,
     String format,

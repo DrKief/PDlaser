@@ -20,6 +20,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
+/**
+ * Service layer responsible for business logic relating to images:
+ * - Saving to disk
+ * - Extracting basic metadata
+ * - Triggering async background processing
+ */
 @Service
 public class ImageService {
 
@@ -35,22 +41,30 @@ public class ImageService {
     this.asyncProcessor = asyncProcessor;
   }
 
+  /**
+   * Processes a newly uploaded image, saves it to the DB, saves to disk, 
+   * and triggers async descriptor extraction.
+   * 
+   * @param img The Image object containing metadata and raw bytes.
+   * @param saveToDisk Boolean flag indicating whether to physically save the file.
+   */
   @Transactional
   public void processAndSaveImage(Image img, boolean saveToDisk) {
+    // 1. Calculate hash to prevent duplicates
     String hash = calculateSHA256(img.getData());
 
     Optional<Image> existing = imageRepository.findByHash(hash);
     if (existing.isPresent()) {
       img.setId(existing.get().getId());
       img.setHash(hash);
-      return;
+      return; // Stop processing, it's a duplicate
     }
 
     img.setHash(hash);
     img.setFormat(getFileExtension(img.getName()));
     img.setExtractionStatus("PENDING");
 
-    // Fast header-only reading for initial metadata DB ingestion
+    // 2. Fast header-only reading for initial dimensions metadata
     int width = 0;
     int height = 0;
     try (
@@ -71,9 +85,11 @@ public class ImageService {
     img.setWidth(width);
     img.setHeight(height);
 
+    // 3. Save to DB (Generates the ID)
     Image savedImage = imageRepository.save(img);
     img.setId(savedImage.getId());
 
+    // 4. Save physically to the file system
     if (saveToDisk) {
       try {
         Path path = Paths.get(imageDirectoryPath, img.getName());
@@ -83,7 +99,7 @@ public class ImageService {
       }
     }
 
-    // Ensure async thread runs strictly AFTER data is globally committed
+    // 5. Ensure the async thread runs strictly AFTER the DB transaction is globally committed
     TransactionSynchronizationManager.registerSynchronization(
       new TransactionSynchronization() {
         @Override
@@ -94,6 +110,12 @@ public class ImageService {
     );
   }
 
+  /**
+   * Retrieves the DB record and loads the raw file data from the disk.
+   * 
+   * @param id DB ID of the image.
+   * @return Optional containing the Image with loaded byte array.
+   */
   public Optional<Image> getImageWithData(long id) {
     Optional<Image> imageOpt = imageRepository.findById(id);
     if (imageOpt.isPresent()) {
@@ -111,6 +133,12 @@ public class ImageService {
     return Optional.empty();
   }
 
+  /**
+   * Safely deletes an image from disk and then from the DB.
+   * 
+   * @param id DB ID of the image.
+   * @return true if successfully deleted, false if not found.
+   */
   @Transactional
   public boolean deleteImage(long id) {
     Optional<Image> imageOpt = imageRepository.findById(id);
@@ -127,6 +155,8 @@ public class ImageService {
     }
     return false;
   }
+
+  // --- Utility Methods ---
 
   private String calculateSHA256(byte[] data) {
     try {

@@ -10,42 +10,41 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
+/**
+ * Global centralized exception handler.
+ * Translates backend exceptions into standardized RESTful "ProblemDetail" JSON responses.
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
   private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+  // --- Custom Domain Exceptions (Sealed class hierarchy) ---
+
   public abstract static sealed class DomainException
     extends RuntimeException
     permits RecordNotFoundException, BadRequestException, UnsupportedFileException
   {
-
     protected DomainException(String message) {
       super(message, null, false, false);
     }
   }
 
   public static final class RecordNotFoundException extends DomainException {
-
-    public RecordNotFoundException(String message) {
-      super(message);
-    }
+    public RecordNotFoundException(String message) { super(message); }
   }
 
   public static final class BadRequestException extends DomainException {
-
-    public BadRequestException(String message) {
-      super(message);
-    }
+    public BadRequestException(String message) { super(message); }
   }
 
   public static final class UnsupportedFileException extends DomainException {
-
-    public UnsupportedFileException(String message) {
-      super(message);
-    }
+    public UnsupportedFileException(String message) { super(message); }
   }
 
+  /**
+   * Helper method to build a standard ProblemDetail object with an attached Trace ID for logging.
+   */
   private ProblemDetail buildProblemDetail(HttpStatus status, String detail) {
     ProblemDetail pd = ProblemDetail.forStatusAndDetail(status, detail);
     String traceId = UUID.randomUUID().toString();
@@ -53,6 +52,8 @@ public class GlobalExceptionHandler {
     log.error("API Error [TraceID: {}]: Status {} - {}", traceId, status.value(), detail);
     return pd;
   }
+
+  // --- Exception Handlers ---
 
   @ExceptionHandler(GlobalExceptionHandler.RecordNotFoundException.class)
   public ProblemDetail handleRecordNotFound(GlobalExceptionHandler.RecordNotFoundException ex) {

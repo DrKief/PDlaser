@@ -22,6 +22,11 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+/**
+ * Unit Tests for the ImageController class utilizing MockMvc.
+ * Mocks out the service layers to purely test HTTP request/response mappings,
+ * status codes, and exception handler bindings.
+ */
 @WebMvcTest(ImageController.class)
 @Import(GlobalExceptionHandler.class)
 public class ImageControllerTests {
@@ -43,9 +48,13 @@ public class ImageControllerTests {
 
   @BeforeEach
   public void setUp() {
+    // Reset mocks before every test to ensure isolated execution state
     reset(imageRepository, imageDAO, imageService, statusNotifier);
   }
 
+  /**
+   * Tests that fetching an existing image returns a 200 OK and valid image data.
+   */
   @Test
   public void getImageShouldReturnSuccess() throws Exception {
     Image image = new Image("test.jpg", new byte[0]);
@@ -59,6 +68,9 @@ public class ImageControllerTests {
     verify(imageService).getImageWithData(0);
   }
 
+  /**
+   * Tests that requesting an unknown image ID correctly returns a 404 Not Found.
+   */
   @Test
   public void getImageShouldReturnNotFound() throws Exception {
     when(imageService.getImageWithData(99)).thenReturn(Optional.empty());
@@ -66,6 +78,9 @@ public class ImageControllerTests {
     this.mockMvc.perform(get("/images/99")).andExpect(status().isNotFound());
   }
 
+  /**
+   * Tests that uploading a valid multipart file returns a 202 Accepted.
+   */
   @Test
   public void addImageShouldReturnSuccess() throws Exception {
     MockMultipartFile file = new MockMultipartFile(
@@ -75,9 +90,14 @@ public class ImageControllerTests {
       "content".getBytes()
     );
     this.mockMvc.perform(multipart("/images").file(file)).andExpect(status().isAccepted());
+    
+    // Verifies that the service was called correctly to process and save
     verify(imageService).processAndSaveImage(any(Image.class), eq(true));
   }
 
+  /**
+   * Tests that uploading a non-image file type gets rejected with 415 Unsupported Media Type.
+   */
   @Test
   public void addImageShouldReturnUnsupportedMediaType() throws Exception {
     MockMultipartFile file = new MockMultipartFile(
@@ -91,6 +111,9 @@ public class ImageControllerTests {
     );
   }
 
+  /**
+   * Tests that requesting a deletion of an existing image returns 204 No Content.
+   */
   @Test
   public void deleteImageShouldReturnSuccess() throws Exception {
     when(imageService.deleteImage(0)).thenReturn(true);
@@ -99,6 +122,9 @@ public class ImageControllerTests {
     verify(imageService).deleteImage(0);
   }
 
+  /**
+   * Tests that requesting deletion of a non-existent image returns 404 Not Found.
+   */
   @Test
   public void deleteImageShouldReturnNotFound() throws Exception {
     when(imageService.deleteImage(99)).thenReturn(false);

@@ -14,8 +14,16 @@ import com.twelvemonkeys.image.ResampleOp;
 import java.awt.image.BufferedImage;
 import java.util.List;
 
+/**
+ * Utility class aggregating all heavy image manipulation and feature extraction logic.
+ * Wraps BoofCV and TwelveMonkeys operations.
+ */
 public class ImageProcessing {
 
+  /**
+   * Resizes an image utilizing the high-quality Lanczos3 algorithm.
+   * Standardizing dimensions improves speed and accuracy of feature extraction.
+   */
   public static BufferedImage resizeImageLanczos3(
     BufferedImage inputImage,
     int targetWidth,
@@ -25,6 +33,10 @@ public class ImageProcessing {
     return resampleOp.filter(inputImage, null);
   }
 
+  /**
+   * Extracts a Histogram of Oriented Gradients (HoG).
+   * Used to identify shapes, edges, and texture gradients in the image.
+   */
   public static float[] extractGlobalHog(BufferedImage inputImage) {
     GrayF32 grayImage = ConvertBufferedImage.convertFrom(inputImage, (GrayF32) null);
 
@@ -44,6 +56,7 @@ public class ImageProcessing {
     int singleDescSize = descriptions.get(0).size();
     float[] globalHistogram = new float[singleDescSize];
 
+    // Aggregate regional blocks into one global profile
     for (TupleDesc_F64 desc : descriptions) {
       for (int i = 0; i < singleDescSize; i++) {
         globalHistogram[i] += (float) desc.data[i];
@@ -53,6 +66,10 @@ public class ImageProcessing {
     return normalizeL2(globalHistogram);
   }
 
+  /**
+   * Extracts a 2D Hue-Saturation (HSV) color histogram.
+   * Very effective for matching perceptual color schemes regardless of brightness.
+   */
   public static float[] extractHsvHistogram(BufferedImage inputImage) {
     Planar<GrayF32> rgb = ConvertBufferedImage.convertFromPlanar(
       inputImage,
@@ -85,6 +102,10 @@ public class ImageProcessing {
     return normalizeL2(histogram2D);
   }
   
+  /**
+   * Extracts a CIELAB color histogram.
+   * LAB space maps to human vision, separating light (L) from color (A, B).
+   */
   public static float[] extractCieLabHistogram(BufferedImage inputImage) {
     Planar<GrayF32> rgb = ConvertBufferedImage.convertFromPlanar(
       inputImage,
@@ -118,6 +139,10 @@ public class ImageProcessing {
     return normalizeL2(histogram3D);
   }
 
+  /**
+   * Extracts a traditional 3D RGB color histogram.
+   * Simple baseline descriptor for color matching.
+   */
   public static float[] extractRgbHistogram(BufferedImage inputImage) {
     Planar<GrayF32> rgb = ConvertBufferedImage.convertFromPlanar(
       inputImage,
@@ -148,6 +173,10 @@ public class ImageProcessing {
     return normalizeL2(histogram3D);
   }
 
+  /**
+   * Normalizes a float vector using L2 Normalization (Euclidean norm).
+   * Crucial for PGvector Euclidean distance calculations (<-> operator) to work accurately.
+   */
   private static float[] normalizeL2(float[] vector) {
     double sumSquares = 0;
     for (float v : vector) {

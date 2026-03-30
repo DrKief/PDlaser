@@ -18,6 +18,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+/**
+ * Primary REST Controller managing all `/images` endpoints.
+ * Handles uploads, downloads, searches, metadata retrieval, and similarity requests.
+ */
 @RestController
 @RequestMapping("/images")
 public class ImageController {
@@ -44,6 +48,10 @@ public class ImageController {
     this.statusNotifier = statusNotifier;
   }
 
+  /**
+   * Health-check run at application startup.
+   * Ensures the storage directory is accessible, otherwise halts the app.
+   */
   @PostConstruct
   public void verifyStartupState() {
     Path path = Paths.get(imageDirectoryPath);
@@ -55,14 +63,14 @@ public class ImageController {
     }
 
     if (!Files.isWritable(path)) {
-      log.error(
-        "FATAL: Required 'images' directory is not writable. Path: {}",
-        path.toAbsolutePath()
-      );
+      log.error("FATAL: Required 'images' directory is not writable. Path: {}", path.toAbsolutePath());
       throw new IllegalStateException("directory not writable");
     }
   }
 
+  /**
+   * Retrieve a list of all uploaded images (basic info).
+   */
   @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<List<Map<String, Object>>> getImages() {
     Iterable<Image> images = imageRepository.findAll();
@@ -77,6 +85,9 @@ public class ImageController {
     return ResponseEntity.ok(response);
   }
 
+  /**
+   * Retrieve the raw binary data of an image for rendering in the browser.
+   */
   @GetMapping(value = "/{id}")
   public ResponseEntity<?> getImage(@PathVariable("id") long id) {
     Optional<Image> image = imageService.getImageWithData(id);
@@ -89,6 +100,9 @@ public class ImageController {
       .body(image.get().getData());
   }
 
+  /**
+   * Delete an image from both the file system and database.
+   */
   @DeleteMapping("/{id}")
   public ResponseEntity<?> deleteImage(@PathVariable("id") long id) {
     boolean deleted = imageService.deleteImage(id);
@@ -98,6 +112,9 @@ public class ImageController {
     return ResponseEntity.noContent().build();
   }
 
+  /**
+   * Upload a new image. Triggers asynchronous background processing.
+   */
   @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<?> addImage(
     @RequestParam("file") MultipartFile file,
@@ -116,6 +133,7 @@ public class ImageController {
     imageService.processAndSaveImage(image, true);
     long id = image.getId();
 
+    // Attach keywords if provided during upload
     if (keywords != null && !keywords.isEmpty()) {
       for (String k : keywords) {
         String[] splits = k.split(",");
@@ -129,16 +147,16 @@ public class ImageController {
       .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
       .body(
         Map.of(
-          "message",
-          "Image accepted for background processing.",
-          "id",
-          id,
-          "status_url",
-          "/images/" + id + "/status"
+          "message", "Image accepted for background processing.",
+          "id", id,
+          "status_url", "/images/" + id + "/status"
         )
       );
   }
 
+  /**
+   * Endpoint for the frontend to poll (Long-Polling) the processing status of an image.
+   */
   @GetMapping(value = "/{id}/status", produces = MediaType.APPLICATION_JSON_VALUE)
   public Object getImageStatus(@PathVariable("id") long id) {
     String status = imageDao.getStatus(id);
@@ -146,15 +164,20 @@ public class ImageController {
       throw new GlobalExceptionHandler.RecordNotFoundException("Image not found");
     }
 
+    // If done, return immediately
     if ("COMPLETED".equals(status) || "FAILED".equals(status)) {
       return ResponseEntity.ok()
         .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
         .body(Map.of("id", id, "extraction_status", status));
     }
 
+    // Otherwise, wait up to 10 seconds for the async thread to finish
     return statusNotifier.waitFor(id, 10000L);
   }
 
+  /**
+   * Retrieve full metadata (dimensions, format, keywords, status) for an image.
+   */
   @GetMapping("/{id}/metadata")
   public ResponseEntity<?> getMetadata(@PathVariable("id") long id) {
     Map<String, Object> rawMeta = imageDao.getImageMetadata(id);
@@ -171,6 +194,9 @@ public class ImageController {
       .body(response);
   }
 
+  /**
+   * Find highly similar images using PGvector capabilities.
+   */
   @GetMapping("/{id}/similar")
   public ResponseEntity<?> getSimilarImages(
     @PathVariable("id") long id,
@@ -194,6 +220,9 @@ public class ImageController {
       .body(results);
   }
 
+  /**
+   * Add a keyword tag to a specific image.
+   */
   @PutMapping("/{id}/keywords")
   public ResponseEntity<?> addKeyword(
     @PathVariable("id") long id,
@@ -206,12 +235,15 @@ public class ImageController {
     return ResponseEntity.noContent().build();
   }
 
+  /**
+   * Delete a keyword tag from a specific image.
+   */
   @DeleteMapping("/{id}/keywords")
   public ResponseEntity<?> deleteKeyword(
     @PathVariable("id") long id,
     @RequestParam("tag") String tag
   ) {
-    imageDao.getImageMetadata(id);
+    imageDao.getImageMetadata(id); // Throws if image not found
 
     if (!imageDao.hasKeyword(id, tag)) {
       throw new GlobalExceptionHandler.BadRequestException("Tag not associated with this image");
@@ -221,6 +253,9 @@ public class ImageController {
     return ResponseEntity.noContent().build();
   }
 
+  /**
+   * Retrieve all unique keywords across the entire application.
+   */
   @GetMapping("/keywords")
   public ResponseEntity<?> getAllKeywords() {
     return ResponseEntity.ok()
@@ -228,6 +263,9 @@ public class ImageController {
       .body(imageDao.getAllKeywords());
   }
 
+  /**
+   * Search database for images matching specific attributes (name, format, size, keywords).
+   */
   @GetMapping("/search")
   public ResponseEntity<?> searchImagesByAttributes(
     @RequestParam(required = false) String name,
