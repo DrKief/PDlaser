@@ -94,16 +94,16 @@ const deleteImage = async (id: number) => {
   </div>
 
   <div v-if="isLoading" class="empty-state">Loading images...</div>
-  <div v-else-if="images.length === 0" class="empty-state">
-    The gallery is empty.
-  </div>
+  <div v-else-if="images.length === 0" class="empty-state">The gallery is empty.</div>
 
   <div v-else class="gallery-grid">
     <article v-for="image in images" :key="image.id" class="image-card panel">
-      
       <div class="image-wrapper">
         <img :src="getImageUrl(image)" :alt="image.name" loading="lazy" />
-        <div v-if="statusCache?.[image.id]" :class="['status-badge', 'overlay-badge', statusCache[image.id]!.toLowerCase()]">
+        <div
+          v-if="statusCache?.[image.id]"
+          :class="['status-badge', 'overlay-badge', statusCache[image.id]!.toLowerCase()]"
+        >
           {{ statusCache[image.id] }}
         </div>
       </div>
@@ -112,7 +112,18 @@ const deleteImage = async (id: number) => {
         <div class="card-header">
           <h3 class="image-name" :title="image.name">{{ image.name }}</h3>
           <button class="btn-icon-delete" @click="deleteImage(image.id)" aria-label="Delete image">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            <svg
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            >
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
           </button>
         </div>
 
@@ -124,10 +135,16 @@ const deleteImage = async (id: number) => {
             </button>
           </span>
         </div>
-        
+
         <div class="tag-input-group">
-          <input v-model="keywordInputs[image.id]" @keyup.enter="addKeyword(image)" placeholder="Add tag..." />
-          <button class="btn btn-primary btn-icon" @click="addKeyword(image)" aria-label="Add tag">+</button>
+          <input
+            v-model="keywordInputs[image.id]"
+            @keyup.enter="addKeyword(image)"
+            placeholder="Add tag..."
+          />
+          <button class="btn btn-primary btn-icon" @click="addKeyword(image)" aria-label="Add tag">
+            +
+          </button>
         </div>
       </div>
     </article>
@@ -174,7 +191,7 @@ const deleteImage = async (id: number) => {
   max-height: 100%;
   object-fit: contain;
   border-radius: var(--radius-sm);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
 }
 
 .overlay-badge {
@@ -182,7 +199,7 @@ const deleteImage = async (id: number) => {
   top: var(--space-sm);
   right: var(--space-sm);
   background: var(--bg-surface) !important;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .card-content {

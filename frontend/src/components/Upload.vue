@@ -92,7 +92,7 @@ const resetForm = () => {
   }
   const input = document.getElementById("file-input") as HTMLInputElement;
   if (input) input.value = "";
-}
+};
 </script>
 
 <template>
@@ -103,15 +103,34 @@ const resetForm = () => {
 
   <div class="upload-container">
     <div class="form-layout panel">
-      
       <!-- Minimalist File Input -->
       <div class="file-drop-zone" :class="{ 'has-file': selectedFile }">
         <label for="file-input" class="file-label">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          <svg
+            class="icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
+          </svg>
           <span class="text" v-if="!selectedFile">Choose a file</span>
-          <span class="text success" v-else>{{ selectedFile.name }} ({{ (selectedFile.size / 1024).toFixed(1) }}KB)</span>
+          <span class="text success" v-else
+            >{{ selectedFile.name }} ({{ (selectedFile.size / 1024).toFixed(1) }}KB)</span
+          >
         </label>
-        <input type="file" id="file-input" class="sr-only" @change="onFileChange" accept="image/*" />
+        <input
+          type="file"
+          id="file-input"
+          class="sr-only"
+          @change="onFileChange"
+          accept="image/*"
+        />
       </div>
 
       <div class="input-group" v-if="mode === 'upload'">
@@ -131,10 +150,16 @@ const resetForm = () => {
 
       <!-- Feedback Area -->
       <div class="feedback-area" v-if="message || lastUploadedId">
-        <p class="system-message" :class="{'error': message.toLowerCase().includes('fail') || message.toLowerCase().includes('large')}">
+        <p
+          class="system-message"
+          :class="{
+            error:
+              message.toLowerCase().includes('fail') || message.toLowerCase().includes('large'),
+          }"
+        >
           {{ message }}
         </p>
-        
+
         <div v-if="lastUploadedId !== null && statusCache?.[lastUploadedId]" class="status-tracker">
           <span :class="['status-badge', statusCache[lastUploadedId]!.toLowerCase()]">
             {{ statusCache[lastUploadedId] }}

@@ -90,7 +90,7 @@ public class ApiControllerTests {
       "content".getBytes()
     );
     this.mockMvc.perform(multipart("/images").file(file)).andExpect(status().isAccepted());
-    
+
     // Verifies that the service was called correctly to process and save
     verify(imageLifecycleService).processAndSaveImage(any(Metadata.class), eq(true));
   }

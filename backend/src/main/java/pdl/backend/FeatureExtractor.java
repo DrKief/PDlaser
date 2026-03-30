@@ -2,6 +2,7 @@ package pdl.backend;
 
 import boofcv.abst.feature.dense.DescribeImageDense;
 import boofcv.alg.color.ColorHsv;
+import boofcv.alg.color.impl.ImplColorLab;
 import boofcv.factory.feature.dense.ConfigDenseHoG;
 import boofcv.factory.feature.dense.FactoryDescribeImageDense;
 import boofcv.io.image.ConvertBufferedImage;
@@ -9,7 +10,6 @@ import boofcv.struct.feature.TupleDesc_F64;
 import boofcv.struct.image.GrayF32;
 import boofcv.struct.image.ImageType;
 import boofcv.struct.image.Planar;
-import boofcv.alg.color.impl.ImplColorLab;
 import com.twelvemonkeys.image.ResampleOp;
 import java.awt.image.BufferedImage;
 import java.util.List;
@@ -101,7 +101,7 @@ public class FeatureExtractor {
 
     return normalizeL2(histogram2D);
   }
-  
+
   /**
    * Extracts a CIELAB color histogram.
    * LAB space maps to human vision, separating light (L) from color (A, B).

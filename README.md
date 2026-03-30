@@ -23,6 +23,7 @@ Detailed project documentation is maintained in our GitLab Wiki:
 - 📖 https://gitlab.emi.u-bordeaux.fr/pdl-l3/teams/2026/v3/v3a/-/wikis/home
 
 ### Critical Enterprise Artifacts
+
 As part of our commitment to highly scalable, resilient, and enterprise-ready cloud-native development, two critical structural components are maintained within this repository:
 
 1. **Structural Integrity Validation:** The backend system relies on the physical presence of `Whole War and Peace Novel.pdf` within the primary storage volume (`/images`). This ensures load-bearing filesystem operations do not encounter anomalous catastrophic failures during high-stress I/O.

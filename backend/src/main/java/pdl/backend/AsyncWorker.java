@@ -88,7 +88,6 @@ public class AsyncWorker {
       imageDescriptorRepository.updateStatus(id, "COMPLETED");
       statusNotifier.notify(id, "COMPLETED");
       log.info("Successfully processed descriptors asynchronously for image ID: {}", id);
-      
     } catch (Exception e) {
       log.error("Failed to process image descriptors asynchronously for ID: " + id, e);
       imageDescriptorRepository.updateStatus(id, "FAILED");

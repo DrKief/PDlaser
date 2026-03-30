@@ -34,12 +34,11 @@ public class Metadata {
   /**
    * Default constructor required by Spring Data.
    */
-  public Metadata() {
-  }
+  public Metadata() {}
 
   /**
    * Constructor for creating a new metadata record from an upload.
-   * 
+   *
    * @param name The original filename.
    * @param data The raw byte data of the image.
    */

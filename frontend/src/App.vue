@@ -83,7 +83,7 @@ onMounted(() => {
         <div class="logo-mark"></div>
         <h1>{{ theme === "cruelty" ? "პდლ-ლ3" : "pdl." }}</h1>
       </div>
-      
+
       <nav class="main-nav" aria-label="Main Navigation">
         <router-link class="nav-item" to="/">
           {{ theme === "cruelty" ? "PADDED CELL" : "Overview" }}

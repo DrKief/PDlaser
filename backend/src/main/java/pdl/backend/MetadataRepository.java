@@ -10,7 +10,6 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public interface MetadataRepository extends CrudRepository<Metadata, Long> {
-  
   /**
    * Custom query method to find an image by its SHA-256 hash.
    * Used during upload to detect and prevent duplicate image storage.

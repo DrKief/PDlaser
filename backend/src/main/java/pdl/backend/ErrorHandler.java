@@ -25,21 +25,31 @@ public class ErrorHandler {
     extends RuntimeException
     permits RecordNotFoundException, BadRequestException, UnsupportedFileException
   {
+
     protected DomainException(String message) {
       super(message, null, false, false);
     }
   }
 
   public static final class RecordNotFoundException extends DomainException {
-    public RecordNotFoundException(String message) { super(message); }
+
+    public RecordNotFoundException(String message) {
+      super(message);
+    }
   }
 
   public static final class BadRequestException extends DomainException {
-    public BadRequestException(String message) { super(message); }
+
+    public BadRequestException(String message) {
+      super(message);
+    }
   }
 
   public static final class UnsupportedFileException extends DomainException {
-    public UnsupportedFileException(String message) { super(message); }
+
+    public UnsupportedFileException(String message) {
+      super(message);
+    }
   }
 
   /**

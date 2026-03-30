@@ -19,7 +19,7 @@ public class StatusTracker {
 
   /**
    * Registers a client connection to wait for a specific image ID's processing to complete.
-   * 
+   *
    * @param imageId The ID of the image being processed.
    * @param timeoutInMilliseconds Time before the server forces a timeout response.
    * @return DeferredResult to hold open the HTTP connection.
@@ -50,7 +50,7 @@ public class StatusTracker {
   /**
    * Called by AsyncWorker when an image finishes processing.
    * Fulfills the DeferredResult, immediately answering the waiting HTTP request.
-   * 
+   *
    * @param imageId The ID of the image.
    * @param finalStatus The resulting status (COMPLETED or FAILED).
    */

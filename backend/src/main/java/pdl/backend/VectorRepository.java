@@ -129,7 +129,7 @@ public class VectorRepository {
   /**
    * Finds similar images utilizing PGvector nearest-neighbor searches.
    * Calculates similarity distance and returns formatted scores.
-   * 
+   *
    * @param targetId DB ID of the source image.
    * @param type Descriptor type (gradient/hog, saturation/hsv, rgb, cielab).
    * @param limit Max results to return.
@@ -143,7 +143,7 @@ public class VectorRepository {
       case "cielab" -> "labvector";
       default -> "hogvector";
     };
-    
+
     PGvector targetVector;
     try {
       targetVector = jdbcTemplate.queryForObject(
@@ -163,10 +163,18 @@ public class VectorRepository {
 
     String sql =
       "WITH vector_matches AS (" +
-      "  SELECT imageid, " + vectorColumn + " " + operator + " ? as distance " +
+      "  SELECT imageid, " +
+      vectorColumn +
+      " " +
+      operator +
+      " ? as distance " +
       "  FROM imagedescriptors " +
       "  WHERE imageid != ? " +
-      "  ORDER BY " + vectorColumn + " " + operator + " ? ASC LIMIT ?" +
+      "  ORDER BY " +
+      vectorColumn +
+      " " +
+      operator +
+      " ? ASC LIMIT ?" +
       ") " +
       "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
       "FROM vector_matches v " +
@@ -179,17 +187,27 @@ public class VectorRepository {
   /**
    * Focused SQL executor for similarity matching given an already extracted PGVector.
    */
-  public List<Map<String, Object>> findSimilarByVector(PGvector targetVector, String vectorColumn, int limit) {
+  public List<Map<String, Object>> findSimilarByVector(
+    PGvector targetVector,
+    String vectorColumn,
+    int limit
+  ) {
     // Dynamically assign the correct mathematical operator for the index
     String operator = vectorColumn.equals("labvector") ? "<=>" : "<->";
 
     String sql =
       "WITH vector_matches AS (" +
       "  SELECT imageid, " +
-      vectorColumn + " " + operator + " ? as distance " +
+      vectorColumn +
+      " " +
+      operator +
+      " ? as distance " +
       "  FROM imagedescriptors " +
       "  ORDER BY " +
-      vectorColumn + " " + operator + " ? ASC LIMIT ?" +
+      vectorColumn +
+      " " +
+      operator +
+      " ? ASC LIMIT ?" +
       ") " +
       "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
       "FROM vector_matches v " +

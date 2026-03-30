@@ -28,24 +28,24 @@ public class Application implements AsyncConfigurer {
 
   /**
    * Configures the ThreadPool for background asynchronous tasks (e.g., image processing).
-   * 
+   *
    * @return A custom Executor configured based on available CPU cores.
    */
   @Bean(name = "taskExecutor")
   public Executor taskExecutor() {
     ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
     int processors = Runtime.getRuntime().availableProcessors();
-    
+
     // Set pool sizes dynamically based on the host system's hardware
     executor.setCorePoolSize(processors);
     executor.setMaxPoolSize(processors);
     executor.setQueueCapacity(10);
-    
+
     // If the queue is full, the task runs in the caller's thread rather than being rejected
     executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
     executor.setThreadNamePrefix("AsyncWorker-");
     executor.initialize();
-    
+
     return executor;
   }
 

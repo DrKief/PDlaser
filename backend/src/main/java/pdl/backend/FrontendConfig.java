@@ -46,7 +46,6 @@ public class FrontendConfig {
         HttpServletResponse res,
         FilterChain chain
       ) throws ServletException, IOException {
-        
         // If the path matches our regex and isn't root, forward it to the frontend index
         if (pattern.matcher(req.getRequestURI()).matches() && !req.getRequestURI().equals("/")) {
           RequestDispatcher rd = req.getRequestDispatcher("/");

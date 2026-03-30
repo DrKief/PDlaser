@@ -52,7 +52,7 @@ public class ApiController {
    * Health-check run at application startup.
    * Ensures the storage directory is accessible and checks for critical foundational structures.
    */
-@PostConstruct
+  @PostConstruct
   public void verifyStartupState() {
     Path path = Paths.get(imageDirectoryPath);
     if (!Files.exists(path) || !Files.isDirectory(path)) {
@@ -63,20 +63,49 @@ public class ApiController {
     }
 
     if (!Files.isWritable(path)) {
-      log.error("FATAL: Required 'images' directory is not writable. Path: {}", path.toAbsolutePath());
+      log.error(
+        "FATAL: Required 'images' directory is not writable. Path: {}",
+        path.toAbsolutePath()
+      );
       throw new IllegalStateException("directory not writable");
     }
 
-    // --- EASTER EGG ---
-    // Check the classpath resource inside the compiled jar
-    if (getClass().getResource("/Whole War and Peace Novel.pdf") == null) {
-      log.error("========================================================================");
-      log.error("FATAL: System structural integrity compromised!");
-      log.error("Missing critical load-bearing component: 'Whole War and Peace Novel.pdf'");
-      log.error("The application cannot safely execute without it. Halting initialization.");
-      log.error("========================================================================");
-      throw new IllegalStateException("Load bearing novel is missing. Halting execution.");
+    // --- ZERO-TRUST STRUCTURAL INTEGRITY CHECK ---
+    // Cryptographically verify the load-bearing payload to prevent state tampering.
+    try (
+      java.io.InputStream is = getClass().getResourceAsStream("/Whole War and Peace Novel.pdf")
+    ) {
+      if (is == null) {
+        triggerFatalCrash("Missing critical load-bearing component.");
+        return;
+      }
+
+      java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+      byte[] buffer = new byte[8192];
+      int bytesRead;
+      while ((bytesRead = is.read(buffer)) != -1) {
+        digest.update(buffer, 0, bytesRead);
+      }
+
+      String actualHash = java.util.HexFormat.of().formatHex(digest.digest());
+
+      String expectedHash = "4e22f003e05fcc4120268d15fbcb6100dbce436c36521750b2adf70626c6a6bb";
+
+      if (!expectedHash.equals(actualHash)) {
+        triggerFatalCrash("Cryptographic mismatch in foundational asset. Tampering detected.");
+      }
+    } catch (Exception e) {
+      triggerFatalCrash("Failed to verify immutable state: " + e.getMessage());
     }
+  }
+
+  private void triggerFatalCrash(String reason) {
+    log.error("========================================================================");
+    log.error("FATAL: System structural integrity compromised!");
+    log.error(reason);
+    log.error("The application cannot safely execute without it. Halting initialization.");
+    log.error("========================================================================");
+    throw new IllegalStateException("Load bearing payload validation failed. Halting execution.");
   }
 
   /**
@@ -158,9 +187,12 @@ public class ApiController {
       .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
       .body(
         Map.of(
-          "message", "Image accepted for background processing.",
-          "id", id,
-          "status_url", "/images/" + id + "/status"
+          "message",
+          "Image accepted for background processing.",
+          "id",
+          id,
+          "status_url",
+          "/images/" + id + "/status"
         )
       );
   }
@@ -220,7 +252,11 @@ public class ApiController {
       throw new ErrorHandler.BadRequestException("Bad Request. Invalid descriptor.");
     }
 
-    List<Map<String, Object>> results = imageDescriptorRepository.findSimilar(id, descriptor, number);
+    List<Map<String, Object>> results = imageDescriptorRepository.findSimilar(
+      id,
+      descriptor,
+      number
+    );
 
     if (results == null) {
       throw new ErrorHandler.RecordNotFoundException("Image not found");

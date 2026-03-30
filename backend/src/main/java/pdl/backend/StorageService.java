@@ -32,7 +32,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public class StorageService {
 
   private static final Logger log = LoggerFactory.getLogger(StorageService.class);
-  
+
   private final MetadataRepository imageEntityRepository;
   private final VectorRepository imageDescriptorRepository;
   private final AsyncWorker backgroundWorker;
@@ -51,9 +51,9 @@ public class StorageService {
   }
 
   /**
-   * Processes a newly uploaded image, saves it to the DB, saves to disk, 
+   * Processes a newly uploaded image, saves it to the DB, saves to disk,
    * and triggers async descriptor extraction.
-   * 
+   *
    * @param img The Metadata object containing the image metadata and raw bytes.
    * @param saveToDisk Boolean flag indicating whether to physically save the file.
    */
@@ -123,7 +123,11 @@ public class StorageService {
    * Finds similar images dynamically based on an unsaved byte array upload.
    * Extracts vectors on the fly without database insertion, then queries PGvector.
    */
-  public List<Map<String, Object>> searchSimilarFromUpload(byte[] imageData, String type, int limit) {
+  public List<Map<String, Object>> searchSimilarFromUpload(
+    byte[] imageData,
+    String type,
+    int limit
+  ) {
     try {
       BufferedImage bimg = ImageIO.read(new ByteArrayInputStream(imageData));
       if (bimg == null) return List.of();
@@ -153,10 +157,9 @@ public class StorageService {
       }
 
       PGvector targetVector = new PGvector(vectorData);
-      
+
       // Pass the raw vector to the repository layer for execution
       return imageDescriptorRepository.findSimilarByVector(targetVector, vectorColumn, limit);
-
     } catch (Exception e) {
       log.error("Failed to process image upload for similarity search", e);
       return List.of();
@@ -165,7 +168,7 @@ public class StorageService {
 
   /**
    * Retrieves the DB record and loads the raw file data from the disk.
-   * 
+   *
    * @param id DB ID of the image.
    * @return Optional containing the Metadata record with loaded byte array.
    */
@@ -188,7 +191,7 @@ public class StorageService {
 
   /**
    * Safely deletes an image from disk and then from the DB.
-   * 
+   *
    * @param id DB ID of the image.
    * @return true if successfully deleted, false if not found.
    */

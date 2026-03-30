@@ -58,7 +58,7 @@ const onSelectChange = async () => {
   <div v-else-if="images.length === 0" class="empty-state">
     The database is empty. Proceed to Upload to add images.
   </div>
-  
+
   <div v-else class="inspector-layout">
     <div class="control-panel">
       <label for="image-selector">Selected Image</label>
@@ -78,12 +78,15 @@ const onSelectChange = async () => {
           <h3>{{ selectedImageName }}</h3>
           <span class="record-id">ID: {{ selectedImageId }}</span>
         </div>
-        
-        <div v-if="statusCache?.[selectedImageId]" :class="['status-badge', statusCache[selectedImageId]!.toLowerCase()]">
+
+        <div
+          v-if="statusCache?.[selectedImageId]"
+          :class="['status-badge', statusCache[selectedImageId]!.toLowerCase()]"
+        >
           {{ statusCache[selectedImageId] }}
         </div>
       </div>
-      
+
       <div class="image-frame">
         <img :src="getImageUrl(selectedImageId)" :alt="selectedImageName" loading="lazy" />
       </div>

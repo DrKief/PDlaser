@@ -138,21 +138,20 @@ watch(selectedSourceImageId, (newId) => {
   </div>
 
   <div class="query-layout">
-    
     <!-- Physical-style Segmented Control -->
     <div class="segmented-control" role="tablist">
-      <button 
-        role="tab" 
+      <button
+        role="tab"
         :aria-selected="activeTab === 'attributes'"
-        :class="['segment-btn', { active: activeTab === 'attributes' }]" 
+        :class="['segment-btn', { active: activeTab === 'attributes' }]"
         @click="activeTab = 'attributes'"
       >
         By Attributes
       </button>
-      <button 
+      <button
         role="tab"
         :aria-selected="activeTab === 'similarity'"
-        :class="['segment-btn', { active: activeTab === 'similarity' }]" 
+        :class="['segment-btn', { active: activeTab === 'similarity' }]"
         @click="activeTab = 'similarity'"
       >
         By Similarity
@@ -164,26 +163,40 @@ watch(selectedSourceImageId, (newId) => {
       <div class="search-form">
         <div class="field-group">
           <label>Name contains</label>
-          <input v-model="searchName" placeholder="e.g. landscape" @keyup.enter="performAttributeSearch" />
+          <input
+            v-model="searchName"
+            placeholder="e.g. landscape"
+            @keyup.enter="performAttributeSearch"
+          />
         </div>
         <div class="field-group">
           <label>File Format</label>
-          <input v-model="searchFormat" placeholder="e.g. jpeg, png" @keyup.enter="performAttributeSearch"/>
+          <input
+            v-model="searchFormat"
+            placeholder="e.g. jpeg, png"
+            @keyup.enter="performAttributeSearch"
+          />
         </div>
         <div class="field-group">
           <label>Resolution</label>
-          <input v-model="searchSize" placeholder="e.g. 800*600" @keyup.enter="performAttributeSearch" />
+          <input
+            v-model="searchSize"
+            placeholder="e.g. 800*600"
+            @keyup.enter="performAttributeSearch"
+          />
         </div>
         <div class="field-group">
           <label>Tags</label>
-          <input v-model="searchKeywords" placeholder="e.g. nature, outdoors" @keyup.enter="performAttributeSearch"/>
+          <input
+            v-model="searchKeywords"
+            placeholder="e.g. nature, outdoors"
+            @keyup.enter="performAttributeSearch"
+          />
         </div>
       </div>
 
       <div class="action-row">
-        <button @click="performAttributeSearch" class="btn btn-primary">
-          Search Images
-        </button>
+        <button @click="performAttributeSearch" class="btn btn-primary">Search Images</button>
       </div>
 
       <div v-if="attributeError" class="error-msg">{{ attributeError }}</div>
@@ -200,8 +213,14 @@ watch(selectedSourceImageId, (newId) => {
               {{ img.name }} (ID: {{ img.id }})
             </option>
           </select>
-          <div v-if="selectedSourceImageId !== null && statusCache?.[selectedSourceImageId]" class="source-status">
-            Source status: <span :class="['status-badge', statusCache[selectedSourceImageId]!.toLowerCase()]">{{ statusCache[selectedSourceImageId] }}</span>
+          <div
+            v-if="selectedSourceImageId !== null && statusCache?.[selectedSourceImageId]"
+            class="source-status"
+          >
+            Source status:
+            <span :class="['status-badge', statusCache[selectedSourceImageId]!.toLowerCase()]">{{
+              statusCache[selectedSourceImageId]
+            }}</span>
           </div>
         </div>
 
@@ -217,23 +236,33 @@ watch(selectedSourceImageId, (newId) => {
 
         <div class="field-group">
           <label>Results Limit</label>
-          <input v-model.number="similarityCount" type="number" min="1" max="50" @keyup.enter="performSimilaritySearch"/>
+          <input
+            v-model.number="similarityCount"
+            type="number"
+            min="1"
+            max="50"
+            @keyup.enter="performSimilaritySearch"
+          />
         </div>
       </div>
 
       <div class="action-row">
-        <button @click="performSimilaritySearch" class="btn btn-primary">
-          Find Similar
-        </button>
+        <button @click="performSimilaritySearch" class="btn btn-primary">Find Similar</button>
       </div>
 
       <div v-if="similarityError" class="error-msg">{{ similarityError }}</div>
     </div>
 
     <!-- RESULTS AREA -->
-    <div class="results-area" v-if="(activeTab === 'attributes' && hasSearchedAttr) || (activeTab === 'similarity' && hasSearchedSim)">
+    <div
+      class="results-area"
+      v-if="
+        (activeTab === 'attributes' && hasSearchedAttr) ||
+        (activeTab === 'similarity' && hasSearchedSim)
+      "
+    >
       <h3 class="results-header">Results</h3>
-      
+
       <template v-if="activeTab === 'attributes'">
         <div v-if="attributeResults.length === 0 && !attributeError" class="empty-state">
           No matches found for the specified criteria.
@@ -245,7 +274,10 @@ watch(selectedSourceImageId, (newId) => {
             </div>
             <div class="result-meta">
               <span class="record-id">ID: {{ id }}</span>
-              <div v-if="statusCache?.[id]" :class="['status-badge', statusCache[id]!.toLowerCase()]">
+              <div
+                v-if="statusCache?.[id]"
+                :class="['status-badge', statusCache[id]!.toLowerCase()]"
+              >
                 {{ statusCache[id] }}
               </div>
             </div>
@@ -265,16 +297,21 @@ watch(selectedSourceImageId, (newId) => {
             <div class="result-meta">
               <div class="meta-row">
                 <span class="record-id">ID: {{ res.id }}</span>
-                <span class="score">Score: {{ typeof res.score === "number" ? res.score.toFixed(3) : res.score }}</span>
+                <span class="score"
+                  >Score:
+                  {{ typeof res.score === "number" ? res.score.toFixed(3) : res.score }}</span
+                >
               </div>
-              <div v-if="statusCache?.[res.id]" :class="['status-badge', statusCache[res.id]!.toLowerCase()]">
+              <div
+                v-if="statusCache?.[res.id]"
+                :class="['status-badge', statusCache[res.id]!.toLowerCase()]"
+              >
                 {{ statusCache[res.id] }}
               </div>
             </div>
           </article>
         </div>
       </template>
-
     </div>
   </div>
 </template>
@@ -324,7 +361,7 @@ watch(selectedSourceImageId, (newId) => {
 .segment-btn.active {
   background: var(--bg-surface);
   color: var(--text-primary);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 .query-panel {
