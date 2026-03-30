@@ -211,6 +211,7 @@ watch(selectedSourceImageId, (newId) => {
             <option value="gradient">Gradient / Shape</option>
             <option value="saturation">Saturation Intensity</option>
             <option value="rgb">RGB Distribution</option>
+            <option value="cielab">CIElab Distribution</option>
           </select>
         </div>
 

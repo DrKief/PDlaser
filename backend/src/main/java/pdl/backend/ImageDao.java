@@ -117,12 +117,13 @@ public class ImageDao {
   }
 
   public List<Map<String, Object>> findSimilar(long targetId, String type, int limit) {
-    String vectorColumn;
-    if ("gradient".equalsIgnoreCase(type)) vectorColumn = "hogvector";
-    else if ("saturation".equalsIgnoreCase(type)) vectorColumn = "hsvvector";
-    else if ("rgb".equalsIgnoreCase(type)) vectorColumn = "rgbvector";
-    else vectorColumn = "hogvector";
-
+    String vectorColumn = switch (type.toLowerCase()) {
+      case "gradient" -> "hogvector";
+      case "saturation" -> "hsvvector";
+      case "rgb" -> "rgbvector";
+      case "cielab" -> "labvector";
+      default -> "hogvector";
+    };
     PGvector targetVector;
     try {
       targetVector = jdbcTemplate.queryForObject(
@@ -163,7 +164,12 @@ public class ImageDao {
 
       BufferedImage resizedImage = ImageProcessing.resizeImageLanczos3(bimg, 256, 256);
 
-      String vectorColumn;
+      String vectorColumn = switch (type.toLowerCase()) {
+        case "saturation" -> "hsvvector";
+        case "rgb" -> "rgbvector";
+        case "cielab" -> "labvector";
+        default -> "hogvector";
+      };
       PGvector targetVector;
 
       if ("saturation".equalsIgnoreCase(type)) {
@@ -172,6 +178,9 @@ public class ImageDao {
       } else if ("rgb".equalsIgnoreCase(type)) {
         vectorColumn = "rgbvector";
         targetVector = new PGvector(ImageProcessing.extractRgbHistogram(resizedImage));
+      } else if ("cielab".equalsIgnoreCase(type)) {
+        vectorColumn = "labvector";
+        targetVector = new PGvector(ImageProcessing.extractCieLabHistogram(resizedImage));
       } else {
         vectorColumn = "hogvector";
         float[] hogData = ImageProcessing.extractGlobalHog(resizedImage);

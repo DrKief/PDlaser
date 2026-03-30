@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS imagedescriptors (
     hogvector vector(31),
     hsvvector vector(256),
     rgbvector vector(512),
+    labvector vector(512),
     PRIMARY KEY (imageid)
 );
 

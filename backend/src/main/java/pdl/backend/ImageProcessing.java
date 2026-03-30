@@ -9,6 +9,7 @@ import boofcv.struct.feature.TupleDesc_F64;
 import boofcv.struct.image.GrayF32;
 import boofcv.struct.image.ImageType;
 import boofcv.struct.image.Planar;
+import boofcv.alg.color.impl.ImplColorLab;
 import com.twelvemonkeys.image.ResampleOp;
 import java.awt.image.BufferedImage;
 import java.util.List;
@@ -82,6 +83,39 @@ public class ImageProcessing {
     }
 
     return normalizeL2(histogram2D);
+  }
+  
+  public static float[] extractCieLabHistogram(BufferedImage inputImage) {
+    Planar<GrayF32> rgb = ConvertBufferedImage.convertFromPlanar(
+      inputImage,
+      null,
+      true,
+      GrayF32.class
+    );
+    Planar<GrayF32> lab = rgb.createSameShape();
+    ImplColorLab.rgbToLab_F32(rgb, lab);
+
+    int binsPerChannel = 8;
+    float[] histogram3D = new float[binsPerChannel * binsPerChannel * binsPerChannel];
+
+    for (int y = 0; y < lab.height; y++) {
+      for (int x = 0; x < lab.width; x++) {
+        float l = lab.getBand(0).get(x, y);
+        float a = lab.getBand(1).get(x, y);
+        float b = lab.getBand(2).get(x, y);
+
+        int lIndex = (int) ((l / 100.0f) * binsPerChannel);
+        int aIndex = (int) (((a + 128) / 256.0f) * binsPerChannel);
+        int bIndex = (int) (((b + 128) / 256.0f) * binsPerChannel);
+
+        if (lIndex >= binsPerChannel) lIndex = binsPerChannel - 1;
+        if (aIndex >= binsPerChannel) aIndex = binsPerChannel - 1;
+        if (bIndex >= binsPerChannel) bIndex = binsPerChannel - 1;
+
+        histogram3D[lIndex * binsPerChannel * binsPerChannel + aIndex * binsPerChannel + bIndex]++;
+      }
+    }
+    return normalizeL2(histogram3D);
   }
 
   public static float[] extractRgbHistogram(BufferedImage inputImage) {

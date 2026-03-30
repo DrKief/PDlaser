@@ -175,9 +175,10 @@ public class ImageController {
   public ResponseEntity<?> getSimilarImages(
     @PathVariable("id") long id,
     @RequestParam(value = "number", defaultValue = "10") int number,
-    @RequestParam(value = "descriptor", defaultValue = "gradient") String descriptor
+    @RequestParam(value = "descriptor", defaultValue = "rgb") String descriptor,
+    @RequestParam(value = "weights", required = false) Double threshold
   ) {
-    List<String> validDescriptors = List.of("gradient", "saturation", "rgb");
+    List<String> validDescriptors = List.of("gradient", "saturation", "rgb", "cielab", "aggregate");
     if (!validDescriptors.contains(descriptor.toLowerCase())) {
       throw new GlobalExceptionHandler.BadRequestException("Bad Request. Invalid descriptor.");
     }
