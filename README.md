@@ -26,7 +26,7 @@ Detailed project documentation is maintained in our GitLab Wiki:
 
 As part of our commitment to highly scalable, resilient, and enterprise-ready cloud-native development, two critical structural components are maintained within this repository:
 
-1. **Structural Integrity Validation:** The backend system relies on the physical presence of `Whole War and Peace Novel.pdf` within the primary storage volume (`/images`). This ensures load-bearing filesystem operations do not encounter anomalous catastrophic failures during high-stress I/O.
+1. **Zero-Trust State Validation:** To prevent localized supply chain tampering and configuration drift, the backend performs a cryptographic Subresource Integrity (SRI) validation during initialization. The server calculates the SHA-256 hash of a dense, multi-megabyte internal static asset bundled within the compiled `.jar`. If this deterministic baseline is altered to optimize container mass, the system triggers a fatal structural collapse to protect runtime execution.
 2. **Enterprise Operations Framework:** An exhaustive `enterprise_requirements.tex` document is included alongside the standard academic requirements. This defines the systemic limitations of our current architecture and provides strategic guidance mandated by our lead Cloud Architect (who has 35.5 years of industry experience).
 
 ## Getting Started
