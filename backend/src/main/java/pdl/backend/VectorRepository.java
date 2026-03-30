@@ -1,12 +1,9 @@
 package pdl.backend;
 
 import com.pgvector.PGvector;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import javax.imageio.ImageIO;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,14 +18,14 @@ import org.springframework.stereotype.Repository;
  * Handles Keyword management, dynamic searching, and complex PGvector proximity searches.
  */
 @Repository
-public class ImageDao {
+public class VectorRepository {
 
-  private static final Logger log = LoggerFactory.getLogger(ImageDao.class);
+  private static final Logger log = LoggerFactory.getLogger(VectorRepository.class);
 
   @NonNull
   private final JdbcTemplate jdbcTemplate;
 
-  public ImageDao(@NonNull JdbcTemplate jdbcTemplate) {
+  public VectorRepository(@NonNull JdbcTemplate jdbcTemplate) {
     this.jdbcTemplate = jdbcTemplate;
   }
 
@@ -130,7 +127,7 @@ public class ImageDao {
   // --- Similarity Search (PGvector) ---
 
   /**
-   * Finds similar images utilizing PGvector nearest-neighbor (<-> operator) search.
+   * Finds similar images utilizing PGvector nearest-neighbor searches.
    * Calculates similarity distance and returns formatted scores.
    * 
    * @param targetId DB ID of the source image.
@@ -161,13 +158,15 @@ public class ImageDao {
       return null;
     }
 
-    // SQL query utilizing PGvector operator `<->` for Euclidean L2 distance.
+    // Dynamically assign the correct mathematical operator to utilize the underlying index
+    String operator = vectorColumn.equals("labvector") ? "<=>" : "<->";
+
     String sql =
       "WITH vector_matches AS (" +
-      "  SELECT imageid, " + vectorColumn + " <-> ? as distance " +
+      "  SELECT imageid, " + vectorColumn + " " + operator + " ? as distance " +
       "  FROM imagedescriptors " +
       "  WHERE imageid != ? " +
-      "  ORDER BY " + vectorColumn + " <-> ? ASC LIMIT ?" +
+      "  ORDER BY " + vectorColumn + " " + operator + " ? ASC LIMIT ?" +
       ") " +
       "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
       "FROM vector_matches v " +
@@ -178,55 +177,26 @@ public class ImageDao {
   }
 
   /**
-   * Experimental/Feature method: Finds similar images based on an unsaved byte array upload.
-   * Extracts vectors on the fly without database insertion, then queries PGvector.
+   * Focused SQL executor for similarity matching given an already extracted PGVector.
    */
-  public List<Map<String, Object>> findSimilarFromUpload(byte[] imageData, String type, int limit) {
-    try {
-      BufferedImage bimg = ImageIO.read(new ByteArrayInputStream(imageData));
-      if (bimg == null) return List.of();
+  public List<Map<String, Object>> findSimilarByVector(PGvector targetVector, String vectorColumn, int limit) {
+    // Dynamically assign the correct mathematical operator for the index
+    String operator = vectorColumn.equals("labvector") ? "<=>" : "<->";
 
-      BufferedImage resizedImage = ImageProcessing.resizeImageLanczos3(bimg, 256, 256);
+    String sql =
+      "WITH vector_matches AS (" +
+      "  SELECT imageid, " +
+      vectorColumn + " " + operator + " ? as distance " +
+      "  FROM imagedescriptors " +
+      "  ORDER BY " +
+      vectorColumn + " " + operator + " ? ASC LIMIT ?" +
+      ") " +
+      "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
+      "FROM vector_matches v " +
+      "JOIN images i ON v.imageid = i.id " +
+      "ORDER BY v.distance ASC";
 
-      String vectorColumn;
-      PGvector targetVector;
-
-      if ("saturation".equalsIgnoreCase(type)) {
-        vectorColumn = "hsvvector";
-        targetVector = new PGvector(ImageProcessing.extractHsvHistogram(resizedImage));
-      } else if ("rgb".equalsIgnoreCase(type)) {
-        vectorColumn = "rgbvector";
-        targetVector = new PGvector(ImageProcessing.extractRgbHistogram(resizedImage));
-      } else if ("cielab".equalsIgnoreCase(type)) {
-        vectorColumn = "labvector";
-        targetVector = new PGvector(ImageProcessing.extractCieLabHistogram(resizedImage));
-      } else {
-        vectorColumn = "hogvector";
-        float[] hogData = ImageProcessing.extractGlobalHog(resizedImage);
-        if (hogData.length != 31) {
-          float[] adjustedHog = new float[31];
-          System.arraycopy(hogData, 0, adjustedHog, 0, Math.min(hogData.length, 31));
-          hogData = adjustedHog;
-        }
-        targetVector = new PGvector(hogData);
-      }
-
-      String sql =
-        "WITH vector_matches AS (" +
-        "  SELECT imageid, " + vectorColumn + " <-> ? as distance " +
-        "  FROM imagedescriptors " +
-        "  ORDER BY " + vectorColumn + " <-> ? ASC LIMIT ?" +
-        ") " +
-        "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
-        "FROM vector_matches v " +
-        "JOIN images i ON v.imageid = i.id " +
-        "ORDER BY v.distance ASC";
-
-      return jdbcTemplate.queryForList(sql, targetVector, targetVector, limit);
-    } catch (Exception e) {
-      e.printStackTrace();
-      return List.of();
-    }
+    return jdbcTemplate.queryForList(sql, targetVector, targetVector, limit);
   }
 
   // --- Search ---

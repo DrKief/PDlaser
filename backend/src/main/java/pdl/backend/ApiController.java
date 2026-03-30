@@ -19,32 +19,32 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * Primary REST Controller managing all `/images` endpoints.
+ * Primary REST Controller routing incoming `/images` API endpoints.
  * Handles uploads, downloads, searches, metadata retrieval, and similarity requests.
  */
 @RestController
 @RequestMapping("/images")
-public class ImageController {
+public class ApiController {
 
-  private static final Logger log = LoggerFactory.getLogger(ImageController.class);
+  private static final Logger log = LoggerFactory.getLogger(ApiController.class);
 
   @Value("${app.image.directory:images}")
   private String imageDirectoryPath;
 
-  private final ImageRepository imageRepository;
-  private final ImageDao imageDao;
-  private final ImageService imageService;
-  private final ImageStatusNotifier statusNotifier;
+  private final MetadataRepository imageEntityRepository;
+  private final VectorRepository imageDescriptorRepository;
+  private final StorageService imageLifecycleService;
+  private final StatusTracker statusNotifier;
 
-  public ImageController(
-    ImageRepository imageRepository,
-    ImageDao imageDao,
-    ImageService imageService,
-    ImageStatusNotifier statusNotifier
+  public ApiController(
+    MetadataRepository imageEntityRepository,
+    VectorRepository imageDescriptorRepository,
+    StorageService imageLifecycleService,
+    StatusTracker statusNotifier
   ) {
-    this.imageRepository = imageRepository;
-    this.imageDao = imageDao;
-    this.imageService = imageService;
+    this.imageEntityRepository = imageEntityRepository;
+    this.imageDescriptorRepository = imageDescriptorRepository;
+    this.imageLifecycleService = imageLifecycleService;
     this.statusNotifier = statusNotifier;
   }
 
@@ -73,13 +73,13 @@ public class ImageController {
    */
   @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<List<Map<String, Object>>> getImages() {
-    Iterable<Image> images = imageRepository.findAll();
+    Iterable<Metadata> images = imageEntityRepository.findAll();
     List<Map<String, Object>> response = new java.util.ArrayList<>();
-    for (Image img : images) {
+    for (Metadata img : images) {
       Map<String, Object> item = new HashMap<>();
       item.put("id", img.getId());
       item.put("name", img.getName());
-      item.put("keywords", imageDao.getKeywords(img.getId()));
+      item.put("keywords", imageDescriptorRepository.getKeywords(img.getId()));
       response.add(item);
     }
     return ResponseEntity.ok(response);
@@ -90,9 +90,9 @@ public class ImageController {
    */
   @GetMapping(value = "/{id}")
   public ResponseEntity<?> getImage(@PathVariable("id") long id) {
-    Optional<Image> image = imageService.getImageWithData(id);
+    Optional<Metadata> image = imageLifecycleService.getImageWithData(id);
     if (image.isEmpty() || image.get().getData() == null) {
-      throw new GlobalExceptionHandler.RecordNotFoundException("Image not found");
+      throw new ErrorHandler.RecordNotFoundException("Image not found");
     }
 
     return ResponseEntity.ok()
@@ -105,9 +105,9 @@ public class ImageController {
    */
   @DeleteMapping("/{id}")
   public ResponseEntity<?> deleteImage(@PathVariable("id") long id) {
-    boolean deleted = imageService.deleteImage(id);
+    boolean deleted = imageLifecycleService.deleteImage(id);
     if (!deleted) {
-      throw new GlobalExceptionHandler.RecordNotFoundException("Image not found");
+      throw new ErrorHandler.RecordNotFoundException("Image not found");
     }
     return ResponseEntity.noContent().build();
   }
@@ -121,16 +121,16 @@ public class ImageController {
     @RequestParam(value = "keywords", required = false) List<String> keywords
   ) throws Exception {
     if (file.isEmpty()) {
-      throw new GlobalExceptionHandler.BadRequestException("File is empty");
+      throw new ErrorHandler.BadRequestException("File is empty");
     }
 
     String contentType = file.getContentType();
     if (contentType == null || !contentType.startsWith("image/")) {
-      throw new GlobalExceptionHandler.UnsupportedFileException("Unsupported Media Type");
+      throw new ErrorHandler.UnsupportedFileException("Unsupported Media Type");
     }
 
-    Image image = new Image(file.getOriginalFilename(), file.getBytes());
-    imageService.processAndSaveImage(image, true);
+    Metadata image = new Metadata(file.getOriginalFilename(), file.getBytes());
+    imageLifecycleService.processAndSaveImage(image, true);
     long id = image.getId();
 
     // Attach keywords if provided during upload
@@ -138,7 +138,7 @@ public class ImageController {
       for (String k : keywords) {
         String[] splits = k.split(",");
         for (String tag : splits) {
-          imageDao.addKeyword(id, tag.trim());
+          imageDescriptorRepository.addKeyword(id, tag.trim());
         }
       }
     }
@@ -159,9 +159,9 @@ public class ImageController {
    */
   @GetMapping(value = "/{id}/status", produces = MediaType.APPLICATION_JSON_VALUE)
   public Object getImageStatus(@PathVariable("id") long id) {
-    String status = imageDao.getStatus(id);
+    String status = imageDescriptorRepository.getStatus(id);
     if (status == null) {
-      throw new GlobalExceptionHandler.RecordNotFoundException("Image not found");
+      throw new ErrorHandler.RecordNotFoundException("Image not found");
     }
 
     // If done, return immediately
@@ -180,7 +180,7 @@ public class ImageController {
    */
   @GetMapping("/{id}/metadata")
   public ResponseEntity<?> getMetadata(@PathVariable("id") long id) {
-    Map<String, Object> rawMeta = imageDao.getImageMetadata(id);
+    Map<String, Object> rawMeta = imageDescriptorRepository.getImageMetadata(id);
 
     Map<String, Object> response = new HashMap<>();
     response.put("Name", rawMeta.get("Name"));
@@ -206,13 +206,13 @@ public class ImageController {
   ) {
     List<String> validDescriptors = List.of("gradient", "saturation", "rgb", "cielab", "aggregate");
     if (!validDescriptors.contains(descriptor.toLowerCase())) {
-      throw new GlobalExceptionHandler.BadRequestException("Bad Request. Invalid descriptor.");
+      throw new ErrorHandler.BadRequestException("Bad Request. Invalid descriptor.");
     }
 
-    List<Map<String, Object>> results = imageDao.findSimilar(id, descriptor, number);
+    List<Map<String, Object>> results = imageDescriptorRepository.findSimilar(id, descriptor, number);
 
     if (results == null) {
-      throw new GlobalExceptionHandler.RecordNotFoundException("Image not found");
+      throw new ErrorHandler.RecordNotFoundException("Image not found");
     }
 
     return ResponseEntity.ok()
@@ -228,9 +228,9 @@ public class ImageController {
     @PathVariable("id") long id,
     @RequestParam("tag") String tag
   ) {
-    boolean success = imageDao.addKeyword(id, tag);
+    boolean success = imageDescriptorRepository.addKeyword(id, tag);
     if (!success) {
-      throw new GlobalExceptionHandler.RecordNotFoundException("Image not found");
+      throw new ErrorHandler.RecordNotFoundException("Image not found");
     }
     return ResponseEntity.noContent().build();
   }
@@ -243,13 +243,13 @@ public class ImageController {
     @PathVariable("id") long id,
     @RequestParam("tag") String tag
   ) {
-    imageDao.getImageMetadata(id); // Throws if image not found
+    imageDescriptorRepository.getImageMetadata(id); // Throws if image not found
 
-    if (!imageDao.hasKeyword(id, tag)) {
-      throw new GlobalExceptionHandler.BadRequestException("Tag not associated with this image");
+    if (!imageDescriptorRepository.hasKeyword(id, tag)) {
+      throw new ErrorHandler.BadRequestException("Tag not associated with this image");
     }
 
-    imageDao.deleteKeyword(id, tag);
+    imageDescriptorRepository.deleteKeyword(id, tag);
     return ResponseEntity.noContent().build();
   }
 
@@ -260,7 +260,7 @@ public class ImageController {
   public ResponseEntity<?> getAllKeywords() {
     return ResponseEntity.ok()
       .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-      .body(imageDao.getAllKeywords());
+      .body(imageDescriptorRepository.getAllKeywords());
   }
 
   /**
@@ -273,9 +273,9 @@ public class ImageController {
     @RequestParam(required = false) String size,
     @RequestParam(required = false) List<String> keywords
   ) {
-    List<Long> ids = imageDao.searchByAttributes(name, format, size, keywords);
+    List<Long> ids = imageDescriptorRepository.searchByAttributes(name, format, size, keywords);
     if (ids.isEmpty()) {
-      throw new GlobalExceptionHandler.RecordNotFoundException("Aucune image existante trouvée.");
+      throw new ErrorHandler.RecordNotFoundException("Aucune image existante trouvée.");
     }
 
     return ResponseEntity.ok()

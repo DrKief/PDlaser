@@ -10,7 +10,7 @@ import org.springframework.data.relational.core.mapping.Table;
  * Maps to the "images" table in PostgreSQL.
  */
 @Table("images")
-public class Image {
+public class Metadata {
 
   @Id
   private Long id;
@@ -34,7 +34,7 @@ public class Image {
   /**
    * Default constructor required by Spring Data.
    */
-  public Image() {
+  public Metadata() {
   }
 
   /**
@@ -43,7 +43,7 @@ public class Image {
    * @param name The original filename.
    * @param data The raw byte data of the image.
    */
-  public Image(final String name, final byte[] data) {
+  public Metadata(final String name, final byte[] data) {
     this.name = name;
     this.data = data;
   }

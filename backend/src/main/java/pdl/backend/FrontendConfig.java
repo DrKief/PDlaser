@@ -18,7 +18,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * and redirected to Vue.js's index.html.
  */
 @Configuration
-public class RedirectConfiguration {
+public class FrontendConfig {
 
   /**
    * Registers the custom SPA redirect filter into the application servlet chain.

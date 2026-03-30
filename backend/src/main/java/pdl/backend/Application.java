@@ -18,12 +18,12 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
  */
 @SpringBootApplication
 @EnableAsync
-public class BackendApplication implements AsyncConfigurer {
+public class Application implements AsyncConfigurer {
 
-  private static final Logger log = LoggerFactory.getLogger(BackendApplication.class);
+  private static final Logger log = LoggerFactory.getLogger(Application.class);
 
   public static void main(String[] args) {
-    SpringApplication.run(BackendApplication.class, args);
+    SpringApplication.run(Application.class, args);
   }
 
   /**

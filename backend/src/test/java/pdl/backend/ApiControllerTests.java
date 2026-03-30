@@ -23,25 +23,25 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * Unit Tests for the ImageController class utilizing MockMvc.
+ * Unit Tests for the ImageApiController class utilizing MockMvc.
  * Mocks out the service layers to purely test HTTP request/response mappings,
  * status codes, and exception handler bindings.
  */
-@WebMvcTest(ImageController.class)
-@Import(GlobalExceptionHandler.class)
-public class ImageControllerTests {
+@WebMvcTest(ApiController.class)
+@Import(ErrorHandler.class)
+public class ApiControllerTests {
 
   @MockitoBean
-  private ImageRepository imageRepository;
+  private MetadataRepository imageEntityRepository;
 
   @MockitoBean
-  private ImageDao imageDAO;
+  private VectorRepository imageDescriptorRepository;
 
   @MockitoBean
-  private ImageService imageService;
+  private StorageService imageLifecycleService;
 
   @MockitoBean
-  private ImageStatusNotifier statusNotifier;
+  private StatusTracker statusNotifier;
 
   @Autowired
   private MockMvc mockMvc;
@@ -49,7 +49,7 @@ public class ImageControllerTests {
   @BeforeEach
   public void setUp() {
     // Reset mocks before every test to ensure isolated execution state
-    reset(imageRepository, imageDAO, imageService, statusNotifier);
+    reset(imageEntityRepository, imageDescriptorRepository, imageLifecycleService, statusNotifier);
   }
 
   /**
@@ -57,15 +57,15 @@ public class ImageControllerTests {
    */
   @Test
   public void getImageShouldReturnSuccess() throws Exception {
-    Image image = new Image("test.jpg", new byte[0]);
+    Metadata image = new Metadata("test.jpg", new byte[0]);
     image.setFormat("jpeg");
-    when(imageService.getImageWithData(0)).thenReturn(Optional.of(image));
+    when(imageLifecycleService.getImageWithData(0)).thenReturn(Optional.of(image));
 
     this.mockMvc.perform(get("/images/0"))
       .andExpect(status().isOk())
       .andExpect(content().contentType(MediaType.IMAGE_JPEG_VALUE));
 
-    verify(imageService).getImageWithData(0);
+    verify(imageLifecycleService).getImageWithData(0);
   }
 
   /**
@@ -73,7 +73,7 @@ public class ImageControllerTests {
    */
   @Test
   public void getImageShouldReturnNotFound() throws Exception {
-    when(imageService.getImageWithData(99)).thenReturn(Optional.empty());
+    when(imageLifecycleService.getImageWithData(99)).thenReturn(Optional.empty());
 
     this.mockMvc.perform(get("/images/99")).andExpect(status().isNotFound());
   }
@@ -92,7 +92,7 @@ public class ImageControllerTests {
     this.mockMvc.perform(multipart("/images").file(file)).andExpect(status().isAccepted());
     
     // Verifies that the service was called correctly to process and save
-    verify(imageService).processAndSaveImage(any(Image.class), eq(true));
+    verify(imageLifecycleService).processAndSaveImage(any(Metadata.class), eq(true));
   }
 
   /**
@@ -116,10 +116,10 @@ public class ImageControllerTests {
    */
   @Test
   public void deleteImageShouldReturnSuccess() throws Exception {
-    when(imageService.deleteImage(0)).thenReturn(true);
+    when(imageLifecycleService.deleteImage(0)).thenReturn(true);
 
     this.mockMvc.perform(delete("/images/0")).andExpect(status().isNoContent());
-    verify(imageService).deleteImage(0);
+    verify(imageLifecycleService).deleteImage(0);
   }
 
   /**
@@ -127,7 +127,7 @@ public class ImageControllerTests {
    */
   @Test
   public void deleteImageShouldReturnNotFound() throws Exception {
-    when(imageService.deleteImage(99)).thenReturn(false);
+    when(imageLifecycleService.deleteImage(99)).thenReturn(false);
 
     this.mockMvc.perform(delete("/images/99")).andExpect(status().isNotFound());
   }

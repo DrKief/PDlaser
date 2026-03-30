@@ -1,5 +1,7 @@
 package pdl.backend;
 
+import com.pgvector.PGvector;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -8,6 +10,8 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
@@ -21,39 +25,44 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
- * Service layer responsible for business logic relating to images:
- * - Saving to disk
- * - Extracting basic metadata
- * - Triggering async background processing
+ * Service layer orchestrating business logic relating to images:
+ * - Routing algorithms, hashing, saving, deleting, and similarity requests.
  */
 @Service
-public class ImageService {
+public class StorageService {
 
-  private static final Logger log = LoggerFactory.getLogger(ImageService.class);
-  private final ImageRepository imageRepository;
-  private final AsyncImageProcessor asyncProcessor;
+  private static final Logger log = LoggerFactory.getLogger(StorageService.class);
+  
+  private final MetadataRepository imageEntityRepository;
+  private final VectorRepository imageDescriptorRepository;
+  private final AsyncWorker backgroundWorker;
 
   @Value("${app.image.directory:images}")
   private String imageDirectoryPath;
 
-  public ImageService(ImageRepository imageRepository, AsyncImageProcessor asyncProcessor) {
-    this.imageRepository = imageRepository;
-    this.asyncProcessor = asyncProcessor;
+  public StorageService(
+    MetadataRepository imageEntityRepository,
+    VectorRepository imageDescriptorRepository,
+    AsyncWorker backgroundWorker
+  ) {
+    this.imageEntityRepository = imageEntityRepository;
+    this.imageDescriptorRepository = imageDescriptorRepository;
+    this.backgroundWorker = backgroundWorker;
   }
 
   /**
    * Processes a newly uploaded image, saves it to the DB, saves to disk, 
    * and triggers async descriptor extraction.
    * 
-   * @param img The Image object containing metadata and raw bytes.
+   * @param img The ImageEntity object containing metadata and raw bytes.
    * @param saveToDisk Boolean flag indicating whether to physically save the file.
    */
   @Transactional
-  public void processAndSaveImage(Image img, boolean saveToDisk) {
+  public void processAndSaveImage(Metadata img, boolean saveToDisk) {
     // 1. Calculate hash to prevent duplicates
     String hash = calculateSHA256(img.getData());
 
-    Optional<Image> existing = imageRepository.findByHash(hash);
+    Optional<Metadata> existing = imageEntityRepository.findByHash(hash);
     if (existing.isPresent()) {
       img.setId(existing.get().getId());
       img.setHash(hash);
@@ -86,7 +95,7 @@ public class ImageService {
     img.setHeight(height);
 
     // 3. Save to DB (Generates the ID)
-    Image savedImage = imageRepository.save(img);
+    Metadata savedImage = imageEntityRepository.save(img);
     img.setId(savedImage.getId());
 
     // 4. Save physically to the file system
@@ -104,22 +113,66 @@ public class ImageService {
       new TransactionSynchronization() {
         @Override
         public void afterCommit() {
-          asyncProcessor.processImageDescriptors(img.getId(), img.getData());
+          backgroundWorker.processImageDescriptors(img.getId(), img.getData());
         }
       }
     );
   }
 
   /**
+   * Finds similar images dynamically based on an unsaved byte array upload.
+   * Extracts vectors on the fly without database insertion, then queries PGvector.
+   */
+  public List<Map<String, Object>> searchSimilarFromUpload(byte[] imageData, String type, int limit) {
+    try {
+      BufferedImage bimg = ImageIO.read(new ByteArrayInputStream(imageData));
+      if (bimg == null) return List.of();
+
+      BufferedImage resizedImage = FeatureExtractor.resizeImageLanczos3(bimg, 256, 256);
+      float[] vectorData;
+      String vectorColumn;
+
+      if ("saturation".equalsIgnoreCase(type)) {
+        vectorColumn = "hsvvector";
+        vectorData = FeatureExtractor.extractHsvHistogram(resizedImage);
+      } else if ("rgb".equalsIgnoreCase(type)) {
+        vectorColumn = "rgbvector";
+        vectorData = FeatureExtractor.extractRgbHistogram(resizedImage);
+      } else if ("cielab".equalsIgnoreCase(type)) {
+        vectorColumn = "labvector";
+        vectorData = FeatureExtractor.extractCieLabHistogram(resizedImage);
+      } else {
+        vectorColumn = "hogvector";
+        float[] hogData = FeatureExtractor.extractGlobalHog(resizedImage);
+        if (hogData.length != 31) {
+          float[] adjustedHog = new float[31];
+          System.arraycopy(hogData, 0, adjustedHog, 0, Math.min(hogData.length, 31));
+          hogData = adjustedHog;
+        }
+        vectorData = hogData;
+      }
+
+      PGvector targetVector = new PGvector(vectorData);
+      
+      // Pass the raw vector to the repository layer for execution
+      return imageDescriptorRepository.findSimilarByVector(targetVector, vectorColumn, limit);
+
+    } catch (Exception e) {
+      log.error("Failed to process image upload for similarity search", e);
+      return List.of();
+    }
+  }
+
+  /**
    * Retrieves the DB record and loads the raw file data from the disk.
    * 
    * @param id DB ID of the image.
-   * @return Optional containing the Image with loaded byte array.
+   * @return Optional containing the ImageEntity with loaded byte array.
    */
-  public Optional<Image> getImageWithData(long id) {
-    Optional<Image> imageOpt = imageRepository.findById(id);
+  public Optional<Metadata> getImageWithData(long id) {
+    Optional<Metadata> imageOpt = imageEntityRepository.findById(id);
     if (imageOpt.isPresent()) {
-      Image img = imageOpt.get();
+      Metadata img = imageOpt.get();
       try {
         Path path = Paths.get(imageDirectoryPath, img.getName());
         if (Files.exists(path)) {
@@ -141,16 +194,16 @@ public class ImageService {
    */
   @Transactional
   public boolean deleteImage(long id) {
-    Optional<Image> imageOpt = imageRepository.findById(id);
+    Optional<Metadata> imageOpt = imageEntityRepository.findById(id);
     if (imageOpt.isPresent()) {
-      Image img = imageOpt.get();
+      Metadata img = imageOpt.get();
       // Architectural Patch: Delete File strictly before the Database Row to avoid storage leaks
       try {
         Files.deleteIfExists(Paths.get(imageDirectoryPath, img.getName()));
       } catch (IOException e) {
         log.error("Could not delete file from disk for ID: " + id, e);
       }
-      imageRepository.delete(img);
+      imageEntityRepository.delete(img);
       return true;
     }
     return false;

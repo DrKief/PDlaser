@@ -18,7 +18,7 @@ import java.util.List;
  * Utility class aggregating all heavy image manipulation and feature extraction logic.
  * Wraps BoofCV and TwelveMonkeys operations.
  */
-public class ImageProcessing {
+public class FeatureExtractor {
 
   /**
    * Resizes an image utilizing the high-quality Lanczos3 algorithm.

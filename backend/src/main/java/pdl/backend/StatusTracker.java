@@ -11,7 +11,7 @@ import org.springframework.web.context.request.async.DeferredResult;
  * Allows the frontend to wait for asynchronous processing to finish without spamming the server.
  */
 @Service
-public class ImageStatusNotifier {
+public class StatusTracker {
 
   // Thread-safe map holding the pending client connections
   private final Map<Long, DeferredResult<ResponseEntity<Map<String, Object>>>> requests =
@@ -48,7 +48,7 @@ public class ImageStatusNotifier {
   }
 
   /**
-   * Called by AsyncImageProcessor when an image finishes processing.
+   * Called by BackgroundExtractionWorker when an image finishes processing.
    * Fulfills the DeferredResult, immediately answering the waiting HTTP request.
    * 
    * @param imageId The ID of the image.

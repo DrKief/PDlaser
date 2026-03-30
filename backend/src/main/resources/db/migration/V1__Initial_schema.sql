@@ -28,3 +28,4 @@ CREATE TABLE IF NOT EXISTS imagekeywords (
 CREATE INDEX IF NOT EXISTS idx_hnsw_hog ON imagedescriptors USING hnsw (hogvector vector_l2_ops) WITH (m=4, ef_construction=32);
 CREATE INDEX IF NOT EXISTS idx_hnsw_hsv ON imagedescriptors USING hnsw (hsvvector vector_l2_ops) WITH (m=16, ef_construction=128);
 CREATE INDEX IF NOT EXISTS idx_hnsw_rgb ON imagedescriptors USING hnsw (rgbvector vector_l2_ops) WITH (m=32, ef_construction=256);
+CREATE INDEX IF NOT EXISTS idx_hnsw_lab ON imagedescriptors USING hnsw (labvector vector_cosine_ops) WITH (m=32, ef_construction=256);

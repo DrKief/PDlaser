@@ -9,14 +9,14 @@ import org.springframework.stereotype.Repository;
  * Provides basic CRUD operations (Save, FindById, FindAll, Delete) automatically.
  */
 @Repository
-public interface ImageRepository extends CrudRepository<Image, Long> {
+public interface MetadataRepository extends CrudRepository<Metadata, Long> {
   
   /**
    * Custom query method to find an image by its SHA-256 hash.
    * Used during upload to detect and prevent duplicate image storage.
    *
    * @param hash The SHA-256 string.
-   * @return An Optional containing the Image if found.
+   * @return An Optional containing the ImageEntity if found.
    */
-  Optional<Image> findByHash(String hash);
+  Optional<Metadata> findByHash(String hash);
 }

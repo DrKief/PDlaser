@@ -15,9 +15,9 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
  * Translates backend exceptions into standardized RESTful "ProblemDetail" JSON responses.
  */
 @RestControllerAdvice
-public class GlobalExceptionHandler {
+public class ErrorHandler {
 
-  private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+  private static final Logger log = LoggerFactory.getLogger(ErrorHandler.class);
 
   // --- Custom Domain Exceptions (Sealed class hierarchy) ---
 
@@ -55,18 +55,18 @@ public class GlobalExceptionHandler {
 
   // --- Exception Handlers ---
 
-  @ExceptionHandler(GlobalExceptionHandler.RecordNotFoundException.class)
-  public ProblemDetail handleRecordNotFound(GlobalExceptionHandler.RecordNotFoundException ex) {
+  @ExceptionHandler(ErrorHandler.RecordNotFoundException.class)
+  public ProblemDetail handleRecordNotFound(ErrorHandler.RecordNotFoundException ex) {
     return buildProblemDetail(HttpStatus.NOT_FOUND, ex.getMessage());
   }
 
-  @ExceptionHandler(GlobalExceptionHandler.BadRequestException.class)
-  public ProblemDetail handleBadRequest(GlobalExceptionHandler.BadRequestException ex) {
+  @ExceptionHandler(ErrorHandler.BadRequestException.class)
+  public ProblemDetail handleBadRequest(ErrorHandler.BadRequestException ex) {
     return buildProblemDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
   }
 
-  @ExceptionHandler(GlobalExceptionHandler.UnsupportedFileException.class)
-  public ProblemDetail handleUnsupportedFile(GlobalExceptionHandler.UnsupportedFileException ex) {
+  @ExceptionHandler(ErrorHandler.UnsupportedFileException.class)
+  public ProblemDetail handleUnsupportedFile(ErrorHandler.UnsupportedFileException ex) {
     return buildProblemDetail(HttpStatus.UNSUPPORTED_MEDIA_TYPE, ex.getMessage());
   }
 
