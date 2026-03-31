@@ -34,7 +34,7 @@ const onFileChange = (event: Event) => {
       status: 'PENDING'
     });
   });
-  target.value = ''; // Reset input
+  target.value = ''; 
   globalMessage.value = "";
 };
 
@@ -80,9 +80,7 @@ const executeUpload = async () => {
       task.id = id;
       task.status = 'EXTRACTING';
       
-      // Hook into composable to track extraction
       pollStatus(id).then(() => {
-        // Once polling finishes, update the local task status
         if (statusCache[id] === 'COMPLETED') task.status = 'COMPLETED';
         if (statusCache[id] === 'FAILED') task.status = 'FAILED';
       });
@@ -113,7 +111,6 @@ const clearAll = () => {
     </header>
 
     <div class="upload-grid">
-      <!-- Left: Dropzone & Queue -->
       <section class="queue-col">
         <div class="drop-zone" v-if="!isUploading && tasks.length < 10">
           <div class="drop-box">
@@ -127,7 +124,8 @@ const clearAll = () => {
           <div v-for="(task, index) in tasks" :key="index" class="task-item">
             <img :src="task.previewUrl" class="task-thumb" />
             <div class="task-info">
-              <span class="task-name">{{ task.file.name }}</span>
+              <!-- Crucial fix: white-space nowrap and text-overflow -->
+              <span class="task-name" :title="task.file.name">{{ task.file.name }}</span>
               <span class="status-badge" :class="task.status.toLowerCase()">
                 {{ task.status === 'EXTRACTING' && statusCache[task.id!] ? statusCache[task.id!] : task.status }}
               </span>
@@ -139,7 +137,6 @@ const clearAll = () => {
         </div>
       </section>
 
-      <!-- Right: Settings -->
       <section class="meta-col">
         <div class="meta-card">
           <h3 class="meta-title">Batch Metadata</h3>
@@ -155,7 +152,6 @@ const clearAll = () => {
                 type="text" 
                 v-model="tagsInput" 
                 @keydown.enter="addTag"
-                @blur="addTag"
                 class="tag-input" 
                 placeholder="Type tag and press enter..." 
                 :disabled="isUploading"
@@ -197,7 +193,6 @@ const clearAll = () => {
   .upload-grid { grid-template-columns: 2fr 1fr; }
 }
 
-/* DROPZONE */
 .drop-zone {
   position: relative;
   background: var(--bg-surface-alt);
@@ -213,21 +208,20 @@ const clearAll = () => {
 .drop-box { display: flex; flex-direction: column; align-items: center; gap: 1rem; color: var(--text-secondary); }
 .drop-box .icon { font-size: 3rem; }
 
-/* TASK QUEUE */
 .task-list { display: flex; flex-direction: column; gap: 0.75rem; }
 .task-item {
   display: flex; align-items: center; gap: 1rem;
   background: var(--bg-surface); border: 1px solid var(--border-subtle);
   padding: 0.75rem; border-radius: 6px;
 }
-.task-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; }
-.task-info { flex: 1; display: flex; flex-direction: column; gap: 0.25rem; overflow: hidden; }
-.task-name { font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.task-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
+/* The min-width: 0 is required for flex children to truncate properly */
+.task-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+.task-name { font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary); }
 
-.btn-icon { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0.25rem; display: flex; }
+.btn-icon { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0.25rem; display: flex; flex-shrink: 0; }
 .btn-icon:hover { color: var(--color-danger); }
 
-/* META CONFIG */
 .meta-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
@@ -266,9 +260,8 @@ const clearAll = () => {
 
 .tag-input {
   border: none; background: transparent; flex: 1; min-width: 120px;
-  padding: 0.25rem; font-size: 0.9rem; outline: none; margin: 0;
+  padding: 0.25rem; font-size: 0.9rem; outline: none; margin: 0; color: var(--text-primary);
 }
-.tag-input:focus { border-bottom-color: transparent; }
 
 .global-msg { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem; text-align: center; }
 .actions { display: flex; flex-direction: column; gap: 1rem; }

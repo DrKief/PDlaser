@@ -1,57 +1,123 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
-import { useRouter } from "vue-router";
+import { ref, onMounted, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import http from "../http-api";
 
 interface Image { id: number; name: string; keywords: string[]; }
-const images = ref<Image[]>([]);
-const isLoading = ref(true);
+
+const route = useRoute();
 const router = useRouter();
 
-onMounted(async () => {
+const allImages = ref<Image[]>([]);
+const displayedImages = ref<Image[]>([]);
+const isLoading = ref(true);
+
+// Frontend Pagination State
+const displayLimit = ref(30); 
+const hasMore = ref(false);
+
+const loadImages = async () => {
+  isLoading.value = true;
+  displayLimit.value = 30; // Reset pagination on new search
+  
   try {
-    const response = await http.get("/images");
-    images.value = response.data.map((img: any) => ({ ...img, keywords: img.keywords || [] }));
+    const activeTag = route.query.tags as string;
+    let response: any;
+
+    if (activeTag) {
+      // Dynamic filter via backend search
+      response = await http.get("/images/search", { params: { keywords: activeTag } });
+      // The search endpoint currently returns an array of IDs, we need the full objects
+      // For this implementation, we will fetch full images, then filter locally if the backend doesn't return full objects.
+      // Assuming your /search endpoint returns IDs:
+      if (response.data.length > 0) {
+        // Fallback: Fetch all and filter locally for now to get metadata, until backend search returns full objects
+        const all = await http.get("/images");
+        allImages.value = all.data.filter((img: any) => response.data.includes(img.id));
+      } else {
+        allImages.value = [];
+      }
+    } else {
+      // Standard load
+      const response = await http.get("/images");
+      allImages.value = response.data.map((img: any) => ({ ...img, keywords: img.keywords || [] }));
+    }
+    
+    updateDisplayedImages();
+
   } catch (error) {
     console.error(error);
+    allImages.value = [];
+    updateDisplayedImages();
   } finally {
     isLoading.value = false;
   }
-});
+};
+
+const updateDisplayedImages = () => {
+  displayedImages.value = allImages.value.slice(0, displayLimit.value);
+  hasMore.value = allImages.value.length > displayLimit.value;
+};
+
+const loadMore = () => {
+  displayLimit.value += 30;
+  updateDisplayedImages();
+};
+
+const clearFilter = () => {
+  router.push('/');
+};
+
+onMounted(loadImages);
+// Watch for URL changes (e.g. from the Top Nav search bar)
+watch(() => route.query.tags, loadImages);
 
 const getImageUrl = (image: Image) => `/images/${image.id}`;
-
-const goToImage = (id: number) => {
-  router.push(`/image/${id}`);
-};
+const goToImage = (id: number) => router.push(`/image/${id}`);
 </script>
 
 <template>
   <div class="view-wrapper">
-    <div v-if="isLoading" class="empty-state label-text">Loading archive...</div>
-    <div v-else-if="images.length === 0" class="empty-state">
-      <h2 style="margin-bottom: 1rem;">No images found.</h2>
-      <router-link to="/upload" class="btn">Upload your first image</router-link>
+    <!-- Dynamic Header -->
+    <div class="gallery-header" v-if="route.query.tags">
+      <h2 class="filter-title">
+        Results for: <span class="highlight">#{{ route.query.tags }}</span>
+      </h2>
+      <button class="btn btn-outline" @click="clearFilter">Clear Filter</button>
     </div>
 
-    <div v-else class="masonry-grid">
-      <article 
-        v-for="image in images" 
-        :key="image.id" 
-        class="artifact-card"
-        @click="goToImage(image.id)"
-      >
-        <img :src="getImageUrl(image)" :alt="image.name" class="artifact-img" loading="lazy" />
-        
-        <div class="card-overlay">
-          <div class="overlay-content">
-            <h3 class="artifact-name">{{ image.name }}</h3>
-            <div class="tags" v-if="image.keywords.length">
-              <span class="tag-text">{{ image.keywords.join(', ') }}</span>
+    <div v-if="isLoading" class="empty-state label-text">Loading archive...</div>
+    <div v-else-if="allImages.length === 0" class="empty-state">
+      <h2 style="margin-bottom: 1rem;">No images found.</h2>
+      <p class="label-text" v-if="route.query.tags">Try a different search term.</p>
+      <router-link to="/upload" class="btn" v-else>Upload your first image</router-link>
+    </div>
+
+    <div v-else>
+      <div class="masonry-grid">
+        <article 
+          v-for="image in displayedImages" 
+          :key="image.id" 
+          class="artifact-card"
+          @click="goToImage(image.id)"
+        >
+          <img :src="getImageUrl(image)" :alt="image.name" class="artifact-img" loading="lazy" />
+          
+          <div class="card-overlay">
+            <div class="overlay-content">
+              <h3 class="artifact-name">{{ image.name }}</h3>
+              <div class="tags" v-if="image.keywords && image.keywords.length">
+                <span class="tag-text">{{ image.keywords.join(', ') }}</span>
+              </div>
             </div>
           </div>
-        </div>
-      </article>
+        </article>
+      </div>
+
+      <!-- Pagination Load More -->
+      <div class="load-more-container" v-if="hasMore">
+        <button class="btn btn-outline" @click="loadMore">Load More Artifacts</button>
+      </div>
     </div>
   </div>
 </template>
@@ -59,6 +125,21 @@ const goToImage = (id: number) => {
 <style scoped>
 .view-wrapper { animation: fadeIn 0.6s ease-out; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+.gallery-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.filter-title {
+  font-family: var(--font-headline);
+  font-size: 2.5rem;
+  margin: 0;
+}
+.highlight { color: var(--color-accent); font-style: italic; }
 
 .empty-state { 
   text-align: center; 
@@ -82,7 +163,7 @@ const goToImage = (id: number) => {
   background: var(--bg-element);
   cursor: zoom-in;
   overflow: hidden;
-  border-radius: 4px; /* Subtle softening */
+  border-radius: 4px;
 }
 
 .artifact-img {
@@ -103,7 +184,7 @@ const goToImage = (id: number) => {
   justify-content: flex-end;
   padding: 1.5rem;
   color: #fff;
-  pointer-events: none; /* Let clicks pass through to the article */
+  pointer-events: none;
 }
 .artifact-card:hover .card-overlay { opacity: 1; }
 
@@ -124,21 +205,23 @@ const goToImage = (id: number) => {
   color: rgba(255,255,255,0.8); 
 }
 
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-xl);
+  padding-bottom: var(--space-lg);
+}
+
 /* --- CRUELTY OVERRIDES --- */
+:root.cruelty .filter-title { font-family: 'Impact'; color: #FF00FF; text-transform: uppercase; }
+:root.cruelty .highlight { color: #00FF00; }
 :root.cruelty .artifact-card {
-  border-radius: 0;
-  border: 4px solid var(--border-strong);
+  border-radius: 0; border: 4px solid var(--border-strong);
   transform: rotate(calc(-2deg + (4deg * var(--n, 1)))); 
 }
 :root.cruelty .artifact-card:nth-child(even) { --n: 0; border-color: var(--color-accent); }
 :root.cruelty .artifact-img { filter: contrast(200%) saturate(300%) hue-rotate(90deg); }
 :root.cruelty .artifact-card:hover .artifact-img { filter: invert(1); }
-:root.cruelty .card-overlay {
-  opacity: 1;
-  background: transparent;
-  mix-blend-mode: difference;
-}
-:root.cruelty .artifact-name {
-  font-family: 'Impact'; font-size: 1.5rem; background: #000; padding: 0.25rem; display: inline-block;
-}
+:root.cruelty .card-overlay { opacity: 1; background: transparent; mix-blend-mode: difference; }
+:root.cruelty .artifact-name { font-family: 'Impact'; font-size: 1.5rem; background: #000; padding: 0.25rem; display: inline-block; }
 </style>
