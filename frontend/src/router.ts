@@ -4,8 +4,18 @@ import type { RouteRecordRaw } from "vue-router";
 const routes: Array<RouteRecordRaw> = [
   {
     path: "/",
-    name: "home",
-    component: () => import("./components/Home.vue"),
+    name: "gallery",
+    component: () => import("./components/Gallery.vue"),
+  },
+  {
+    path: "/image/:id",
+    name: "image-detail",
+    component: () => import("./components/ImageDetail.vue"),
+  },
+  {
+    path: "/search",
+    name: "search",
+    component: () => import("./components/Search.vue"),
   },
   {
     path: "/upload",
@@ -13,14 +23,9 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import("./components/Upload.vue"),
   },
   {
-    path: "/gallery",
-    name: "gallery",
-    component: () => import("./components/Gallery.vue"),
-  },
-  {
-    path: "/search",
-    name: "search",
-    component: () => import("./components/Search.vue"),
+    path: "/about",
+    name: "about",
+    component: () => import("./components/About.vue"),
   },
 ];
 

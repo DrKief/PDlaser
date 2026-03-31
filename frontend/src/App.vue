@@ -1,63 +1,33 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 
-const theme = ref("light"); // Defaulting to light as it best shows the Braun beige
+const theme = ref("light");
 let audioCtx: AudioContext | null = null;
 
 const playPainSound = () => {
   if (theme.value !== "cruelty") return;
-
   if (!audioCtx) {
     audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
   }
-  if (audioCtx.state === "suspended") {
-    audioCtx.resume();
-  }
+  if (audioCtx.state === "suspended") audioCtx.resume();
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
-
   const types: OscillatorType[] = ["sawtooth", "square", "triangle"];
-  const type = types[Math.floor(Math.random() * types.length)];
-  if (type) osc.type = type;
-
+  osc.type = types[Math.floor(Math.random() * types.length)];
   osc.frequency.setValueAtTime(Math.random() * 1000 + 100, audioCtx.currentTime);
   osc.frequency.exponentialRampToValueAtTime(Math.random() * 50 + 10, audioCtx.currentTime + 0.1);
-
   gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-
   osc.connect(gain);
   gain.connect(audioCtx.destination);
-
   osc.start();
   osc.stop(audioCtx.currentTime + 0.2);
 };
 
-const handleGlobalClick = () => {
-  playPainSound();
-};
+const handleGlobalClick = () => playPainSound();
 
-const toggleCruelty = () => {
-  if (theme.value === "cruelty") {
-    const prev = localStorage.getItem("lastNormalTheme") || "light";
-    theme.value = prev;
-  } else {
-    localStorage.setItem("lastNormalTheme", theme.value);
-    theme.value = "cruelty";
-  }
-  document.documentElement.className = theme.value;
-  localStorage.setItem("theme", theme.value);
-};
-
-const toggleTheme = () => {
-  if (theme.value === "cruelty") {
-    const currentStored = localStorage.getItem("lastNormalTheme") || "light";
-    const newTheme = currentStored === "light" ? "dark" : "light";
-    localStorage.setItem("lastNormalTheme", newTheme);
-    return;
-  }
-
-  theme.value = theme.value === "light" ? "dark" : "light";
+const toggleTheme = (target: string) => {
+  theme.value = target;
   document.documentElement.className = theme.value;
   localStorage.setItem("theme", theme.value);
 };
@@ -77,46 +47,33 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="app-layout">
-    <header class="app-header">
-      <div class="logo">
-        <div class="logo-mark"></div>
-        <h1>{{ theme === "cruelty" ? "პდლ-ლ3" : "pdl." }}</h1>
-      </div>
+  <div class="crt-overlay"></div>
 
-      <nav class="main-nav" aria-label="Main Navigation">
-        <router-link class="nav-item" to="/">
-          {{ theme === "cruelty" ? "PADDED CELL" : "Overview" }}
-        </router-link>
-        <router-link class="nav-item" to="/upload">
-          {{ theme === "cruelty" ? "CRANIAL INTRUSION" : "Upload" }}
-        </router-link>
-        <router-link class="nav-item" to="/gallery">
-          {{ theme === "cruelty" ? "FADED MEMORIES" : "Gallery" }}
-        </router-link>
-        <router-link class="nav-item" to="/search">
-          {{ theme === "cruelty" ? "PAVLOVIAN RECALL" : "Search" }}
-        </router-link>
-      </nav>
+  <div class="app-layout">
+    <header class="top-nav">
+      <div class="nav-left">
+        <router-link to="/" class="logo">pdl.</router-link>
+        <nav class="nav-links">
+          <router-link to="/">Gallery</router-link>
+          <router-link to="/search">Search</router-link>
+          <router-link to="/about">About</router-link>
+        </nav>
+      </div>
+      
+      <div class="nav-right">
+        <button class="cruelty-toggle" @click="toggleTheme(theme === 'cruelty' ? 'light' : 'cruelty')">
+          {{ theme === 'cruelty' ? 'REVERT' : 'CRUELTY' }}
+        </button>
+        <button class="theme-toggle" @click="toggleTheme(theme === 'light' ? 'dark' : 'light')" v-if="theme !== 'cruelty'" title="Toggle Theme">
+          <span class="material-symbols-outlined">contrast</span>
+        </button>
+        <router-link to="/upload" class="btn upload-btn">Upload</router-link>
+      </div>
     </header>
 
-    <main class="app-main">
-      <suspense>
-        <router-view />
-      </suspense>
+    <main class="content-canvas">
+      <router-view />
     </main>
-
-    <!-- Floating System Controls -->
-    <div class="system-controls">
-      <button class="control-btn" @click="toggleCruelty" aria-label="Toggle Cruelty Theme">
-        <span v-if="theme === 'cruelty'">○</span>
-        <span v-else>●</span>
-      </button>
-      <button class="control-btn" @click="toggleTheme" aria-label="Toggle Theme">
-        <span v-if="theme === 'light'">◐</span>
-        <span v-else>◑</span>
-      </button>
-    </div>
   </div>
 </template>
 
@@ -124,103 +81,134 @@ onMounted(() => {
 .app-layout {
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 5rem);
+  min-height: 100vh;
 }
 
-.app-header {
+.top-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
   display: flex;
-  flex-direction: column;
-  gap: var(--space-lg);
-  margin-bottom: var(--space-2xl);
-  padding-bottom: var(--space-md);
-}
-
-@media (min-width: 768px) {
-  .app-header {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: color-mix(in oklch, var(--bg-surface) 90%, transparent);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .logo {
+  font-family: var(--font-headline);
+  font-size: 2rem;
+  font-style: italic;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+.logo:hover { opacity: 0.7; }
+
+.nav-left {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: 2.5rem;
 }
 
-.logo-mark {
-  width: 16px;
-  height: 16px;
-  background-color: var(--color-accent);
-  border-radius: 50%;
+.nav-links {
+  display: none;
+  gap: 1.5rem;
+}
+@media (min-width: 768px) {
+  .nav-links { display: flex; }
 }
 
-.logo h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  letter-spacing: -0.05em;
-  font-weight: 700;
-}
-
-.main-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-  background: var(--bg-surface);
-  padding: 4px;
-  border-radius: var(--radius-pill);
-  box-shadow: var(--shadow-surface);
-}
-
-.nav-item {
-  font-size: 0.875rem;
-  font-weight: 500;
+.nav-links a {
+  font-family: var(--font-sans);
   color: var(--text-secondary);
   text-decoration: none;
-  padding: 6px 16px;
-  border-radius: var(--radius-pill);
-  transition: all 0.2s var(--ease-standard);
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: color 0.2s;
 }
-
-.nav-item:hover {
+.nav-links a:hover, .nav-links a.router-link-active {
   color: var(--text-primary);
 }
 
-.nav-item.router-link-active {
-  color: var(--text-on-accent);
-  background: var(--color-accent);
-  box-shadow: 0 2px 8px color-mix(in oklch, var(--color-accent) 40%, transparent);
-}
-
-.app-main {
-  flex: 1;
-}
-
-/* Floating Controls (designed like physical dials/buttons) */
-.system-controls {
-  position: fixed;
-  bottom: var(--space-lg);
-  left: var(--space-lg);
+.nav-right {
   display: flex;
-  gap: var(--space-sm);
-  z-index: 50;
+  align-items: center;
+  gap: 1.5rem;
 }
 
-.control-btn {
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border-radius: 50%;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
+.cruelty-toggle {
+  background: none;
+  border: none;
+  font-family: var(--font-sans);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.cruelty-toggle:hover { color: var(--color-danger); }
+
+.theme-toggle {
+  background: none;
+  border: none;
   color: var(--text-secondary);
-  box-shadow: var(--shadow-surface);
-  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+.theme-toggle:hover { color: var(--text-primary); }
+
+.upload-btn {
+  padding: 0.5rem 1.25rem;
 }
 
-.control-btn:hover {
-  color: var(--text-primary);
-  border-color: var(--text-muted);
+.content-canvas {
+  flex: 1;
+  padding: 2rem;
+  width: 100%;
+}
+@media (min-width: 1024px) {
+  .content-canvas { padding: 3rem 4rem; }
+}
+
+/* --- CRUELTY OVERRIDES --- */
+:root.cruelty .top-nav {
+  background: #FF0000;
+  border-bottom: 4px solid var(--border-strong);
+  padding: 1.5rem 2rem;
+}
+:root.cruelty .logo {
+  font-family: 'Impact';
+  font-style: normal;
+  color: #fff;
+  font-size: 3rem;
+  transform: rotate(-3deg);
+}
+:root.cruelty .nav-links a {
+  font-family: 'Impact';
+  font-size: 1.5rem;
+  color: #fff;
+  text-transform: uppercase;
+}
+:root.cruelty .cruelty-toggle {
+  background: #000;
+  color: #00FF00;
+  font-family: 'Impact';
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  border: 2px solid #fff;
+  animation: pulse 0.5s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }
 </style>

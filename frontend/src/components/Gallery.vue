@@ -1,294 +1,144 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import http from "../http-api";
-import { useImageStatus } from "../composables/useImageStatus";
 
-interface Image {
-  id: number;
-  name: string;
-  keywords: string[];
-}
-
+interface Image { id: number; name: string; keywords: string[]; }
 const images = ref<Image[]>([]);
-const keywordInputs = ref<Record<number, string>>({});
-const { statusCache, fetchStatus, pollStatus } = useImageStatus();
 const isLoading = ref(true);
+const router = useRouter();
 
 onMounted(async () => {
-  await fetchImages();
-});
-
-const fetchImages = async () => {
   try {
     const response = await http.get("/images");
-    images.value = response.data.map((img: any) => ({
-      ...img,
-      keywords: img.keywords || [],
-    }));
-
-    images.value.forEach((img) => {
-      if (!statusCache[img.id] || statusCache[img.id] === "PENDING") {
-        fetchStatus(img.id).then((status) => {
-          if (status && status !== "COMPLETE" && status !== "FAILED") {
-            pollStatus(img.id);
-          }
-        });
-      }
-    });
+    images.value = response.data.map((img: any) => ({ ...img, keywords: img.keywords || [] }));
   } catch (error) {
-    console.error("Error fetching images for gallery:", error);
+    console.error(error);
   } finally {
     isLoading.value = false;
   }
-};
+});
 
 const getImageUrl = (image: Image) => `/images/${image.id}`;
 
-const addKeyword = async (image: Image) => {
-  const tag = keywordInputs.value[image.id];
-  if (!tag || !tag.trim()) return;
-
-  try {
-    await http.put(`/images/${image.id}/keywords`, null, {
-      params: { tag: tag.trim() },
-    });
-    if (!image.keywords.includes(tag.trim())) {
-      image.keywords.push(tag.trim());
-    }
-    keywordInputs.value[image.id] = "";
-  } catch (error) {
-    console.error(`Error adding keyword to image ${image.id}:`, error);
-    alert("Failed to assign tag.");
-  }
-};
-
-const removeKeyword = async (image: Image, tag: string) => {
-  try {
-    await http.delete(`/images/${image.id}/keywords`, {
-      params: { tag },
-    });
-    image.keywords = image.keywords.filter((t: string) => t !== tag);
-  } catch (error) {
-    console.error(`Error removing keyword from image ${image.id}:`, error);
-    alert("Failed to remove tag.");
-  }
-};
-
-const deleteImage = async (id: number) => {
-  if (!confirm("Delete this image? This action cannot be undone.")) return;
-
-  try {
-    await http.delete(`/images/${id}`);
-    images.value = images.value.filter((img) => img.id !== id);
-  } catch (error) {
-    console.error(`Error deleting image ${id}:`, error);
-    alert("Failed to delete image.");
-  }
+const goToImage = (id: number) => {
+  router.push(`/image/${id}`);
 };
 </script>
 
 <template>
-  <div class="view-header">
-    <h2>Gallery</h2>
-    <p class="view-description">Browse and manage all uploaded images and their tags.</p>
-  </div>
+  <div class="view-wrapper">
+    <div v-if="isLoading" class="empty-state label-text">Loading archive...</div>
+    <div v-else-if="images.length === 0" class="empty-state">
+      <h2 style="margin-bottom: 1rem;">No images found.</h2>
+      <router-link to="/upload" class="btn">Upload your first image</router-link>
+    </div>
 
-  <div v-if="isLoading" class="empty-state">Loading images...</div>
-  <div v-else-if="images.length === 0" class="empty-state">The gallery is empty.</div>
-
-  <div v-else class="gallery-grid">
-    <article v-for="image in images" :key="image.id" class="image-card panel">
-      <div class="image-wrapper">
-        <img :src="getImageUrl(image)" :alt="image.name" loading="lazy" />
-        <div
-          v-if="statusCache?.[image.id]"
-          :class="['status-badge', 'overlay-badge', statusCache[image.id]!.toLowerCase()]"
-        >
-          {{ statusCache[image.id] }}
+    <div v-else class="masonry-grid">
+      <article 
+        v-for="image in images" 
+        :key="image.id" 
+        class="artifact-card"
+        @click="goToImage(image.id)"
+      >
+        <img :src="getImageUrl(image)" :alt="image.name" class="artifact-img" loading="lazy" />
+        
+        <div class="card-overlay">
+          <div class="overlay-content">
+            <h3 class="artifact-name">{{ image.name }}</h3>
+            <div class="tags" v-if="image.keywords.length">
+              <span class="tag-text">{{ image.keywords.join(', ') }}</span>
+            </div>
+          </div>
         </div>
-      </div>
-
-      <div class="card-content">
-        <div class="card-header">
-          <h3 class="image-name" :title="image.name">{{ image.name }}</h3>
-          <button class="btn-icon-delete" @click="deleteImage(image.id)" aria-label="Delete image">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-            >
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-
-        <div class="tags-container">
-          <span v-for="tag in image.keywords" :key="tag" class="tag-pill">
-            {{ tag }}
-            <button class="tag-remove" @click="removeKeyword(image, tag)" aria-label="Remove tag">
-              &times;
-            </button>
-          </span>
-        </div>
-
-        <div class="tag-input-group">
-          <input
-            v-model="keywordInputs[image.id]"
-            @keyup.enter="addKeyword(image)"
-            placeholder="Add tag..."
-          />
-          <button class="btn btn-primary btn-icon" @click="addKeyword(image)" aria-label="Add tag">
-            +
-          </button>
-        </div>
-      </div>
-    </article>
+      </article>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.view-header {
-  margin-bottom: var(--space-xl);
+.view-wrapper { animation: fadeIn 0.6s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+.empty-state { 
+  text-align: center; 
+  padding: var(--space-xl) 0; 
+  color: var(--text-muted); 
 }
 
-.view-description {
-  color: var(--text-secondary);
-  font-size: 0.875rem;
+/* MASONRY GRID (Unsplash Style) */
+.masonry-grid {
+  columns: 1;
+  column-gap: 1.5rem;
 }
+@media (min-width: 640px) { .masonry-grid { columns: 2; } }
+@media (min-width: 1024px) { .masonry-grid { columns: 3; } }
+@media (min-width: 1536px) { .masonry-grid { columns: 4; } }
 
-.gallery-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--space-lg);
-}
-
-.image-card {
-  display: flex;
-  flex-direction: column;
-  padding: 0;
-  overflow: hidden;
-  border-radius: var(--radius-lg);
-}
-
-.image-wrapper {
+.artifact-card {
+  break-inside: avoid;
+  margin-bottom: 1.5rem;
   position: relative;
   background: var(--bg-element);
-  aspect-ratio: 4/3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-sm);
-  border-bottom: 1px solid var(--border-subtle);
+  cursor: zoom-in;
+  overflow: hidden;
+  border-radius: 4px; /* Subtle softening */
 }
 
-.image-wrapper img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
-  border-radius: var(--radius-sm);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+.artifact-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  transition: transform 0.4s var(--ease-standard);
 }
 
-.overlay-badge {
+.card-overlay {
   position: absolute;
-  top: var(--space-sm);
-  right: var(--space-sm);
-  background: var(--bg-surface) !important;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.card-content {
-  padding: var(--space-md);
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0) 40%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  justify-content: flex-end;
+  padding: 1.5rem;
+  color: #fff;
+  pointer-events: none; /* Let clicks pass through to the article */
 }
+.artifact-card:hover .card-overlay { opacity: 1; }
 
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--space-sm);
-}
-
-.image-name {
-  margin: 0;
-  font-size: 0.875rem;
+.artifact-name { 
+  font-family: var(--font-sans);
+  font-size: 1rem; 
   font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
+  margin: 0 0 0.25rem 0; 
+  color: #fff;
   text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
-.btn-icon-delete {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  padding: 4px;
-  cursor: pointer;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
+.tag-text { 
+  font-family: var(--font-sans); 
+  font-size: 0.8rem; 
+  color: rgba(255,255,255,0.8); 
 }
 
-.btn-icon-delete:hover {
-  color: var(--color-danger);
-  background: color-mix(in oklch, var(--color-danger) 10%, transparent);
+/* --- CRUELTY OVERRIDES --- */
+:root.cruelty .artifact-card {
+  border-radius: 0;
+  border: 4px solid var(--border-strong);
+  transform: rotate(calc(-2deg + (4deg * var(--n, 1)))); 
 }
-
-.tags-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-xs);
-  min-height: 24px; /* Maintain layout if empty */
-}
-
-.tag-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--bg-element);
-  color: var(--text-secondary);
-  padding: 2px 8px;
-  font-size: 0.75rem;
-  border-radius: var(--radius-pill);
-}
-
-.tag-remove {
-  background: none;
-  border: none;
-  color: inherit;
-  opacity: 0.5;
-  padding: 0;
-  font-size: 1rem;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.tag-remove:hover {
+:root.cruelty .artifact-card:nth-child(even) { --n: 0; border-color: var(--color-accent); }
+:root.cruelty .artifact-img { filter: contrast(200%) saturate(300%) hue-rotate(90deg); }
+:root.cruelty .artifact-card:hover .artifact-img { filter: invert(1); }
+:root.cruelty .card-overlay {
   opacity: 1;
-  color: var(--color-danger);
+  background: transparent;
+  mix-blend-mode: difference;
 }
-
-.tag-input-group {
-  display: flex;
-  gap: var(--space-xs);
-}
-
-.tag-input-group input {
-  padding: 0.5rem 0.75rem;
-}
-
-.btn-icon {
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border-radius: 50%;
-  flex-shrink: 0;
+:root.cruelty .artifact-name {
+  font-family: 'Impact'; font-size: 1.5rem; background: #000; padding: 0.25rem; display: inline-block;
 }
 </style>

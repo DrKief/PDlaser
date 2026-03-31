@@ -3,310 +3,281 @@ import { ref } from "vue";
 import http from "../http-api";
 import { useImageStatus } from "../composables/useImageStatus";
 
-const props = defineProps({
-  mode: {
-    type: String,
-    default: "upload",
-  },
-});
+interface UploadTask {
+  file: File;
+  previewUrl: string;
+  id?: number;
+  status: 'PENDING' | 'UPLOADING' | 'EXTRACTING' | 'COMPLETED' | 'FAILED';
+}
 
-const emit = defineEmits(["file-selected"]);
-
-const selectedFile = ref<File | null>(null);
-const previewUrl = ref<string | null>(null);
-const keywords = ref("");
-const message = ref("");
-const lastUploadedId = ref<number | null>(null);
-const { statusCache, pollStatus } = useImageStatus();
+const tasks = ref<UploadTask[]>([]);
+const tagsInput = ref("");
+const tagsList = ref<string[]>([]);
+const isUploading = ref(false);
+const globalMessage = ref("");
+const { pollStatus, statusCache } = useImageStatus();
 
 const onFileChange = (event: Event) => {
   const target = event.target as HTMLInputElement;
-  if (target.files && target.files.length > 0) {
-    if (previewUrl.value) {
-      URL.revokeObjectURL(previewUrl.value);
-    }
-    selectedFile.value = target.files[0] as File;
-    previewUrl.value = URL.createObjectURL(selectedFile.value);
-
-    lastUploadedId.value = null;
-    message.value = "";
-  }
-};
-
-const handleAction = async () => {
-  if (!selectedFile.value) {
-    message.value = "Please select a file first.";
+  if (!target.files || target.files.length === 0) return;
+  
+  const incomingFiles = Array.from(target.files);
+  if (tasks.value.length + incomingFiles.length > 10) {
+    globalMessage.value = "Maximum 10 images per batch.";
     return;
   }
 
-  if (props.mode === "search") {
-    emit("file-selected", selectedFile.value);
-    return;
-  }
-
-  const formData = new FormData();
-  formData.append("file", selectedFile.value);
-  if (keywords.value) {
-    formData.append("keywords", keywords.value);
-  }
-
-  try {
-    message.value = "Uploading...";
-    const response = await http.post("/images", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
+  incomingFiles.forEach(file => {
+    tasks.value.push({
+      file,
+      previewUrl: URL.createObjectURL(file),
+      status: 'PENDING'
     });
-
-    if (response.status === 202) {
-      const id = response.data.id;
-      message.value = `Upload complete. Processing image...`;
-      lastUploadedId.value = id;
-
-      statusCache[id] = "PENDING";
-      pollStatus(id);
-
-      resetForm();
-    } else if (response.status === 200 || response.status === 201) {
-      message.value = "Upload successful.";
-      resetForm();
-    }
-  } catch (error: any) {
-    console.error(error);
-    if (error.response) {
-      const status = error.response.status;
-      const data = error.response.data;
-      if (status === 413) message.value = "File is too large.";
-      else if (status === 415) message.value = "Unsupported media type. Please upload an image.";
-      else message.value = data.error || "Upload failed.";
-    } else {
-      message.value = "Network error. Upload failed.";
-    }
-  }
+  });
+  target.value = ''; // Reset input
+  globalMessage.value = "";
 };
 
-const resetForm = () => {
-  selectedFile.value = null;
-  keywords.value = "";
-  if (previewUrl.value) {
-    URL.revokeObjectURL(previewUrl.value);
-    previewUrl.value = null;
+const removeTask = (index: number) => {
+  if (isUploading.value) return;
+  URL.revokeObjectURL(tasks.value[index].previewUrl);
+  tasks.value.splice(index, 1);
+};
+
+const addTag = (event: KeyboardEvent | FocusEvent) => {
+  event.preventDefault();
+  const t = tagsInput.value.trim().toLowerCase().replace(/\s+/g, '_');
+  if (t && !tagsList.value.includes(t)) {
+    tagsList.value.push(t);
   }
-  const input = document.getElementById("file-input") as HTMLInputElement;
-  if (input) input.value = "";
+  tagsInput.value = "";
+};
+
+const removeTag = (tag: string) => {
+  tagsList.value = tagsList.value.filter(t => t !== tag);
+};
+
+const executeUpload = async () => {
+  if (tasks.value.length === 0) return;
+  isUploading.value = true;
+  globalMessage.value = "Uploading batch...";
+
+  for (const task of tasks.value) {
+    if (task.status !== 'PENDING' && task.status !== 'FAILED') continue;
+    
+    task.status = 'UPLOADING';
+    const formData = new FormData();
+    formData.append("file", task.file);
+    if (tagsList.value.length > 0) {
+      formData.append("keywords", tagsList.value.join(","));
+    }
+
+    try {
+      const response = await http.post("/images", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      const id = response.data.id || response.data;
+      task.id = id;
+      task.status = 'EXTRACTING';
+      
+      // Hook into composable to track extraction
+      pollStatus(id).then(() => {
+        // Once polling finishes, update the local task status
+        if (statusCache[id] === 'COMPLETED') task.status = 'COMPLETED';
+        if (statusCache[id] === 'FAILED') task.status = 'FAILED';
+      });
+      
+    } catch (e) {
+      task.status = 'FAILED';
+    }
+  }
+  
+  globalMessage.value = "Uploads complete. Waiting for feature extraction...";
+  isUploading.value = false;
+};
+
+const clearAll = () => {
+  tasks.value.forEach(t => URL.revokeObjectURL(t.previewUrl));
+  tasks.value = [];
+  tagsList.value = [];
+  tagsInput.value = "";
+  globalMessage.value = "";
 };
 </script>
 
 <template>
-  <div class="view-header" v-if="mode === 'upload'">
-    <h2>Upload</h2>
-    <p class="view-description">Add new images to the database.</p>
-  </div>
+  <div class="view-wrapper">
+    <header class="page-header">
+      <h1 class="page-title">Upload Images</h1>
+      <p class="page-subtitle">Add up to 10 images. They will be mathematically analyzed for similarity search.</p>
+    </header>
 
-  <div class="upload-container">
-    <div class="form-layout panel">
-      <!-- Minimalist File Input -->
-      <div class="file-drop-zone" :class="{ 'has-file': selectedFile }">
-        <label for="file-input" class="file-label">
-          <svg
-            class="icon"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-          >
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="17 8 12 3 7 8"></polyline>
-            <line x1="12" y1="3" x2="12" y2="15"></line>
-          </svg>
-          <span class="text" v-if="!selectedFile">Choose a file</span>
-          <span class="text success" v-else
-            >{{ selectedFile.name }} ({{ (selectedFile.size / 1024).toFixed(1) }}KB)</span
-          >
-        </label>
-        <input
-          type="file"
-          id="file-input"
-          class="sr-only"
-          @change="onFileChange"
-          accept="image/*"
-        />
-      </div>
-
-      <div class="input-group" v-if="mode === 'upload'">
-        <label for="keywords-input">Initial Tags (Comma separated)</label>
-        <input
-          id="keywords-input"
-          v-model="keywords"
-          type="text"
-          placeholder="e.g. landscape, architecture"
-          :disabled="!selectedFile"
-        />
-      </div>
-
-      <button class="btn btn-primary btn-large" @click="handleAction" :disabled="!selectedFile">
-        {{ mode === "search" ? "Select for Search" : "Upload Image" }}
-      </button>
-
-      <!-- Feedback Area -->
-      <div class="feedback-area" v-if="message || lastUploadedId">
-        <p
-          class="system-message"
-          :class="{
-            error:
-              message.toLowerCase().includes('fail') || message.toLowerCase().includes('large'),
-          }"
-        >
-          {{ message }}
-        </p>
-
-        <div v-if="lastUploadedId !== null && statusCache?.[lastUploadedId]" class="status-tracker">
-          <span :class="['status-badge', statusCache[lastUploadedId]!.toLowerCase()]">
-            {{ statusCache[lastUploadedId] }}
-          </span>
+    <div class="upload-grid">
+      <!-- Left: Dropzone & Queue -->
+      <section class="queue-col">
+        <div class="drop-zone" v-if="!isUploading && tasks.length < 10">
+          <div class="drop-box">
+            <span class="material-symbols-outlined icon">add_photo_alternate</span>
+            <span class="label-text">Select Files (Max 10)</span>
+          </div>
+          <input type="file" @change="onFileChange" accept="image/*" multiple class="file-input" title=" "/>
         </div>
-      </div>
-    </div>
 
-    <!-- Preview -->
-    <div v-if="previewUrl" class="preview-panel panel">
-      <div class="image-frame">
-        <img :src="previewUrl" alt="Image preview" />
-      </div>
+        <div class="task-list" v-if="tasks.length > 0">
+          <div v-for="(task, index) in tasks" :key="index" class="task-item">
+            <img :src="task.previewUrl" class="task-thumb" />
+            <div class="task-info">
+              <span class="task-name">{{ task.file.name }}</span>
+              <span class="status-badge" :class="task.status.toLowerCase()">
+                {{ task.status === 'EXTRACTING' && statusCache[task.id!] ? statusCache[task.id!] : task.status }}
+              </span>
+            </div>
+            <button class="btn-icon" @click="removeTask(index)" v-if="!isUploading && task.status === 'PENDING'">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Settings -->
+      <section class="meta-col">
+        <div class="meta-card">
+          <h3 class="meta-title">Batch Metadata</h3>
+          
+          <div class="input-group">
+            <label class="label-text">Tags (Applied to all)</label>
+            <div class="tags-container">
+              <span v-for="tag in tagsList" :key="tag" class="tag-pill">
+                {{ tag }}
+                <button @click="removeTag(tag)" class="tag-remove"><span class="material-symbols-outlined">close</span></button>
+              </span>
+              <input 
+                type="text" 
+                v-model="tagsInput" 
+                @keydown.enter="addTag"
+                @blur="addTag"
+                class="tag-input" 
+                placeholder="Type tag and press enter..." 
+                :disabled="isUploading"
+              />
+            </div>
+          </div>
+        </div>
+
+        <p class="global-msg" v-if="globalMessage">{{ globalMessage }}</p>
+
+        <div class="actions">
+          <button class="btn w-full" @click="executeUpload" :disabled="tasks.length === 0 || isUploading">
+            {{ isUploading ? 'Processing...' : 'Upload & Analyze' }}
+          </button>
+          <button class="btn btn-outline w-full" @click="clearAll" v-if="tasks.length > 0 && !isUploading">
+            Clear Queue
+          </button>
+        </div>
+      </section>
     </div>
   </div>
 </template>
 
 <style scoped>
-.view-header {
-  margin-bottom: var(--space-xl);
-}
+.view-wrapper { animation: fadeIn 0.4s ease-out; max-width: 1200px; margin: 0 auto; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-.view-description {
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-}
+.page-header { margin-bottom: var(--space-lg); }
+.page-title { font-size: 3rem; font-family: var(--font-headline); margin-bottom: 0.5rem; }
+.page-subtitle { color: var(--text-secondary); font-size: 1rem; }
 
-.upload-container {
+.upload-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--space-lg);
-  max-width: 900px;
+  align-items: start;
+}
+@media (min-width: 1024px) {
+  .upload-grid { grid-template-columns: 2fr 1fr; }
 }
 
-@media (min-width: 768px) {
-  .upload-container {
-    grid-template-columns: 1fr 1fr;
-  }
-}
-
-.form-layout {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-lg);
-}
-
-.file-drop-zone {
-  border-radius: var(--radius-md);
-  background: var(--bg-element);
-  transition: all 0.2s var(--ease-standard);
+/* DROPZONE */
+.drop-zone {
+  position: relative;
+  background: var(--bg-surface-alt);
+  border: 2px dashed var(--border-subtle);
+  border-radius: 8px;
+  padding: 3rem;
   text-align: center;
-  box-shadow: var(--shadow-inset);
+  transition: all 0.2s;
+  margin-bottom: var(--space-md);
 }
+.drop-zone:hover { border-color: var(--border-strong); background: var(--bg-element); }
+.file-input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; z-index: 10; }
+.drop-box { display: flex; flex-direction: column; align-items: center; gap: 1rem; color: var(--text-secondary); }
+.drop-box .icon { font-size: 3rem; }
 
-.file-drop-zone:hover {
-  background: var(--bg-element-hover);
+/* TASK QUEUE */
+.task-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.task-item {
+  display: flex; align-items: center; gap: 1rem;
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  padding: 0.75rem; border-radius: 6px;
 }
+.task-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; }
+.task-info { flex: 1; display: flex; flex-direction: column; gap: 0.25rem; overflow: hidden; }
+.task-name { font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-.file-drop-zone.has-file {
-  background: color-mix(in oklch, var(--color-success) 10%, var(--bg-surface));
-  box-shadow: none;
-  border: 1px solid color-mix(in oklch, var(--color-success) 30%, transparent);
+.btn-icon { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0.25rem; display: flex; }
+.btn-icon:hover { color: var(--color-danger); }
+
+/* META CONFIG */
+.meta-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: var(--space-md);
 }
+.meta-title { font-size: 1.25rem; margin-bottom: 1.5rem; font-family: var(--font-sans); font-weight: 600; }
+.input-group label { display: block; margin-bottom: 0.75rem; }
 
-.file-label {
+.tags-container {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-2xl) var(--space-md);
-  cursor: pointer;
-  margin: 0;
-}
-
-.file-label .icon {
-  width: 32px;
-  height: 32px;
-  margin-bottom: var(--space-sm);
-  color: var(--text-muted);
-  transition: color 0.2s;
-}
-
-.file-drop-zone:hover .icon {
-  color: var(--color-accent);
-}
-
-.file-drop-zone.has-file .icon {
-  color: var(--color-success);
-}
-
-.file-label .text {
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.file-label .success {
-  color: var(--color-success);
-}
-
-.btn-large {
-  padding: 0.875rem;
-  font-size: 1rem;
-}
-
-.feedback-area {
-  margin-top: var(--space-sm);
-  text-align: center;
-}
-
-.system-message {
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-  margin-bottom: var(--space-sm);
-}
-
-.system-message.error {
-  color: var(--color-danger);
-}
-
-.status-tracker {
-  display: flex;
-  justify-content: center;
-}
-
-.preview-panel {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-md);
-}
-
-.image-frame {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--bg-element);
-  border-radius: var(--radius-sm);
-  padding: var(--space-md);
-  box-shadow: var(--shadow-inset);
-}
-
-.image-frame img {
-  max-width: 100%;
-  max-height: 400px;
-  object-fit: contain;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--border-subtle);
   border-radius: 4px;
+  background: var(--bg-body);
+  min-height: 48px;
+  align-items: center;
 }
+.tags-container:focus-within { border-color: var(--border-strong); }
+
+.tag-pill {
+  display: flex; align-items: center; gap: 0.25rem;
+  background: var(--bg-element); color: var(--text-primary);
+  padding: 0.25rem 0.5rem 0.25rem 0.75rem; border-radius: 16px;
+  font-size: 0.8rem; font-weight: 500;
+}
+.tag-remove { 
+  background: none; border: none; display: flex; align-items: center; 
+  cursor: pointer; padding: 2px; color: var(--text-secondary); border-radius: 50%;
+}
+.tag-remove:hover { color: var(--color-danger); background: var(--bg-surface); }
+.tag-remove span { font-size: 14px; }
+
+.tag-input {
+  border: none; background: transparent; flex: 1; min-width: 120px;
+  padding: 0.25rem; font-size: 0.9rem; outline: none; margin: 0;
+}
+.tag-input:focus { border-bottom-color: transparent; }
+
+.global-msg { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem; text-align: center; }
+.actions { display: flex; flex-direction: column; gap: 1rem; }
+.w-full { width: 100%; }
+
+/* --- CRUELTY OVERRIDES --- */
+:root.cruelty .page-title { font-family: 'Impact'; color: #00FF00; font-size: 5rem; text-transform: uppercase; }
+:root.cruelty .drop-zone { border: 4px dashed #FF00FF; background: #000; border-radius: 0; }
+:root.cruelty .task-item { background: #111; border: 2px solid var(--color-accent); border-radius: 0; }
+:root.cruelty .meta-card { background: #000; border: 4px solid var(--border-strong); border-radius: 0; }
+:root.cruelty .tag-pill { background: #FFFF00; color: #000; font-family: 'Impact'; border-radius: 0; text-transform: uppercase; }
 </style>
