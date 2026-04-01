@@ -2,6 +2,8 @@
 import { ref, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import http from "../http-api";
+import { useAuth } from "../composables/useAuth";
+
 interface Image { 
   id: number; 
   uploader?: string;
@@ -9,6 +11,7 @@ interface Image {
 }
 const route = useRoute();
 const router = useRouter();
+const { isLoggedIn } = useAuth();
 const allImages = ref<Image[]>([]);
 const displayedImages = ref<Image[]>([]);
 const isLoading = ref(true);
@@ -74,7 +77,8 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
     <div v-else-if="allImages.length === 0" class="empty-state">
       <h2 style="margin-bottom: 1rem;">No images found.</h2>
       <p class="label-text" v-if="route.query.tags">Try a different search term.</p>
-      <router-link to="/upload" class="btn" v-else>Upload your first image</router-link>
+      <router-link to="/upload" class="btn" v-else-if="isLoggedIn">Upload your first image</router-link>
+      <p class="label-text" v-else>You must log in to upload images.</p>
     </div>
     <div v-else>
       <div class="masonry-grid">

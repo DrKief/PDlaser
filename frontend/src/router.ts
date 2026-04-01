@@ -17,4 +17,13 @@ const router = createRouter({
   routes,
 });
 
+router.beforeEach((to, _from, next) => {
+  const isAuthenticated = !!localStorage.getItem('token');
+  if (to.name === 'upload' && !isAuthenticated) {
+    next({ name: 'login' });
+  } else {
+    next();
+  }
+});
+
 export default router;

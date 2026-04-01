@@ -25,7 +25,7 @@ const handleRegister = async () => {
 };
 </script>
 <template>
-  <div class="view-wrapper login-wrapper">
+  <div class="view-wrapper auth-wrapper">
     <div class="meta-card login-card">
       <h1 class="page-title">Create Account</h1>
       <form @submit.prevent="handleRegister" class="config-form">

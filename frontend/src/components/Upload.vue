@@ -166,6 +166,7 @@ const clearAll = () => {
 <style scoped>
 /* Incorporates all necessary UI updates */
 .upload-grid { display: grid; grid-template-columns: 1fr; gap: var(--space-lg); align-items: start; }
+.queue-col { min-width: 0; }
 @media (min-width: 1024px) { .upload-grid { grid-template-columns: 2fr 1fr; } }
 .drop-zone { position: relative; background: var(--bg-surface-alt); border: 2px dashed var(--border-subtle); border-radius: 8px; padding: 3rem; text-align: center; transition: all 0.2s; margin-bottom: var(--space-md); }
 .drop-zone:hover { border-color: var(--border-strong); background: var(--bg-element); }
@@ -173,9 +174,9 @@ const clearAll = () => {
 .drop-box { display: flex; flex-direction: column; align-items: center; gap: 1rem; color: var(--text-secondary); }
 .drop-box .icon { font-size: 3rem; }
 .task-list { display: flex; flex-direction: column; gap: 0.75rem; }
-.task-item { display: flex; align-items: center; gap: 1rem; background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 0.75rem; border-radius: 6px; }
+.task-item { display: flex; align-items: center; min-width: 0; gap: 1rem; background: var(--bg-surface); border: 1px solid var(--border-subtle); padding: 0.75rem; border-radius: 6px; }
 .task-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }
-.task-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+.task-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.25rem; overflow: hidden; }
 .task-name { font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary); }
 .status-badge { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
 .status-badge.pending { color: var(--text-muted); }
