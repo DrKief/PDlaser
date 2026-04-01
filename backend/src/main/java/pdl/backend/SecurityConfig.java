@@ -15,6 +15,8 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
@@ -41,10 +43,10 @@ public class SecurityConfig {
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/images/**").permitAll()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
+                .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/_nuxt/**", "/static/**", "/*.html", "/favicon.ico").permitAll()
                 .anyRequest().authenticated()
             )
-            // 1. Overriding Boot Auto Configuration: Wire the components into the DSL
             .oauth2ResourceServer(oauth2 -> oauth2
                 .jwt(jwt -> jwt
                     .decoder(jwtDecoder())
@@ -65,46 +67,38 @@ public class SecurityConfig {
         return config.getAuthenticationManager();
     }
 
-    // 2. Trusting a Single Symmetric Key & Customizing Timestamp Validation
+    @Bean
+    public UserDetailsService userDetailsService(UserRepository userRepository) {
+        return username -> userRepository.findByUsername(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+    }
+
     @Bean
     public JwtDecoder jwtDecoder() {
         SecretKeySpec secretKey = new SecretKeySpec(jwtKey.getBytes(), "HmacSHA256");
-        
-        // Trusting a Single Symmetric Key
         NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withSecretKey(secretKey).build();
-
-        // Customizing Timestamp Validation to handle clock drift
         OAuth2TokenValidator<Jwt> withClockSkew = new DelegatingOAuth2TokenValidator<>(
             new JwtTimestampValidator(Duration.ofSeconds(60))
         );
-        
         jwtDecoder.setJwtValidator(withClockSkew);
-
         return jwtDecoder;
     }
 
     @Bean
     public JwtEncoder jwtEncoder() {
-        // Use the same injected jwtKey from application.yaml
         SecretKeySpec secretKey = new SecretKeySpec(jwtKey.getBytes(), "HmacSHA256");
         JWKSource<SecurityContext> immutableSecret = new ImmutableSecret<>(secretKey);
         return new NimbusJwtEncoder(immutableSecret);
     }
 
-    // 3. Extracting Authorities Manually
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-        
-        // Map the custom claim instead of the default 'scope' or 'scp'
         grantedAuthoritiesConverter.setAuthoritiesClaimName("role");
-        
-        // Remove the default "SCOPE_" prefix to match your database's "ROLE_ADMIN"
         grantedAuthoritiesConverter.setAuthorityPrefix("");
 
         JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
         jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(grantedAuthoritiesConverter);
-        
         return jwtAuthenticationConverter;
     }
 }

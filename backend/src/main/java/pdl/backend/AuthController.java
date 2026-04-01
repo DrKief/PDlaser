@@ -48,7 +48,7 @@ public class AuthController {
                 new UsernamePasswordAuthenticationToken(request.get("username"), request.get("password"))
         );
 
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        User userDetails = (User) authentication.getPrincipal();
         Instant now = Instant.now();
         String role = userDetails.getAuthorities().iterator().next().getAuthority();
 

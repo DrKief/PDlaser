@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -75,7 +76,7 @@ public class UnsplashIngester {
                         unsplashToInternalId.put(photoId, img.getId());
                         Thread.sleep(2500); // Throttling to protect queue and network
                     }
-                } catch (ErrorHandler.DuplicateImageException e) {
+                } catch (ResponseStatusException e) {
                     log.info("Unsplash image {} already exists.", photoId);
                 } catch (Exception e) {
                     log.error("Failed to download {}", url, e);

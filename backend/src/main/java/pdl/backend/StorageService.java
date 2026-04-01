@@ -19,15 +19,13 @@ import javax.imageio.stream.ImageInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.web.server.ResponseStatusException;
 
-/**
- * Service layer orchestrating storage operations and business logic relating to images:
- * - Routing algorithms, hashing, saving, deleting, and similarity requests.
- */
 @Service
 public class StorageService {
 
@@ -50,28 +48,19 @@ public class StorageService {
     this.backgroundWorker = backgroundWorker;
   }
 
-  /**
-   * Processes a newly uploaded image, saves it to the DB, saves to disk,
-   * and triggers async descriptor extraction.
-   *
-   * @param img The Metadata object containing the image metadata and raw bytes.
-   * @param saveToDisk Boolean flag indicating whether to physically save the file.
-   */
   @Transactional
   public void processAndSaveImage(Metadata img, boolean saveToDisk) {
     String hash = calculateSHA256(img.getData());
     
-    // Globally Enforce Deduplication
     Optional<Metadata> existing = imageEntityRepository.findByHash(hash);
     if (existing.isPresent()) {
-      throw new ErrorHandler.DuplicateImageException("Image already exists on the server.");
+      throw new ResponseStatusException(HttpStatus.CONFLICT, "Image already exists on the server.");
     }
 
     img.setHash(hash);
     img.setFormat(getFileExtension(img.getName()));
     img.setExtractionStatus("PENDING");
 
-    // 2. Fast header-only reading for initial dimensions metadata
     int width = 0;
     int height = 0;
     try (
@@ -92,11 +81,9 @@ public class StorageService {
     img.setWidth(width);
     img.setHeight(height);
 
-    // 3. Save to DB (Generates the ID)
     Metadata savedImage = imageEntityRepository.save(img);
     img.setId(savedImage.getId());
 
-    // 4. Save physically to the file system
     if (saveToDisk) {
       try {
         Path path = Paths.get(imageDirectoryPath, img.getName());
@@ -106,7 +93,6 @@ public class StorageService {
       }
     }
 
-    // 5. Ensure the async thread runs strictly AFTER the DB transaction is globally committed
     TransactionSynchronizationManager.registerSynchronization(
       new TransactionSynchronization() {
         @Override
@@ -117,15 +103,7 @@ public class StorageService {
     );
   }
 
-  /**
-   * Finds similar images dynamically based on an unsaved byte array upload.
-   * Extracts vectors on the fly without database insertion, then queries PGvector.
-   */
-  public List<Map<String, Object>> searchSimilarFromUpload(
-    byte[] imageData,
-    String type,
-    int limit
-  ) {
+  public List<Map<String, Object>> searchSimilarFromUpload(byte[] imageData, String type, int limit) {
     try {
       BufferedImage bimg = ImageIO.read(new ByteArrayInputStream(imageData));
       if (bimg == null) return List.of();
@@ -155,8 +133,6 @@ public class StorageService {
       }
 
       PGvector targetVector = new PGvector(vectorData);
-
-      // Pass the raw vector to the repository layer for execution
       return imageDescriptorRepository.findSimilarByVector(targetVector, vectorColumn, limit);
     } catch (Exception e) {
       log.error("Failed to process image upload for similarity search", e);
@@ -164,12 +140,6 @@ public class StorageService {
     }
   }
 
-  /**
-   * Retrieves the DB record and loads the raw file data from the disk.
-   *
-   * @param id DB ID of the image.
-   * @return Optional containing the Metadata record with loaded byte array.
-   */
   public Optional<Metadata> getImageWithData(long id) {
     Optional<Metadata> imageOpt = imageEntityRepository.findById(id);
     if (imageOpt.isPresent()) {
@@ -187,18 +157,11 @@ public class StorageService {
     return Optional.empty();
   }
 
-  /**
-   * Safely deletes an image from disk and then from the DB.
-   *
-   * @param id DB ID of the image.
-   * @return true if successfully deleted, false if not found.
-   */
   @Transactional
   public boolean deleteImage(long id) {
     Optional<Metadata> imageOpt = imageEntityRepository.findById(id);
     if (imageOpt.isPresent()) {
       Metadata img = imageOpt.get();
-      // Architectural Patch: Delete File strictly before the Database Row to avoid storage leaks
       try {
         Files.deleteIfExists(Paths.get(imageDirectoryPath, img.getName()));
       } catch (IOException e) {
@@ -210,15 +173,13 @@ public class StorageService {
     return false;
   }
 
-  // --- Utility Methods ---
-
   private String calculateSHA256(byte[] data) {
     try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      byte[] hashBytes = digest.digest(data);
-      return HexFormat.of().formatHex(hashBytes);
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hashBytes = digest.digest(data);
+        return HexFormat.of().formatHex(hashBytes);
     } catch (Exception e) {
-      throw new RuntimeException("Failed to calculate SHA-256 hash", e);
+        throw new RuntimeException("Failed to calculate SHA-256 hash", e);
     }
   }
 
