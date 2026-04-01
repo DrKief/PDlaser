@@ -3,7 +3,12 @@ import { ref, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import http from "../http-api";
 
-interface Image { id: number; name: string; keywords: string[]; }
+interface Image { 
+  id: number; 
+  name?: string; 
+  uploader?: string;
+  keywords: string[]; 
+}
 
 const route = useRoute();
 const router = useRouter();
@@ -12,13 +17,20 @@ const allImages = ref<Image[]>([]);
 const displayedImages = ref<Image[]>([]);
 const isLoading = ref(true);
 
-// Frontend Pagination State
+// Backend Pagination State
 const displayLimit = ref(30); 
-const hasMore = ref(false);
+const currentPage = ref(0);
+const hasMore = ref(true);
 
-const loadImages = async () => {
+const loadImages = async (reset = false) => {
+  if (isLoading.value && !reset) return;
   isLoading.value = true;
-  displayLimit.value = 30; // Reset pagination on new search
+  
+  if (reset) { 
+    currentPage.value = 0; 
+    allImages.value = []; 
+    hasMore.value = true; 
+  }
   
   try {
     const activeTag = route.query.tags as string;
@@ -27,50 +39,60 @@ const loadImages = async () => {
     if (activeTag) {
       // Dynamic filter via backend search
       response = await http.get("/images/search", { params: { keywords: activeTag } });
-      // The search endpoint currently returns an array of IDs, we need the full objects
-      // For this implementation, we will fetch full images, then filter locally if the backend doesn't return full objects.
-      // Assuming your /search endpoint returns IDs:
+      
+      // Fallback: Fetch all and filter locally to get metadata until the backend search returns full objects
       if (response.data.length > 0) {
-        // Fallback: Fetch all and filter locally for now to get metadata, until backend search returns full objects
         const all = await http.get("/images");
-        allImages.value = all.data.filter((img: any) => response.data.includes(img.id));
+        const formatted = all.data
+          .filter((img: any) => response.data.includes(img.id))
+          .map((img: any) => ({ ...img, keywords: img.keywords || [] }));
+        allImages.value = formatted;
+        hasMore.value = false; // Search handles its own limits currently
       } else {
         allImages.value = [];
+        hasMore.value = false;
       }
     } else {
-      // Standard load
-      const response = await http.get("/images");
-      allImages.value = response.data.map((img: any) => ({ ...img, keywords: img.keywords || [] }));
+      // Standard paginated load
+      response = await http.get(`/images?page=${currentPage.value}&size=${displayLimit.value}`);
+      if (response.data.length < displayLimit.value) {
+        hasMore.value = false;
+      }
+      const formatted = response.data.map((img: any) => ({ ...img, keywords: img.keywords || [] }));
+      allImages.value.push(...formatted);
     }
     
     updateDisplayedImages();
 
   } catch (error) {
     console.error(error);
-    allImages.value = [];
-    updateDisplayedImages();
+    if (reset) {
+      allImages.value = [];
+      updateDisplayedImages();
+    }
   } finally {
     isLoading.value = false;
   }
 };
 
 const updateDisplayedImages = () => {
-  displayedImages.value = allImages.value.slice(0, displayLimit.value);
-  hasMore.value = allImages.value.length > displayLimit.value;
+  displayedImages.value = [...allImages.value];
 };
 
 const loadMore = () => {
-  displayLimit.value += 30;
-  updateDisplayedImages();
+  if (!hasMore.value) return;
+  currentPage.value++;
+  loadImages();
 };
 
 const clearFilter = () => {
   router.push('/');
 };
 
-onMounted(loadImages);
-// Watch for URL changes (e.g. from the Top Nav search bar)
-watch(() => route.query.tags, loadImages);
+onMounted(() => loadImages(true));
+
+// Watch for URL changes (e.g., from the Top Nav search bar)
+watch(() => route.query.tags, () => loadImages(true));
 
 const getImageUrl = (image: Image) => `/images/${image.id}`;
 const goToImage = (id: number) => router.push(`/image/${id}`);
@@ -86,7 +108,7 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
       <button class="btn btn-outline" @click="clearFilter">Clear Filter</button>
     </div>
 
-    <div v-if="isLoading" class="empty-state label-text">Loading archive...</div>
+    <div v-if="isLoading && allImages.length === 0" class="empty-state label-text">Loading archive...</div>
     <div v-else-if="allImages.length === 0" class="empty-state">
       <h2 style="margin-bottom: 1rem;">No images found.</h2>
       <p class="label-text" v-if="route.query.tags">Try a different search term.</p>
@@ -101,13 +123,14 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
           class="artifact-card"
           @click="goToImage(image.id)"
         >
-          <img :src="getImageUrl(image)" :alt="image.name" class="artifact-img" loading="lazy" />
+          <img :src="getImageUrl(image)" :alt="'Image ' + image.id" class="artifact-img" loading="lazy" />
           
           <div class="card-overlay">
             <div class="overlay-content">
-              <h3 class="artifact-name">{{ image.name }}</h3>
+              <!-- Privacy Change: Expose Uploader, hide filename -->
+              <h3 class="artifact-name">@{{ image.uploader || 'System' }}</h3>
               <div class="tags" v-if="image.keywords && image.keywords.length">
-                <span class="tag-text">{{ image.keywords.join(', ') }}</span>
+                <span class="tag-text">#{{ image.keywords.join(', #') }}</span>
               </div>
             </div>
           </div>
@@ -116,7 +139,9 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
 
       <!-- Pagination Load More -->
       <div class="load-more-container" v-if="hasMore">
-        <button class="btn btn-outline" @click="loadMore">Load More Artifacts</button>
+        <button class="btn btn-outline" @click="loadMore" :disabled="isLoading">
+          {{ isLoading ? 'Loading...' : 'Load More Artifacts' }}
+        </button>
       </div>
     </div>
   </div>

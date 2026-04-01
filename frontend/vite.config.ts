@@ -8,9 +8,14 @@ export default defineConfig({
   server: {
     proxy: {
       "/images": {
-        target: "http://devproject-backend-i2lkcs-de68ec-129-151-226-127.traefik.me/images",
+        target: "http://backend:8080/images",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/images/, ""),
+      },
+      "/auth": {
+        target: "http://backend:8080/auth",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/auth/, ""),
       },
     },
   },

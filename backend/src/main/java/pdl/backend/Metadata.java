@@ -26,6 +26,12 @@ public class Metadata {
   @Column("extraction_status")
   private String extractionStatus; // e.g., PENDING, PROCESSING, COMPLETED, FAILED
 
+  @Column("user_id")
+  private Long userId;
+
+  @Column("is_private")
+  private boolean isPrivate;
+
   // @Transient ensures Spring Data doesn't try to save the raw byte array into the DB.
   // We store the bytes physically on the disk instead.
   @Transient
@@ -111,5 +117,21 @@ public class Metadata {
 
   public void setExtractionStatus(String extractionStatus) {
     this.extractionStatus = extractionStatus;
+  }
+
+  public Long getUserId() {
+    return userId;
+  }
+
+  public void setUserId(Long userId) {
+    this.userId = userId;
+  }
+
+  public boolean isPrivate() {
+    return isPrivate;
+  }
+
+  public void setPrivate(boolean isPrivate) {
+    this.isPrivate = isPrivate;
   }
 }

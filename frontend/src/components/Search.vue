@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import http from "../http-api";
 import { useImageStatus } from "../composables/useImageStatus";
@@ -13,24 +13,13 @@ const activeTab = ref<"attributes" | "similarity">("attributes");
 const { statusCache, fetchStatus, pollStatus } = useImageStatus();
 
 const allImages = ref<Image[]>([]);
-const allKeywords = ref<string[]>([]);
 
 // Attribute Search State
-const searchName = ref("");
-const searchFormat = ref("");
-const searchSize = ref("");
-
 const tagsInput = ref("");
 const searchKeywords = ref<string[]>([]);
+const filteredKeywords = ref<string[]>([]);
 const isTagFocused = ref(false);
-
-const filteredKeywords = computed(() => {
-  if (!tagsInput.value) return [];
-  const query = tagsInput.value.toLowerCase();
-  return allKeywords.value
-    .filter(k => k.toLowerCase().includes(query) && !searchKeywords.value.includes(k))
-    .slice(0, 6);
-});
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 // Similarity State
 const selectedSourceImageId = ref<number | null>(null);
@@ -43,12 +32,10 @@ const errorMsg = ref("");
 
 onMounted(() => {
   http.get(`/images`).then(r => allImages.value = r.data);
-  http.get(`/images/keywords`).then(r => allKeywords.value = r.data);
   
   if (route.query.sourceId) {
     activeTab.value = "similarity";
     selectedSourceImageId.value = parseInt(route.query.sourceId as string);
-    // performSimilaritySearch();
   }
 });
 
@@ -64,12 +51,30 @@ const handleTagBlur = () => {
   setTimeout(() => isTagFocused.value = false, 200);
 };
 
+const onTagInput = () => {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(async () => {
+    if (tagsInput.value.length < 2) {
+      filteredKeywords.value = [];
+      return;
+    }
+    try {
+      const res = await http.get(`/images/keywords/search?q=${tagsInput.value}`);
+      // Filter out tags that are already selected
+      filteredKeywords.value = res.data.filter((k: string) => !searchKeywords.value.includes(k));
+    } catch (e) {
+      filteredKeywords.value = [];
+    }
+  }, 300);
+};
+
 const addTag = (tag?: string) => {
   const t = tag || tagsInput.value.trim().toLowerCase();
   if (t && !searchKeywords.value.includes(t)) {
     searchKeywords.value.push(t);
   }
   tagsInput.value = "";
+  filteredKeywords.value = [];
   isTagFocused.value = false;
 };
 
@@ -79,20 +84,12 @@ const removeTag = (tag: string) => {
 
 const performAttributeSearch = async () => {
   errorMsg.value = "";
-  const params: any = {};
-  
-  if (searchName.value) params.name = searchName.value;
-  if (searchFormat.value) params.format = searchFormat.value;
-  if (searchSize.value) params.size = searchSize.value;
-  if (searchKeywords.value.length) params.keywords = searchKeywords.value.join(',');
-
-  if (Object.keys(params).length === 0) {
-    errorMsg.value = "Please enter search criteria.";
+  if (!searchKeywords.value.length) {
+    errorMsg.value = "Please enter tag criteria.";
     return;
   }
-
   try {
-    const res = await http.get(`/images/search`, { params });
+    const res = await http.get(`/images/search`, { params: { keywords: searchKeywords.value.join(',') } });
     attributeResults.value = res.data;
     
     // Check status for each result
@@ -107,7 +104,7 @@ const performAttributeSearch = async () => {
     });
 
   } catch (e: any) {
-    errorMsg.value = e.response?.status === 404 ? "No matches found." : "Search failed.";
+    errorMsg.value = "No matches found.";
     attributeResults.value = [];
   }
 };
@@ -161,6 +158,7 @@ const performSimilaritySearch = async () => {
                 v-model="tagsInput" 
                 class="tag-input" 
                 placeholder="Add tags..."
+                @input="onTagInput"
                 @focus="isTagFocused = true"
                 @blur="handleTagBlur"
                 @keydown.enter="filteredKeywords.length ? addTag(filteredKeywords[0]) : addTag()"
@@ -171,22 +169,6 @@ const performSimilaritySearch = async () => {
                 {{ kw }}
               </li>
             </ul>
-          </div>
-
-          <div class="form-group">
-            <label class="label-text">Filename Contains</label>
-            <input v-model="searchName" placeholder="e.g. landscape" @keyup.enter="performAttributeSearch" />
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label class="label-text">Format</label>
-              <input v-model="searchFormat" placeholder="jpeg, png" @keyup.enter="performAttributeSearch" />
-            </div>
-            <div class="form-group">
-              <label class="label-text">Resolution</label>
-              <input v-model="searchSize" placeholder="800x600" @keyup.enter="performAttributeSearch" />
-            </div>
           </div>
 
           <button class="btn w-full mt-4" @click="performAttributeSearch">Search Attributes</button>

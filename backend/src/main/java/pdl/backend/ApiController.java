@@ -31,18 +31,15 @@ public class ApiController {
   @Value("${app.image.directory:images}")
   private String imageDirectoryPath;
 
-  private final MetadataRepository imageEntityRepository;
   private final VectorRepository imageDescriptorRepository;
   private final StorageService imageLifecycleService;
   private final StatusTracker statusNotifier;
 
   public ApiController(
-    MetadataRepository imageEntityRepository,
     VectorRepository imageDescriptorRepository,
     StorageService imageLifecycleService,
     StatusTracker statusNotifier
   ) {
-    this.imageEntityRepository = imageEntityRepository;
     this.imageDescriptorRepository = imageDescriptorRepository;
     this.imageLifecycleService = imageLifecycleService;
     this.statusNotifier = statusNotifier;
@@ -88,7 +85,6 @@ public class ApiController {
       }
 
       String actualHash = java.util.HexFormat.of().formatHex(digest.digest());
-
       String expectedHash = "4e22f003e05fcc4120268d15fbcb6100dbce436c36521750b2adf70626c6a6bb";
 
       if (!expectedHash.equals(actualHash)) {
@@ -109,20 +105,17 @@ public class ApiController {
   }
 
   /**
-   * Retrieve a list of all uploaded images (basic info).
+   * Retrieve a list of all uploaded images (paginated).
    */
   @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<List<Map<String, Object>>> getImages() {
-    Iterable<Metadata> images = imageEntityRepository.findAll();
-    List<Map<String, Object>> response = new java.util.ArrayList<>();
-    for (Metadata img : images) {
-      Map<String, Object> item = new HashMap<>();
-      item.put("id", img.getId());
-      item.put("name", img.getName());
-      item.put("keywords", imageDescriptorRepository.getKeywords(img.getId()));
-      response.add(item);
-    }
-    return ResponseEntity.ok(response);
+  public ResponseEntity<List<Map<String, Object>>> getImages(
+      @RequestParam(value = "page", defaultValue = "0") int page,
+      @RequestParam(value = "size", defaultValue = "30") int size
+  ) {
+      // Secure paginated gallery query extracting Uploader instead of Filename
+      int offset = page * size;
+      List<Map<String, Object>> response = imageDescriptorRepository.getPaginatedGallery(getCurrentUserId(), size, offset);
+      return ResponseEntity.ok(response);
   }
 
   /**
@@ -311,22 +304,38 @@ public class ApiController {
   }
 
   /**
-   * Search database for images matching specific attributes (name, format, size, keywords).
+   * Search keywords for autocomplete suggestions.
+   */
+  @GetMapping("/keywords/search")
+  public ResponseEntity<?> searchKeywords(@RequestParam("q") String query) {
+      if(query == null || query.length() < 2) return ResponseEntity.ok(List.of());
+      return ResponseEntity.ok(imageDescriptorRepository.searchKeywords(query, getCurrentUserId()));
+  }
+
+  /**
+   * Search database for images matching specific tags.
    */
   @GetMapping("/search")
   public ResponseEntity<?> searchImagesByAttributes(
-    @RequestParam(required = false) String name,
-    @RequestParam(required = false) String format,
-    @RequestParam(required = false) String size,
     @RequestParam(required = false) List<String> keywords
   ) {
-    List<Long> ids = imageDescriptorRepository.searchByAttributes(name, format, size, keywords);
+    List<Long> ids = imageDescriptorRepository.searchByAttributes(keywords, getCurrentUserId());
     if (ids.isEmpty()) {
-      throw new ErrorHandler.RecordNotFoundException("Aucune image existante trouvée.");
+      throw new ErrorHandler.RecordNotFoundException("Aucune image trouvée.");
     }
+    return ResponseEntity.ok(ids);
+  }
 
-    return ResponseEntity.ok()
-      .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-      .body(ids);
+  /**
+   * Helper method to retrieve the currently authenticated user's ID.
+   */
+  private Long getCurrentUserId() {
+      org.springframework.security.core.Authentication authentication = 
+          org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+      
+      if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails) {
+          return ((CustomUserDetails) authentication.getPrincipal()).getId();
+      }
+      return null;
   }
 }

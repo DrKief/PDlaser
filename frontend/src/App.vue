@@ -2,58 +2,60 @@
 import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import http from "./http-api";
+import { useAuth } from "./composables/useAuth";
 
+const { isLoggedIn, logout } = useAuth();
 const router = useRouter();
 const theme = ref("light");
 let audioCtx: AudioContext | null = null;
 
-// Top Search Bar State
-const searchQuery = ref("");
-const allKeywords = ref<string[]>([]);
-const isSearchFocused = ref(false);
-
-const filteredKeywords = computed(() => {
-  if (!searchQuery.value) return [];
-  const query = searchQuery.value.toLowerCase();
-  return allKeywords.value.filter(k => k.toLowerCase().includes(query)).slice(0, 8); // Limit autocomplete to 8
-});
-
-onMounted(async () => {
-  // Setup Theme
-  const savedTheme = localStorage.getItem('theme');
-  if (savedTheme) {
-    theme.value = savedTheme;
-  } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    theme.value = 'dark';
-  } else {
-    theme.value = 'light';
-  }
-  document.documentElement.className = theme.value;
-  
-  document.addEventListener('click', handleGlobalClick);
-
-  // Fetch all keywords for the global autocomplete search bar
+const isAdmin = computed(() => {
+  const token = localStorage.getItem('token');
+  if (!token) return false;
   try {
-    const res = await http.get(`/images/keywords`);
-    allKeywords.value = res.data;
-  } catch (e) {
-    console.error("Failed to load keywords for search bar");
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.role === 'ROLE_ADMIN';
+  } catch (e) { 
+    return false; 
   }
 });
+
+// --- Optimized Debounced Search ---
+const searchQuery = ref("");
+const filteredKeywords = ref<string[]>([]);
+const isSearchFocused = ref(false);
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+const onSearchInput = () => {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(async () => {
+    if (searchQuery.value.length < 2) {
+      filteredKeywords.value = [];
+      return;
+    }
+    try {
+      const res = await http.get(`/images/keywords/search?q=${searchQuery.value}`);
+      filteredKeywords.value = res.data;
+    } catch (e) {
+      console.error("Failed to fetch search suggestions", e);
+    }
+  }, 300);
+};
 
 const handleSearchBlur = () => {
-  setTimeout(() => isSearchFocused.value = false, 200);
+  setTimeout(() => {
+    isSearchFocused.value = false;
+  }, 200);
 };
 
 const executeSearch = (tag: string) => {
   searchQuery.value = tag;
   isSearchFocused.value = false;
-  // Route to the gallery with the selected tag as a filter
   router.push({ path: '/', query: { tags: tag } });
-  searchQuery.value = ""; // Clear input after searching
+  searchQuery.value = ""; 
 };
 
-// Cruelty Audio
+// --- Cruelty Audio & Theme ---
 const playPainSound = () => {
   if (theme.value !== 'cruelty') return;
   
@@ -92,6 +94,20 @@ const toggleTheme = (target: string) => {
   localStorage.setItem('theme', theme.value);
 };
 
+onMounted(() => {
+  // Setup Theme
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme) {
+    theme.value = savedTheme;
+  } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+    theme.value = 'dark';
+  } else {
+    theme.value = 'light';
+  }
+  document.documentElement.className = theme.value;
+  
+  document.addEventListener('click', handleGlobalClick);
+});
 </script>
 
 <template>
@@ -109,6 +125,7 @@ const toggleTheme = (target: string) => {
             type="text" 
             placeholder="Search tags..." 
             v-model="searchQuery"
+            @input="onSearchInput"
             @focus="isSearchFocused = true"
             @keydown.enter="filteredKeywords.length ? executeSearch(filteredKeywords[0]) : executeSearch(searchQuery)"
           />
@@ -128,19 +145,26 @@ const toggleTheme = (target: string) => {
         <nav class="nav-links">
           <router-link to="/search">Advanced</router-link>
           <router-link to="/about">About</router-link>
+          <router-link v-if="isAdmin" to="/admin">Admin</router-link>
         </nav>
         
         <div class="divider"></div>
         
         <button class="cruelty-toggle" @click="toggleTheme(theme === 'cruelty' ? 'light' : 'cruelty')">
-          {{ theme === 'cruelty' ? 'REVERT CRUELTY' : 'button' }}
+          {{ theme === 'cruelty' ? 'REVERT CRUELTY' : 'CRUELTY' }}
         </button>
         
         <button class="theme-toggle" @click="toggleTheme(theme === 'light' ? 'dark' : 'light')" v-if="theme !== 'cruelty'" title="Toggle Theme">
           <span class="material-symbols-outlined">contrast</span>
         </button>
         
-        <router-link to="/upload" class="btn upload-btn">Upload</router-link>
+        <template v-if="isLoggedIn">
+          <button @click="logout" class="btn logout-btn" style="background: none; border: none; cursor: pointer; color: var(--text-secondary); font-family: var(--font-sans); font-weight: 500;">Logout</button>
+          <router-link to="/upload" class="btn upload-btn">Upload</router-link>
+        </template>
+        <template v-else>
+          <router-link to="/login" class="btn login-btn" style="color: var(--text-secondary); font-family: var(--font-sans); font-weight: 500; text-decoration: none;">Login</router-link>
+        </template>
       </div>
     </header>
 

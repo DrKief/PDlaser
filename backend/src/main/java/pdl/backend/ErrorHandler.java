@@ -23,31 +23,39 @@ public class ErrorHandler {
 
   public abstract static sealed class DomainException
     extends RuntimeException
-    permits RecordNotFoundException, BadRequestException, UnsupportedFileException
+    permits RecordNotFoundException, BadRequestException, UnsupportedFileException, ForbiddenException, DuplicateImageException 
   {
-
     protected DomainException(String message) {
       super(message, null, false, false);
     }
   }
 
   public static final class RecordNotFoundException extends DomainException {
-
     public RecordNotFoundException(String message) {
       super(message);
     }
   }
 
   public static final class BadRequestException extends DomainException {
-
     public BadRequestException(String message) {
       super(message);
     }
   }
 
   public static final class UnsupportedFileException extends DomainException {
-
     public UnsupportedFileException(String message) {
+      super(message);
+    }
+  }
+
+  public static final class ForbiddenException extends DomainException {
+    public ForbiddenException(String message) {
+      super(message);
+    }
+  }
+
+  public static final class DuplicateImageException extends DomainException {
+    public DuplicateImageException(String message) {
       super(message);
     }
   }
@@ -64,6 +72,11 @@ public class ErrorHandler {
   }
 
   // --- Exception Handlers ---
+
+  @ExceptionHandler(ErrorHandler.DuplicateImageException.class)
+  public ProblemDetail handleDuplicate(ErrorHandler.DuplicateImageException ex) {
+    return buildProblemDetail(HttpStatus.CONFLICT, ex.getMessage());
+  }
 
   @ExceptionHandler(ErrorHandler.RecordNotFoundException.class)
   public ProblemDetail handleRecordNotFound(ErrorHandler.RecordNotFoundException ex) {

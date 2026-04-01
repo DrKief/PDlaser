@@ -8,6 +8,11 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import("./components/Gallery.vue"),
   },
   {
+    path: "/login",
+    name: "login",
+    component: () => import("./components/Login.vue"),
+  },
+  {
     path: "/image/:id",
     name: "image-detail",
     component: () => import("./components/ImageDetail.vue"),
@@ -26,6 +31,11 @@ const routes: Array<RouteRecordRaw> = [
     path: "/about",
     name: "about",
     component: () => import("./components/About.vue"),
+  },
+  {
+    path: "/admin",
+    name: "admin",
+    component: () => import("./components/Admin.vue"),
   },
 ];
 

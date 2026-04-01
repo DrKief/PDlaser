@@ -7,7 +7,7 @@ interface UploadTask {
   file: File;
   previewUrl: string;
   id?: number;
-  status: 'PENDING' | 'UPLOADING' | 'EXTRACTING' | 'COMPLETED' | 'FAILED';
+  status: 'PENDING' | 'UPLOADING' | 'EXTRACTING' | 'COMPLETED' | 'FAILED' | 'DUPLICATE';
 }
 
 const tasks = ref<UploadTask[]>([]);
@@ -39,7 +39,8 @@ const onFileChange = (event: Event) => {
 };
 
 const removeTask = (index: number) => {
-  if (isUploading.value) return;
+  if (index === -1) return;
+  if (isUploading.value && tasks.value[index].status === 'UPLOADING') return;
   URL.revokeObjectURL(tasks.value[index].previewUrl);
   tasks.value.splice(index, 1);
 };
@@ -62,35 +63,40 @@ const executeUpload = async () => {
   isUploading.value = true;
   globalMessage.value = "Uploading batch...";
 
-  for (const task of tasks.value) {
+  for (let i = tasks.value.length - 1; i >= 0; i--) {
+    const task = tasks.value[i];
     if (task.status !== 'PENDING' && task.status !== 'FAILED') continue;
     
     task.status = 'UPLOADING';
     const formData = new FormData();
     formData.append("file", task.file);
-    if (tagsList.value.length > 0) {
-      formData.append("keywords", tagsList.value.join(","));
-    }
+    if (tagsList.value.length > 0) formData.append("keywords", tagsList.value.join(","));
 
     try {
-      const response = await http.post("/images", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      const response = await http.post("/images", formData, { headers: { "Content-Type": "multipart/form-data" } });
       const id = response.data.id || response.data;
       task.id = id;
       task.status = 'EXTRACTING';
       
       pollStatus(id).then(() => {
-        if (statusCache[id] === 'COMPLETED') task.status = 'COMPLETED';
+        if (statusCache[id] === 'COMPLETED') {
+            task.status = 'COMPLETED';
+            setTimeout(() => removeTask(tasks.value.indexOf(task)), 3500); // Auto Clear
+        }
         if (statusCache[id] === 'FAILED') task.status = 'FAILED';
       });
       
-    } catch (e) {
-      task.status = 'FAILED';
+    } catch (e: any) {
+      if (e.response?.status === 409) {
+          task.status = 'DUPLICATE';
+          setTimeout(() => removeTask(tasks.value.indexOf(task)), 3500); // Auto Clear duplicate
+      } else {
+          task.status = 'FAILED';
+      }
     }
   }
   
-  globalMessage.value = "Uploads complete. Waiting for feature extraction...";
+  globalMessage.value = "Batch uploaded. Clearing completed items automatically...";
   isUploading.value = false;
 };
 
@@ -218,6 +224,21 @@ const clearAll = () => {
 /* The min-width: 0 is required for flex children to truncate properly */
 .task-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.25rem; }
 .task-name { font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-primary); }
+
+/* Status Badge Styles */
+.status-badge { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.status-badge.pending { color: var(--text-muted); }
+.status-badge.uploading { color: var(--color-accent); }
+.status-badge.extracting { color: var(--color-accent); animation: pulseText 1.5s infinite; }
+.status-badge.completed { color: #10b981; } /* Emerald Green */
+.status-badge.failed { color: var(--color-danger); }
+.status-badge.duplicate { color: #f59e0b; } /* Amber Orange */
+
+@keyframes pulseText {
+  0% { opacity: 1; }
+  50% { opacity: 0.5; }
+  100% { opacity: 1; }
+}
 
 .btn-icon { background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 0.25rem; display: flex; flex-shrink: 0; }
 .btn-icon:hover { color: var(--color-danger); }

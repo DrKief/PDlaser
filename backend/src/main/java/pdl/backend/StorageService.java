@@ -59,14 +59,12 @@ public class StorageService {
    */
   @Transactional
   public void processAndSaveImage(Metadata img, boolean saveToDisk) {
-    // 1. Calculate hash to prevent duplicates
     String hash = calculateSHA256(img.getData());
-
+    
+    // Globally Enforced Deduplication
     Optional<Metadata> existing = imageEntityRepository.findByHash(hash);
     if (existing.isPresent()) {
-      img.setId(existing.get().getId());
-      img.setHash(hash);
-      return; // Stop processing, it's a duplicate
+      throw new ErrorHandler.DuplicateImageException("Image hash already exists in database.");
     }
 
     img.setHash(hash);
