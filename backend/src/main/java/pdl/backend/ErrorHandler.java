@@ -73,6 +73,11 @@ public class ErrorHandler {
 
   // --- Exception Handlers ---
 
+  @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+  public ProblemDetail handleAuthenticationException(Exception ex) {
+      return buildProblemDetail(HttpStatus.UNAUTHORIZED, "Invalid username or password");
+  }
+
   @ExceptionHandler(ErrorHandler.DuplicateImageException.class)
   public ProblemDetail handleDuplicate(ErrorHandler.DuplicateImageException ex) {
     return buildProblemDetail(HttpStatus.CONFLICT, ex.getMessage());

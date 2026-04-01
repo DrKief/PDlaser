@@ -1,4 +1,5 @@
 package pdl.backend;
+
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
 
@@ -15,7 +16,7 @@ public class User {
         this.password = password;
         this.role = role;
     }
-    // Getters and Setters...
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getUsername() { return username; }

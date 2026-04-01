@@ -252,76 +252,35 @@ public class VectorRepository {
     }
 
     /**
-     * Refined Tag-Only Search
+     * Advanced Tag AND Search (Replaced old complex search)
      */
-    public List<Long> searchByAttributes(List<String> keywords, Long currentUserId) {
-        StringBuilder sql = new StringBuilder("SELECT DISTINCT i.id FROM images i ");
-        MapSqlParameterSource params = new MapSqlParameterSource();
-
-        params.addValue("currentUserId", currentUserId);
-        
-        if (keywords != null && !keywords.isEmpty()) {
-            sql.append("JOIN imagekeywords k ON i.id = k.imageid ");
-            sql.append("WHERE (i.is_private = false OR i.user_id = :currentUserId) ");
-            List<String> normalizedKeywords = keywords.stream().map(this::normalizeTag).collect(Collectors.toList());
-            sql.append("AND k.keyword IN (:keywords) ");
-            params.addValue("keywords", normalizedKeywords);
-        } else {
-            sql.append("WHERE (i.is_private = false OR i.user_id = :currentUserId) ");
-        }
-
-        return new NamedParameterJdbcTemplate(jdbcTemplate).queryForList(sql.toString(), params, Long.class);
-    }
-
-    /**
-     * Complex dynamic search builder utilizing NamedParameterJdbcTemplate.
-     * Combines optional filters: name, format, resolution size, and keyword matches.
-     */
-    public List<Long> searchByAttributes(
-        String name,
-        String format,
-        String size,
-        List<String> keywords
-    ) {
-        StringBuilder sql = new StringBuilder("SELECT DISTINCT i.id FROM images i ");
-        MapSqlParameterSource params = new MapSqlParameterSource();
-
-        if (keywords != null && !keywords.isEmpty()) {
-            sql.append("LEFT JOIN imagekeywords k ON i.id = k.imageid ");
-        }
-
-        sql.append("WHERE 1=1 ");
-
-        if (name != null && !name.isEmpty()) {
-            sql.append("AND i.filename LIKE :name ");
-            params.addValue("name", "%" + name + "%");
-        }
-        if (format != null && !format.isEmpty()) {
-            sql.append("AND i.format = :format ");
-            params.addValue("format", format);
-        }
-        if (size != null && !size.isEmpty()) {
-            String[] parts = size.split(",");
-            if (parts.length == 2) {
-                sql.append("AND i.width = :width AND i.height = :height ");
-                params.addValue("width", Integer.parseInt(parts[0]));
-                params.addValue("height", Integer.parseInt(parts[1]));
-            }
-        }
-        if (keywords != null && !keywords.isEmpty()) {
-            List<String> normalizedKeywords = keywords
-                .stream()
-                .map(this::normalizeTag)
-                .collect(Collectors.toList());
-            sql.append("AND k.keyword IN (:keywords) ");
-            params.addValue("keywords", normalizedKeywords);
-        }
-
-        NamedParameterJdbcTemplate namedTemplate = new NamedParameterJdbcTemplate(jdbcTemplate);
-        return namedTemplate.queryForList(
-            java.util.Objects.requireNonNull(sql.toString()),
-            params,
-            Long.class
+    public List<Map<String, Object>> searchGalleryByTags(List<String> keywords, Long currentUserId, int limit, int offset) {
+        StringBuilder sql = new StringBuilder(
+            "SELECT i.id, i.extraction_status, u.username as uploader " +
+            "FROM images i LEFT JOIN users u ON i.user_id = u.id " +
+            "WHERE (i.is_private = false OR i.user_id = :currentUserId) "
         );
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("currentUserId", currentUserId);
+
+        if (keywords != null && !keywords.isEmpty()) {
+            sql.append("AND (SELECT count(DISTINCT keyword) FROM imagekeywords WHERE imageid = i.id AND keyword IN (:keywords)) = :keywordCount ");
+            List<String> normalizedKeywords = keywords.stream().map(this::normalizeTag).collect(Collectors.toList());
+            params.addValue("keywords", normalizedKeywords);
+            params.addValue("keywordCount", normalizedKeywords.size());
+        }
+
+        sql.append("ORDER BY i.id DESC LIMIT :limit OFFSET :offset");
+        params.addValue("limit", limit);
+        params.addValue("offset", offset);
+
+        return new NamedParameterJdbcTemplate(jdbcTemplate).query(sql.toString(), params, (rs, rowNum) -> {
+            Map<String, Object> map = new java.util.HashMap<>();
+            map.put("id", rs.getLong("id"));
+            map.put("uploader", rs.getString("uploader") != null ? rs.getString("uploader") : "System");
+            map.put("keywords", getKeywords(rs.getLong("id")));
+            map.put("extraction_status", rs.getString("extraction_status"));
+            return map;
+        });
     }
 }

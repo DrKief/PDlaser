@@ -112,7 +112,6 @@ public class ApiController {
       @RequestParam(value = "page", defaultValue = "0") int page,
       @RequestParam(value = "size", defaultValue = "30") int size
   ) {
-      // Secure paginated gallery query extracting Uploader instead of Filename
       int offset = page * size;
       List<Map<String, Object>> response = imageDescriptorRepository.getPaginatedGallery(getCurrentUserId(), size, offset);
       return ResponseEntity.ok(response);
@@ -313,17 +312,17 @@ public class ApiController {
   }
 
   /**
-   * Search database for images matching specific tags.
+   * Search database for images matching specific tags (paginated).
    */
   @GetMapping("/search")
-  public ResponseEntity<?> searchImagesByAttributes(
-    @RequestParam(required = false) List<String> keywords
+  public ResponseEntity<List<Map<String, Object>>> searchImagesByTags(
+    @RequestParam(required = false) List<String> keywords,
+    @RequestParam(defaultValue = "0") int page,
+    @RequestParam(defaultValue = "30") int size
   ) {
-    List<Long> ids = imageDescriptorRepository.searchByAttributes(keywords, getCurrentUserId());
-    if (ids.isEmpty()) {
-      throw new ErrorHandler.RecordNotFoundException("Aucune image trouvée.");
-    }
-    return ResponseEntity.ok(ids);
+    int offset = page * size;
+    List<Map<String, Object>> results = imageDescriptorRepository.searchGalleryByTags(keywords, getCurrentUserId(), size, offset);
+    return ResponseEntity.ok(results);
   }
 
   /**

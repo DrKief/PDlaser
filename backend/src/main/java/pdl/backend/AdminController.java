@@ -18,12 +18,14 @@ public class AdminController {
     }
 
     @PostMapping("/unsplash/import")
-    public ResponseEntity<?> startUnsplashImport() {
+    public ResponseEntity<?> startUnsplashImport(@RequestBody Map<String, Integer> request) {
         if (unsplashIngester.getStatus().startsWith("IMPORTING")) {
             return ResponseEntity.badRequest().body(Map.of("message", "Import already in progress."));
         }
-        unsplashIngester.startImport();
-        return ResponseEntity.ok(Map.of("message", "Dataset import initiated in background."));
+        int limit = request.getOrDefault("limit", 50);
+        int offset = request.getOrDefault("offset", 0);
+        unsplashIngester.startImport(limit, offset);
+        return ResponseEntity.ok(Map.of("message", "Dataset import initiated. Limit: " + limit + ", Offset: " + offset));
     }
 
     @GetMapping("/unsplash/status")

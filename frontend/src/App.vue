@@ -9,6 +9,7 @@ const router = useRouter();
 const theme = ref("light");
 let audioCtx: AudioContext | null = null;
 
+// --- Auth Data Extraction ---
 const isAdmin = computed(() => {
   const token = localStorage.getItem('token');
   if (!token) return false;
@@ -17,6 +18,18 @@ const isAdmin = computed(() => {
     return payload.role === 'ROLE_ADMIN';
   } catch (e) { 
     return false; 
+  }
+});
+
+const username = computed(() => {
+  const token = localStorage.getItem('token');
+  if (!token) return '';
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    // Adjust 'sub' to 'username' if your backend uses a different payload key
+    return payload.sub || payload.username || 'User';
+  } catch (e) {
+    return '';
   }
 });
 
@@ -159,11 +172,16 @@ onMounted(() => {
         </button>
         
         <template v-if="isLoggedIn">
+          <!-- Added User Greeting -->
+          <span class="user-badge" style="font-family: var(--font-mono); color: var(--text-muted); font-size: 0.85rem; cursor: default;">@{{ username }}</span>
+          
           <button @click="logout" class="btn logout-btn" style="background: none; border: none; cursor: pointer; color: var(--text-secondary); font-family: var(--font-sans); font-weight: 500;">Logout</button>
           <router-link to="/upload" class="btn upload-btn">Upload</router-link>
         </template>
         <template v-else>
-          <router-link to="/login" class="btn login-btn" style="color: var(--text-secondary); font-family: var(--font-sans); font-weight: 500; text-decoration: none;">Login</router-link>
+          <!-- Added Register Link alongside Login -->
+          <router-link to="/login" class="btn login-btn" style="color: var(--text-secondary); font-family: var(--font-sans); font-weight: 500; text-decoration: none; background: transparent; border: none;">Login</router-link>
+          <router-link to="/register" class="btn btn-outline" style="padding: 0.4rem 1rem; border-radius: 4px;">Register</router-link>
         </template>
       </div>
     </header>
@@ -337,6 +355,20 @@ onMounted(() => {
   padding: 0.5rem 1.25rem;
 }
 
+.btn-outline {
+  border: 1px solid var(--border-strong);
+  color: var(--text-primary);
+  text-decoration: none;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.btn-outline:hover {
+  background: var(--bg-element);
+}
+
 .content-canvas {
   flex: 1;
   padding: 2rem;
@@ -357,6 +389,7 @@ onMounted(() => {
 :root.cruelty .autocomplete-dropdown li:hover { background: #FF00FF; color: #fff; }
 :root.cruelty .nav-links a { font-family: 'Impact'; font-size: 1.5rem; color: #fff; text-transform: uppercase; }
 :root.cruelty .cruelty-toggle { background: #000; color: #00FF00; font-family: 'Impact'; font-size: 1rem; padding: 0.5rem 1rem; border: 2px solid #fff; animation: pulse 0.5s infinite; }
+:root.cruelty .user-badge { color: #FFFF00 !important; font-family: 'Impact' !important; font-size: 1.2rem !important; }
 
 @keyframes pulse {
   0% { transform: scale(1); }

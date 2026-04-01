@@ -5,7 +5,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-
 import java.util.Map;
 
 @RestController
@@ -32,7 +31,6 @@ public class AuthController {
         if (userRepository.findByUsername(request.get("username")).isPresent()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Username taken"));
         }
-        // Save with default ROLE_USER
         User user = new User(request.get("username"), passwordEncoder.encode(request.get("password")), "ROLE_USER");
         userRepository.save(user);
         return ResponseEntity.ok(Map.of("message", "User registered successfully"));

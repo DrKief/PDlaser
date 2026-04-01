@@ -61,10 +61,10 @@ public class StorageService {
   public void processAndSaveImage(Metadata img, boolean saveToDisk) {
     String hash = calculateSHA256(img.getData());
     
-    // Globally Enforced Deduplication
+    // Globally Enforce Deduplication
     Optional<Metadata> existing = imageEntityRepository.findByHash(hash);
     if (existing.isPresent()) {
-      throw new ErrorHandler.DuplicateImageException("Image hash already exists in database.");
+      throw new ErrorHandler.DuplicateImageException("Image already exists on the server.");
     }
 
     img.setHash(hash);
