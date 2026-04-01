@@ -10,7 +10,7 @@ export function useAuth() {
   const username = computed(() => {
     if (!token.value) return null;
     try {
-      const payload = JSON.parse(atob(token.value.split('.')[1]));
+      const payload = JSON.parse(atob(token.value.split('.')[1] || ''));
       return payload.sub; 
     } catch (e) {
       return null;
