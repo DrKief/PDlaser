@@ -3,8 +3,17 @@ package pdl.backend;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.web.bind.annotation.*;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 
 @RestController
@@ -12,18 +21,15 @@ import java.util.Map;
 public class AuthController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
-    private final CustomUserDetailsService userDetailsService;
+    private final JwtEncoder jwtEncoder;
 
-    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder, 
-                          JwtService jwtService, AuthenticationManager authenticationManager,
-                          CustomUserDetailsService userDetailsService) {
+    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder,
+                          AuthenticationManager authenticationManager, JwtEncoder jwtEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
-        this.jwtService = jwtService;
         this.authenticationManager = authenticationManager;
-        this.userDetailsService = userDetailsService;
+        this.jwtEncoder = jwtEncoder;
     }
 
     @PostMapping("/register")
@@ -38,11 +44,26 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> request) {
-        authenticationManager.authenticate(
+        Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.get("username"), request.get("password"))
         );
-        var userDetails = userDetailsService.loadUserByUsername(request.get("username"));
-        var token = jwtService.generateToken(userDetails);
+
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        Instant now = Instant.now();
+        String role = userDetails.getAuthorities().iterator().next().getAuthority();
+
+        JwtClaimsSet claims = JwtClaimsSet.builder()
+                .issuer("pdl-backend")
+                .issuedAt(now)
+                .expiresAt(now.plus(24, ChronoUnit.HOURS))
+                .subject(userDetails.getUsername())
+                .claim("role", role)
+                .claim("userId", userDetails.getId())
+                .build();
+
+        JwsHeader jwsHeader = JwsHeader.with(MacAlgorithm.HS256).build();
+        String token = this.jwtEncoder.encode(JwtEncoderParameters.from(jwsHeader, claims)).getTokenValue();
+
         return ResponseEntity.ok(Map.of("token", token));
     }
 }

@@ -332,8 +332,13 @@ public class ApiController {
       org.springframework.security.core.Authentication authentication = 
           org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
       
-      if (authentication != null && authentication.getPrincipal() instanceof CustomUserDetails) {
-          return ((CustomUserDetails) authentication.getPrincipal()).getId();
+      if (authentication != null) {
+          if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+              return jwt.getClaim("userId");
+          } else if (authentication.getPrincipal() instanceof CustomUserDetails customUserDetails) {
+              // Fallback if accessed internally or tested via mock users
+              return customUserDetails.getId();
+          }
       }
       return null;
   }
