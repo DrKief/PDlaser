@@ -183,11 +183,10 @@ const goToImage = (id: number | string) => {
             </div>
 
             <div class="card-overlay" @click="goToImage(image.id)">
-              <div class="meta-chips">
-                <span class="meta-chip status-chip" :class="image.extraction_status?.toLowerCase()">
-                  {{ image.extraction_status || 'PENDING' }}
+              <div class="meta-chips" v-if="image.extraction_status && image.extraction_status !== 'COMPLETED'">
+                <span class="meta-chip status-chip" :class="image.extraction_status.toLowerCase()">
+                  {{ image.extraction_status }}
                 </span>
-                <span class="meta-chip id-chip">ID: {{ image.id }}</span>
               </div>
 
               <div class="overlay-content">
@@ -385,8 +384,3 @@ const goToImage = (id: number | string) => {
 .page-btn:hover:not(:disabled) { background: var(--bg-element); border-color: var(--text-primary); }
 .page-btn.active { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
 </style>
-
-
-
-
-
