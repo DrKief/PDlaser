@@ -12,7 +12,7 @@ const handleLogin = async () => {
     });
     localStorage.setItem('token', res.data.token);
     // Hard reload forces App.vue to instantly re-evaluate the auth/admin state
-    window.location.href = '/'; 
+    window.location.href = '/';
   } catch (e) {
     errorMessage.value = "Invalid credentials.";
   }
@@ -41,11 +41,44 @@ const handleLogin = async () => {
   </div>
 </template>
 <style scoped>
-.auth-wrapper { display: flex; align-items: center; justify-content: center; min-height: 60vh; }
-.login-card { width: 100%; max-width: 400px; padding: 2.5rem; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 8px; }
-.config-form { display: flex; flex-direction: column; gap: 1.5rem; }
-.text-link { color: var(--color-accent); font-size: 0.9rem; text-decoration: none; font-weight: 500; transition: opacity 0.2s; }
-.text-link:hover { opacity: 0.7; }
+.auth-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 2.5rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+}
+
+.config-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.text-link {
+  color: var(--color-accent);
+  font-size: 0.9rem;
+  text-decoration: none;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.text-link:hover {
+  opacity: 0.7;
+}
+
 /* Cruelty Overrides */
-:root.cruelty .login-card { background: #000; border: 4px solid var(--color-accent); border-radius: 0; }
+:root.cruelty .login-card {
+  background: #000;
+  border: 4px solid var(--color-accent);
+  border-radius: 0;
+}
 </style>

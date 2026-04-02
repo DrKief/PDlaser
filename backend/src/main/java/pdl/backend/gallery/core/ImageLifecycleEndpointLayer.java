@@ -37,12 +37,22 @@ public class ImageLifecycleEndpointLayer {
   }
 
   @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<List<Map<String, Object>>> getImages(
+  public ResponseEntity<Map<String, Object>> getImages(
       @RequestParam(value = "page", defaultValue = "0") int page,
       @RequestParam(value = "size", defaultValue = "30") int size
   ) {
       int offset = page * size;
-      List<Map<String, Object>> response = queryRepo.getPaginatedGallery(getCurrentUserId(), size, offset);
+      Long userId = getCurrentUserId();
+      
+      List<Map<String, Object>> content = queryRepo.getPaginatedGallery(userId, size, offset);
+      long totalElements = queryRepo.getGalleryTotalCount(userId);
+      boolean hasNext = (offset + size) < totalElements;
+      
+      Map<String, Object> response = new java.util.HashMap<>();
+      response.put("content", content);
+      response.put("totalElements", totalElements);
+      response.put("hasNext", hasNext);
+      
       return ResponseEntity.ok(response);
   }
 

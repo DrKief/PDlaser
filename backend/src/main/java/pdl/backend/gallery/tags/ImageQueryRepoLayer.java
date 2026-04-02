@@ -135,4 +135,30 @@ public class ImageQueryRepoLayer {
             return map;
         });
     }
+
+    public long getGalleryTotalCount(Long currentUserId) {
+        String sql = "SELECT COUNT(*) FROM images i WHERE i.is_private = false OR i.user_id = ?";
+        Long count = jdbcTemplate.queryForObject(sql, Long.class, currentUserId);
+        return count != null ? count : 0L;
+    }
+
+    public long getSearchGalleryByTagsTotalCount(List<String> keywords, Long currentUserId) {
+        if (keywords == null || keywords.isEmpty()) {
+            return getGalleryTotalCount(currentUserId);
+        }
+
+        StringBuilder sql = new StringBuilder(
+            "SELECT COUNT(*) FROM images i WHERE (i.is_private = false OR i.user_id = :currentUserId) "
+        );
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("currentUserId", currentUserId);
+
+        sql.append("AND (SELECT count(DISTINCT keyword) FROM imagekeywords WHERE imageid = i.id AND keyword IN (:keywords)) = :keywordCount ");
+        List<String> normalizedKeywords = keywords.stream().map(this::normalizeTag).collect(Collectors.toList());
+        params.addValue("keywords", normalizedKeywords);
+        params.addValue("keywordCount", normalizedKeywords.size());
+
+        Long count = new NamedParameterJdbcTemplate(jdbcTemplate).queryForObject(sql.toString(), params, Long.class);
+        return count != null ? count : 0L;
+    }
 }

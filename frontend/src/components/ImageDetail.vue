@@ -95,19 +95,9 @@ const findSimilar = () => {
             <span v-for="tag in metadata.Keywords" :key="tag" class="tag-pill">{{ tag }}</span>
           </div>
           <div class="tag-input-container">
-            <input
-              v-model="newTag"
-              type="text"
-              class="input-tag"
-              placeholder="Add a tag..."
-              @keyup.enter="addTag"
-              :disabled="isAddingTag"
-            />
-            <button
-              class="btn btn-tag"
-              @click="addTag"
-              :disabled="!newTag || isAddingTag"
-            >
+            <input v-model="newTag" type="text" class="input-tag" placeholder="Add a tag..." @keyup.enter="addTag"
+              :disabled="isAddingTag" />
+            <button class="btn btn-tag" @click="addTag" :disabled="!newTag || isAddingTag">
               <span v-if="isAddingTag">...</span>
               <span v-else>+</span>
             </button>
@@ -126,17 +116,36 @@ const findSimilar = () => {
   </div>
 </template>
 <style scoped>
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-.loading, .error { text-align: center; padding: 4rem; color: var(--text-secondary); }
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.loading,
+.error {
+  text-align: center;
+  padding: 4rem;
+  color: var(--text-secondary);
+}
+
 .detail-layout {
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--space-xl);
   align-items: start;
 }
+
 @media (min-width: 1024px) {
-  .detail-layout { grid-template-columns: 8fr 4fr; }
+  .detail-layout {
+    grid-template-columns: 8fr 4fr;
+  }
 }
+
 .image-container {
   background: var(--bg-element);
   border-radius: 4px;
@@ -146,12 +155,14 @@ const findSimilar = () => {
   align-items: center;
   padding: 1rem;
 }
+
 .full-img {
   max-width: 100%;
   max-height: 80vh;
   object-fit: contain;
   display: block;
 }
+
 .meta-sidebar {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
@@ -160,6 +171,7 @@ const findSimilar = () => {
   position: sticky;
   top: 100px;
 }
+
 .image-title {
   font-family: var(--font-sans);
   font-size: 1.5rem;
@@ -167,6 +179,7 @@ const findSimilar = () => {
   margin-bottom: 2rem;
   word-break: break-all;
 }
+
 .meta-section {
   border-bottom: 1px solid var(--border-subtle);
   padding-bottom: 1.5rem;
@@ -175,27 +188,32 @@ const findSimilar = () => {
   flex-direction: column;
   gap: 1rem;
 }
+
 .meta-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
+
 .meta-val {
   font-family: var(--font-mono);
   font-size: 0.9rem;
   color: var(--text-primary);
 }
+
 .tags-list {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.5rem;
 }
+
 .tag-input-container {
   display: flex;
   margin-top: 0.75rem;
   gap: 0.25rem;
 }
+
 .input-tag {
   flex: 1;
   background: var(--bg-element);
@@ -206,8 +224,15 @@ const findSimilar = () => {
   font-size: 0.9rem;
   outline: none;
 }
-.input-tag::placeholder { color: var(--text-muted); }
-.input-tag:focus { border-color: var(--color-accent); }
+
+.input-tag::placeholder {
+  color: var(--text-muted);
+}
+
+.input-tag:focus {
+  border-color: var(--color-accent);
+}
+
 .btn-tag {
   background: var(--color-accent);
   color: #fff;
@@ -222,12 +247,45 @@ const findSimilar = () => {
   font-size: 1.2rem;
   line-height: 1;
 }
-.btn-tag:disabled { opacity: 0.5; cursor: not-allowed; }
-.actions { display: flex; flex-direction: column; gap: 1rem; }
-.danger { color: var(--color-danger); border-color: var(--color-danger); }
-.danger:hover { background: var(--color-danger); color: #fff; }
+
+.btn-tag:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.danger {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+
+.danger:hover {
+  background: var(--color-danger);
+  color: #fff;
+}
+
 /* --- CRUELTY OVERRIDES --- */
-:root.cruelty .image-container { background: #000; border: 8px dashed var(--color-accent); border-radius: 0; }
-:root.cruelty .meta-sidebar { background: #111; border: 4px solid var(--border-strong); border-radius: 0; }
-:root.cruelty .image-title { font-family: 'Impact'; font-size: 2.5rem; color: #00FF00; text-transform: uppercase; }
+:root.cruelty .image-container {
+  background: #000;
+  border: 8px dashed var(--color-accent);
+  border-radius: 0;
+}
+
+:root.cruelty .meta-sidebar {
+  background: #111;
+  border: 4px solid var(--border-strong);
+  border-radius: 0;
+}
+
+:root.cruelty .image-title {
+  font-family: 'Impact';
+  font-size: 2.5rem;
+  color: #00FF00;
+  text-transform: uppercase;
+}
 </style>

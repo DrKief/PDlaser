@@ -20,9 +20,9 @@ const similarityCount = ref(10);
 const similarityResults = ref<any[]>([]);
 const errorMsg = ref("");
 onMounted(() => {
-  http.get(`/images`).then(r => {
+  http.get(`/images?size=1000`).then(r => {
     // Only grab images that exist in the system for the similarity dropdown
-    allImages.value = r.data.map((img:any) => ({id: img.id, name: `Image #${img.id}`}));
+    allImages.value = r.data.content.map((img: any) => ({ id: img.id, name: img.filename || `Image #${img.id}` }));
   });
   if (route.query.sourceId) {
     activeTab.value = "similarity";
@@ -94,8 +94,10 @@ const performSimilaritySearch = async () => {
     <div class="query-split">
       <section class="card engine-config">
         <div class="tab-switcher">
-          <button class="tab-btn" :class="{active: activeTab === 'attributes'}" @click="activeTab = 'attributes'">By Tags</button>
-          <button class="tab-btn" :class="{active: activeTab === 'similarity'}" @click="activeTab = 'similarity'">Visual Match</button>
+          <button class="tab-btn" :class="{ active: activeTab === 'attributes' }" @click="activeTab = 'attributes'">By
+            Tags</button>
+          <button class="tab-btn" :class="{ active: activeTab === 'similarity' }" @click="activeTab = 'similarity'">Visual
+            Match</button>
         </div>
         <!-- Attributes Config -->
         <div v-show="activeTab === 'attributes'" class="config-form">
@@ -105,15 +107,9 @@ const performSimilaritySearch = async () => {
               <span v-for="tag in searchKeywords" :key="tag" class="tag-pill">
                 {{ tag }} <button @click="removeTag(tag)" class="tag-remove">&times;</button>
               </span>
-              <input 
-                v-model="tagsInput" 
-                class="tag-input" 
-                placeholder="Search tags..."
-                @input="onTagInput"
-                @focus="isTagFocused = true"
-                @blur="handleTagBlur"
-                @keydown.enter="filteredKeywords.length ? addTag(filteredKeywords[0]) : addTag()"
-              />
+              <input v-model="tagsInput" class="tag-input" placeholder="Search tags..." @input="onTagInput"
+                @focus="isTagFocused = true" @blur="handleTagBlur"
+                @keydown.enter="filteredKeywords.length ? addTag(filteredKeywords[0]) : addTag()" />
             </div>
             <ul class="autocomplete-dropdown" v-if="isTagFocused && filteredKeywords.length > 0">
               <li v-for="kw in filteredKeywords" :key="kw" @mousedown.prevent="addTag(kw)">
@@ -154,40 +150,164 @@ const performSimilaritySearch = async () => {
         <p v-if="errorMsg" class="error-text">{{ errorMsg }}</p>
       </section>
       <!-- Right: Similarity Results Matrix -->
-      <section class="results-matrix" v-if="activeTab === 'similarity' && similarityResults.length">
-        <h3 class="label-text matrix-title">Results ({{ similarityResults.length }})</h3>
-        <div class="results-grid">
-          <div v-for="res in similarityResults" :key="res.id" class="result-item" @click="goToImage(res.id)">
-            <img :src="getImageUrl(res.id)" class="res-img" />
-            <div class="res-meta">
-              <span class="label-text match-score">{{ ((1 - res.score) * 100).toFixed(2) }}% Match</span>
+      <section class="results-matrix" v-show="activeTab === 'similarity'">
+        <template v-if="similarityResults.length">
+          <h3 class="label-text matrix-title">Results ({{ similarityResults.length }})</h3>
+          <div class="results-grid">
+            <div v-for="res in similarityResults" :key="res.id" class="result-item" @click="goToImage(res.id)">
+              <img :src="getImageUrl(res.id)" class="res-img" />
+              <div class="res-meta">
+                <span class="label-text match-score">{{ ((1 - res.score) * 100).toFixed(2) }}% Match</span>
+              </div>
             </div>
           </div>
-        </div>
+        </template>
+        <template v-else>
+          <div class="empty-placeholder">
+            <p class="label-text">Select a source image and click "Find Similar" to see visual matches.</p>
+          </div>
+        </template>
       </section>
     </div>
   </div>
 </template>
 <style scoped>
 /* Inherits exact styles from earlier, omitting bulk for brevity */
-.query-split { display: grid; grid-template-columns: 1fr; gap: var(--space-xl); }
-@media (min-width: 1024px) { .query-split { grid-template-columns: 1fr 2fr; } }
-.tab-switcher { display: flex; border-bottom: 1px solid var(--border-subtle); margin-bottom: var(--space-lg); }
-.tab-btn { flex: 1; background: none; border: none; padding: 1rem 0; font-family: var(--font-sans); font-weight: 500; font-size: 0.9rem; color: var(--text-secondary); cursor: pointer; position: relative; transition: color 0.2s; }
-.tab-btn:hover { color: var(--text-primary); }
-.tab-btn.active { color: var(--text-primary); font-weight: 600; }
-.tab-btn.active::after { content: ''; position: absolute; bottom: -1px; left: 0; width: 100%; height: 2px; background: var(--text-primary); }
-.config-form { display: flex; flex-direction: column; gap: var(--space-md); }
-.form-group label { display: block; margin-bottom: 0.5rem; }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-.matrix-title { border-bottom: 1px solid var(--border-subtle); padding-bottom: 1rem; margin-bottom: 1.5rem; }
-.results-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1.5rem; }
-.result-item { display: flex; flex-direction: column; gap: 0.5rem; cursor: pointer; }
-.res-img { width: 100%; aspect-ratio: 1; object-fit: cover; transition: transform 0.3s; background: var(--bg-element); border-radius: 4px; }
-.result-item:hover .res-img { transform: translateY(-4px); box-shadow: var(--shadow-subtle); }
-.res-meta { display: flex; justify-content: flex-end; }
-.match-score { color: var(--color-success); }
-:root.cruelty .tab-btn { font-family: 'Impact'; font-size: 1.2rem; }
-:root.cruelty .tab-btn.active { background: var(--color-accent); color: #000; }
-:root.cruelty .res-img { filter: sepia(1) hue-rotate(180deg) saturate(300%); border: 4px solid #fff; border-radius: 0; }
+.query-split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .query-split {
+    grid-template-columns: 1fr 2fr;
+  }
+}
+
+.tab-switcher {
+  display: flex;
+  border-bottom: 1px solid var(--border-subtle);
+  margin-bottom: var(--space-lg);
+}
+
+.tab-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 1rem 0;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s;
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.tab-btn.active {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: var(--text-primary);
+}
+
+.config-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.matrix-title {
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.result-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.res-img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  transition: transform 0.3s;
+  background: var(--bg-element);
+  border-radius: 4px;
+}
+
+.result-item:hover .res-img {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-subtle);
+}
+
+.res-meta {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.match-score {
+  color: var(--color-success);
+}
+
+.empty-placeholder {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  min-height: 200px;
+  background: var(--bg-surface);
+  border: 1px dashed var(--border-subtle);
+  border-radius: 4px;
+}
+
+:root.cruelty .tab-btn {
+  font-family: 'Impact';
+  font-size: 1.2rem;
+}
+
+:root.cruelty .tab-btn.active {
+  background: var(--color-accent);
+  color: #000;
+}
+
+:root.cruelty .res-img {
+  filter: sepia(1) hue-rotate(180deg) saturate(300%);
+  border: 4px solid #fff;
+  border-radius: 0;
+}
 </style>

@@ -16,7 +16,7 @@ onMounted(async () => {
     <div class="about-container">
       <h1 class="page-title">PDLaser</h1>
       <p class="about-desc">
-        A fast, vector-based visual archiving system. 
+        A fast, vector-based visual archiving system.
         Powered by pgvector and BoofCV, it enables deep similarity searching based on structure, color, and intensity.
       </p>
       <div class="stats-grid">
@@ -37,40 +37,50 @@ onMounted(async () => {
   </div>
 </template>
 <style scoped>
-
 .about-wrapper {
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 60vh;
 }
+
 .about-container {
 
   max-width: 800px;
   margin: 0 auto;
   text-align: center;
 }
+
 .about-desc {
   font-size: 1.25rem;
   line-height: 1.6;
   color: var(--text-secondary);
   margin-bottom: var(--space-xl);
 }
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: var(--space-md);
 }
-.stat-card { 
-  display: flex; 
-  flex-direction: column; 
-  gap: 0.5rem; 
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
   background: var(--bg-surface);
   padding: 2rem;
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
 }
-.stat-val { font-family: var(--font-sans); font-size: 3rem; font-weight: 300; color: var(--text-primary); }
+
+.stat-val {
+  font-family: var(--font-sans);
+  font-size: 3rem;
+  font-weight: 300;
+  color: var(--text-primary);
+}
+
 /* --- CRUELTY OVERRIDES --- */
 :root.cruelty .stat-card {
   background: #000;
@@ -78,5 +88,9 @@ onMounted(async () => {
   border-radius: 0;
   transform: rotate(-2deg);
 }
-:root.cruelty .stat-val { font-family: 'Impact'; color: #00FF00; }
+
+:root.cruelty .stat-val {
+  font-family: 'Impact';
+  color: #00FF00;
+}
 </style>

@@ -46,12 +46,24 @@ public class KeywordTagEndpointLayer {
   }
 
   @GetMapping("/search")
-  public ResponseEntity<List<Map<String, Object>>> searchImagesByTags(
+  public ResponseEntity<Map<String, Object>> searchImagesByTags(
     @RequestParam(required = false) List<String> keywords,
     @RequestParam(defaultValue = "0") int page,
     @RequestParam(defaultValue = "30") int size
   ) {
-    return ResponseEntity.ok(queryRepo.searchGalleryByTags(keywords, getCurrentUserId(), size, page * size));
+    Long userId = getCurrentUserId();
+    int offset = page * size;
+    
+    List<Map<String, Object>> content = queryRepo.searchGalleryByTags(keywords, userId, size, offset);
+    long totalElements = queryRepo.getSearchGalleryByTagsTotalCount(keywords, userId);
+    boolean hasNext = (offset + size) < totalElements;
+    
+    Map<String, Object> response = new java.util.HashMap<>();
+    response.put("content", content);
+    response.put("totalElements", totalElements);
+    response.put("hasNext", hasNext);
+    
+    return ResponseEntity.ok(response);
   }
 
   private Long getCurrentUserId() {

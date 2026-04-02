@@ -57,7 +57,20 @@ onUnmounted(() => clearInterval(pollingInterval));
   </div>
 </template>
 <style scoped>
-.meta-card { background: var(--bg-surface); padding: 2rem; border-radius: 8px; border: 1px solid var(--border-subtle); }
-.highlight { color: var(--color-accent); font-weight: bold; }
-.form-group label { display: block; margin-bottom: 0.5rem; }
+.meta-card {
+  background: var(--bg-surface);
+  padding: 2rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+}
+
+.highlight {
+  color: var(--color-accent);
+  font-weight: bold;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+}
 </style>
