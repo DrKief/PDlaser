@@ -14,6 +14,7 @@ import com.pgvector.PGvector;
 
 import pdl.backend.gallery.tags.ImageQueryRepoLayer;
 import pdl.backend.vision.ImageFeatureExtractorLayer;
+import pdl.backend.vision.SemanticExtractor;
 
 @Service
 public class ImageProcessingLayer {
@@ -49,12 +50,15 @@ public class ImageProcessingLayer {
         return;
       }
 
+      // Classic features
       resizedImage = ImageFeatureExtractorLayer.resizeImageLanczos3(bimg, 256, 256);
-
       float[] hogData = ImageFeatureExtractorLayer.extractGlobalHog(resizedImage);
       float[] hsvData = ImageFeatureExtractorLayer.extractHsvHistogram(resizedImage);
       float[] rgbData = ImageFeatureExtractorLayer.extractRgbHistogram(resizedImage);
       float[] labData = ImageFeatureExtractorLayer.extractCieLabHistogram(resizedImage);
+
+      // Semantic AI Feature
+      float[] semanticData = SemanticExtractor.extractSemanticFeatures(bimg);
 
       if (hogData.length != 31) {
         float[] adjustedHog = new float[31];
@@ -63,13 +67,19 @@ public class ImageProcessingLayer {
       }
 
       jdbcTemplate.update(
-        "INSERT INTO imagedescriptors (imageid, hogvector, hsvvector, rgbvector, labvector) VALUES (?, ?, ?, ?, ?) " +
-          "ON CONFLICT (imageid) DO UPDATE SET hogvector = EXCLUDED.hogvector, hsvvector = EXCLUDED.hsvvector, rgbvector = EXCLUDED.rgbvector, labvector = EXCLUDED.labvector",
+        "INSERT INTO imagedescriptors (imageid, hogvector, hsvvector, rgbvector, labvector, semanticvector) VALUES (?, ?, ?, ?, ?, ?) " +
+          "ON CONFLICT (imageid) DO UPDATE SET " +
+          "hogvector = EXCLUDED.hogvector, " +
+          "hsvvector = EXCLUDED.hsvvector, " +
+          "rgbvector = EXCLUDED.rgbvector, " +
+          "labvector = EXCLUDED.labvector, " +
+          "semanticvector = EXCLUDED.semanticvector",
         id,
         new PGvector(hogData),
         new PGvector(hsvData),
         new PGvector(rgbData),
-        new PGvector(labData)
+        new PGvector(labData),
+        new PGvector(semanticData)
       );
 
       queryRepoLayer.updateStatus(id, "COMPLETED");

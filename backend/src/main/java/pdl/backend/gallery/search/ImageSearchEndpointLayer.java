@@ -24,7 +24,8 @@ public class ImageSearchEndpointLayer {
     @RequestParam(value = "number", defaultValue = "10") int number,
     @RequestParam(value = "descriptor", defaultValue = "weighted") String descriptor
   ) {
-    List<String> validDescriptors = List.of("gradient", "saturation", "rgb", "cielab", "weighted");
+    // Added "semantic" to allowed query types
+    List<String> validDescriptors = List.of("gradient", "saturation", "rgb", "cielab", "weighted", "semantic");
     if (!validDescriptors.contains(descriptor.toLowerCase())) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid descriptor.");
     }

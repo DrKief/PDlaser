@@ -18,7 +18,7 @@ const searchKeywords = ref<string[]>([]);
 
 // Similarity State
 const selectedSourceImageId = ref<number | null>(null);
-const similarityAlgorithm = ref("weighted");
+const similarityAlgorithm = ref("semantic");
 const similarityCount = ref(10);
 const similarityResults = ref<SimilarityResult[]>([]);
 const errorMsg = ref("");
@@ -114,6 +114,7 @@ const performSimilaritySearch = async () => {
             <div class="form-group">
               <label class="label-text">Algorithm</label>
               <select v-model="similarityAlgorithm">
+                <option value="semantic">Semantic Object Match (AI)</option>
                 <option value="weighted">Weighted (All Factors)</option>
                 <option value="gradient">HOG (Shape/Edges)</option>
                 <option value="cielab">CIELAB (Human Vision)</option>

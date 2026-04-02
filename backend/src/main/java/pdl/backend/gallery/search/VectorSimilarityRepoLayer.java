@@ -13,7 +13,6 @@ public class VectorSimilarityRepoLayer {
 
     @NonNull private final JdbcTemplate jdbcTemplate;
 
-    // Extracted Tunable Weights
     private static final double WEIGHT_HOG = 0.50;
     private static final double WEIGHT_LAB = 0.35;
     private static final double WEIGHT_HSV = 0.15;
@@ -58,11 +57,13 @@ public class VectorSimilarityRepoLayer {
                 WEIGHT_HOG, vectors[0], WEIGHT_LAB, vectors[2], WEIGHT_HSV, vectors[1], targetId, limit);
         }
 
+        // Added Semantic Case
         String vectorColumn = switch (type.toLowerCase()) {
             case "gradient" -> "hogvector";
             case "saturation" -> "hsvvector";
             case "rgb" -> "rgbvector";
             case "cielab" -> "labvector";
+            case "semantic" -> "semanticvector";
             default -> "hogvector";
         };
 
