@@ -9,6 +9,7 @@ interface Image {
   uploader?: string;
   keywords: string[];
 }
+
 const route = useRoute();
 const router = useRouter();
 const { isLoggedIn } = useAuth();
@@ -33,8 +34,13 @@ const loadImages = async (reset = false) => {
       response = await http.get(`/images?page=${currentPage.value}&size=${displayLimit.value}`);
     }
 
-    const { content, totalElements } = response.data;
-    const formatted = content.map((img: any) => ({ ...img, keywords: img.keywords || [] }));
+    // Fixed 'unknown' types by explicitly typing the data coming from the repository
+    const { content, totalElements } = response.data as { content: any[], totalElements: number };
+    const formatted: Image[] = content.map((img: any) => ({ 
+        id: img.id,
+        uploader: img.uploader,
+        keywords: img.keywords || [] 
+    }));
 
     displayedImages.value = formatted;
     totalPages.value = Math.ceil(totalElements / displayLimit.value) || 1;
@@ -59,12 +65,14 @@ const goToPage = (pageNumber: number) => {
 const clearFilter = () => {
   router.push('/');
 };
+
 onMounted(() => loadImages(true));
 watch(() => route.query.tags, () => loadImages(true));
 
 const getImageUrl = (image: Image) => `/images/${image.id}`;
 const goToImage = (id: number) => router.push(`/image/${id}`);
 </script>
+
 <template>
   <div class="view-wrapper">
     <div class="gallery-header" v-if="route.query.tags">
@@ -73,16 +81,24 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
       </h2>
       <button class="btn btn-outline" @click="clearFilter">Clear Filter</button>
     </div>
+
     <div v-if="isLoading && displayedImages.length === 0" class="empty-state label-text">Loading archive...</div>
+    
     <div v-else-if="displayedImages.length === 0" class="empty-state">
       <h2 style="margin-bottom: 1rem;">No images found.</h2>
       <p class="label-text" v-if="route.query.tags">Try a different search term.</p>
       <router-link to="/upload" class="btn" v-else-if="isLoggedIn">Upload your first image</router-link>
       <p class="label-text" v-else>You must log in to upload images.</p>
     </div>
+
     <div v-else>
       <div class="masonry-grid">
-        <article v-for="image in displayedImages" :key="image.id" class="artifact-card" @click="goToImage(image.id)">
+        <article 
+          v-for="image in displayedImages" 
+          :key="image.id" 
+          class="artifact-card" 
+          @click="goToImage(image.id)"
+        >
           <img :src="getImageUrl(image)" :alt="'Image ' + image.id" class="artifact-img" loading="lazy" />
           <div class="card-overlay">
             <div class="overlay-content">
@@ -101,8 +117,14 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
         </button>
 
         <div class="page-numbers">
-          <button v-for="page in totalPages" :key="page" class="btn page-btn"
-            :class="{ 'active': page - 1 === currentPage }" @click="goToPage(page - 1)" :disabled="isLoading">
+          <button 
+            v-for="page in totalPages" 
+            :key="page" 
+            class="btn page-btn"
+            :class="{ 'active': page - 1 === currentPage }" 
+            @click="goToPage(page - 1)" 
+            :disabled="isLoading"
+          >
             {{ page }}
           </button>
         </div>
@@ -115,18 +137,11 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
     </div>
   </div>
 </template>
-<style scoped>
-/* Inherit existing Gallery.vue CSS */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(5px);
-  }
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+<style scoped>
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .gallery-header {
@@ -161,21 +176,15 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
 }
 
 @media (min-width: 640px) {
-  .masonry-grid {
-    columns: 2;
-  }
+  .masonry-grid { columns: 2; }
 }
 
 @media (min-width: 1024px) {
-  .masonry-grid {
-    columns: 3;
-  }
+  .masonry-grid { columns: 3; }
 }
 
 @media (min-width: 1536px) {
-  .masonry-grid {
-    columns: 4;
-  }
+  .masonry-grid { columns: 4; }
 }
 
 .artifact-card {
@@ -209,9 +218,7 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
   pointer-events: none;
 }
 
-.artifact-card:hover .card-overlay {
-  opacity: 1;
-}
+.artifact-card:hover .card-overlay { opacity: 1; }
 
 .artifact-name {
   font-family: var(--font-sans);
@@ -228,52 +235,6 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
   font-family: var(--font-sans);
   font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.8);
-}
-
-.tag-input-container {
-  display: flex;
-  margin-top: 0.75rem;
-  gap: 0.25rem;
-}
-
-.input-tag {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #fff;
-  border-radius: 4px;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.8rem;
-  outline: none;
-}
-
-.input-tag::placeholder {
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.input-tag:focus {
-  border-color: var(--color-accent);
-  background: rgba(0, 0, 0, 0.4);
-}
-
-.btn-tag {
-  background: var(--color-accent);
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 1.2rem;
-  line-height: 1;
-}
-
-.btn-tag:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .pagination-controls {
@@ -316,9 +277,7 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
   text-transform: uppercase;
 }
 
-:root.cruelty .highlight {
-  color: #00FF00;
-}
+:root.cruelty .highlight { color: #00FF00; }
 
 :root.cruelty .artifact-card {
   border-radius: 0;
@@ -335,9 +294,7 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
   filter: contrast(200%) saturate(300%) hue-rotate(90deg);
 }
 
-:root.cruelty .artifact-card:hover .artifact-img {
-  filter: invert(1);
-}
+:root.cruelty .artifact-card:hover .artifact-img { filter: invert(1); }
 
 :root.cruelty .card-overlay {
   opacity: 1;

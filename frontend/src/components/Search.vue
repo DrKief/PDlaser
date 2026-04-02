@@ -1,30 +1,31 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import http from "../http-api";
+import TagAutocomplete from "./TagAutocomplete.vue";
+
 interface Image { id: number; name: string; }
+interface SimilarityResult { id: number; score: number; filename?: string; }
+
 const route = useRoute();
 const router = useRouter();
+
 const activeTab = ref<"attributes" | "similarity">("attributes");
 const allImages = ref<Image[]>([]);
+
 // Attribute Search State
-const tagsInput = ref("");
 const searchKeywords = ref<string[]>([]);
-const allKeywords = ref<string[]>([]);
-const isTagFocused = ref(false);
-const highlightedKeywordIndex = ref(-1);
+
 // Similarity State
 const selectedSourceImageId = ref<number | null>(null);
 const similarityAlgorithm = ref("weighted");
 const similarityCount = ref(10);
-const similarityResults = ref<any[]>([]);
+const similarityResults = ref<SimilarityResult[]>([]);
 const errorMsg = ref("");
+
 onMounted(() => {
-  http.get('/images/keywords').then(r => {
-    allKeywords.value = r.data;
-  });
-  http.get(`/images?size=1000`).then(r => {
-    // Only grab images that exist in the system for the similarity dropdown
+  http.get(`/images?size=1000`).then((r: any) => {
+    // Handling paginated response format
     allImages.value = r.data.content.map((img: any) => ({ id: img.id, name: img.filename || `Image #${img.id}` }));
   });
   if (route.query.sourceId) {
@@ -32,73 +33,29 @@ onMounted(() => {
     selectedSourceImageId.value = parseInt(route.query.sourceId as string);
   }
 });
+
 const getImageUrl = (id: number) => `/images/${id}`;
 const goToImage = (id: number) => router.push(`/image/${id}`);
-const handleTagBlur = () => setTimeout(() => {
-  isTagFocused.value = false;
-  highlightedKeywordIndex.value = -1;
-}, 150);
 
-const filteredKeywords = computed(() => {
-  const current = tagsInput.value.trim().toLowerCase();
-  if (!current || !isTagFocused.value) return [];
-  return allKeywords.value
-    .filter(k => k.toLowerCase().includes(current) && !searchKeywords.value.includes(k))
-    .slice(0, 8);
-});
-
-const handleKeywordKeydown = (e: KeyboardEvent) => {
-  if (e.key === 'Escape') {
-    isTagFocused.value = false;
-    return;
-  }
-  if (!filteredKeywords.value.length) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      addTag();
-    }
-    return;
-  }
-  
-  if (e.key === 'ArrowDown') {
-    e.preventDefault();
-    highlightedKeywordIndex.value = Math.min(
-      highlightedKeywordIndex.value + 1,
-      filteredKeywords.value.length - 1
-    );
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault();
-    highlightedKeywordIndex.value = Math.max(highlightedKeywordIndex.value - 1, 0);
-  } else if (e.key === 'Enter') {
-    e.preventDefault();
-    if (highlightedKeywordIndex.value >= 0) {
-      addTag(filteredKeywords.value[highlightedKeywordIndex.value]);
-    } else {
-      addTag();
-    }
+const addTag = (tag: string) => {
+  if (tag && !searchKeywords.value.includes(tag)) {
+    searchKeywords.value.push(tag);
   }
 };
 
-const addTag = (tag?: string) => {
-  const t = tag || tagsInput.value.trim().toLowerCase();
-  if (t && !searchKeywords.value.includes(t)) {
-    searchKeywords.value.push(t);
-  }
-  tagsInput.value = "";
-  highlightedKeywordIndex.value = -1;
-};
 const removeTag = (tag: string) => {
-  searchKeywords.value = searchKeywords.value.filter(t => t !== tag);
+  searchKeywords.value = searchKeywords.value.filter((t: string) => t !== tag);
 };
+
 const performAttributeSearch = () => {
   errorMsg.value = "";
   if (!searchKeywords.value.length) {
     errorMsg.value = "Please enter tag criteria.";
     return;
   }
-  // Redirect to Gallery which natively handles paginated tag search
   router.push({ path: '/', query: { tags: searchKeywords.value.join(',') } });
 };
+
 const performSimilaritySearch = async () => {
   errorMsg.value = "";
   if (!selectedSourceImageId.value) {
@@ -116,6 +73,7 @@ const performSimilaritySearch = async () => {
   }
 };
 </script>
+
 <template>
   <div class="view-wrapper">
     <header class="page-header">
@@ -125,34 +83,25 @@ const performSimilaritySearch = async () => {
     <div class="query-split">
       <section class="card engine-config">
         <div class="tab-switcher">
-          <button class="tab-btn" :class="{ active: activeTab === 'attributes' }" @click="activeTab = 'attributes'">By
-            Tags</button>
-          <button class="tab-btn" :class="{ active: activeTab === 'similarity' }" @click="activeTab = 'similarity'">Visual
-            Match</button>
+          <button class="tab-btn" :class="{ active: activeTab === 'attributes' }" @click="activeTab = 'attributes'">By Tags</button>
+          <button class="tab-btn" :class="{ active: activeTab === 'similarity' }" @click="activeTab = 'similarity'">Visual Match</button>
         </div>
-        <!-- Attributes Config -->
+
         <div v-show="activeTab === 'attributes'" class="config-form">
           <div class="form-group relative">
             <label class="label-text">Must Contain Tags (AND condition)</label>
-            <div class="tags-container">
-              <span v-for="tag in searchKeywords" :key="tag" class="tag-pill">
-                {{ tag }} <button @click="removeTag(tag)" class="tag-remove">&times;</button>
-              </span>
-              <input v-model="tagsInput" class="tag-input" placeholder="Search tags..."
-                @focus="isTagFocused = true" @blur="handleTagBlur"
-                @keydown="handleKeywordKeydown" />
+            <div class="tags-container" style="display: flex; gap: 0.5rem; flex-direction: column;">
+              <div class="tags-list" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <span v-for="tag in searchKeywords" :key="tag" class="tag-pill">
+                  {{ tag }} <button @click="removeTag(tag)" class="tag-remove">&times;</button>
+                </span>
+              </div>
+              <TagAutocomplete @select="addTag" placeholder="Add a tag..." />
             </div>
-            <ul class="autocomplete-dropdown" v-if="isTagFocused && filteredKeywords.length > 0">
-              <li v-for="(kw, i) in filteredKeywords" :key="kw"
-                :class="{ highlighted: i === highlightedKeywordIndex }"
-                @mousedown.prevent="addTag(kw)">
-                {{ kw }}
-              </li>
-            </ul>
           </div>
           <button class="btn w-full mt-4" @click="performAttributeSearch">Search via Gallery</button>
         </div>
-        <!-- Similarity Config -->
+
         <div v-show="activeTab === 'similarity'" class="config-form">
           <div class="form-group">
             <label class="label-text">Source Image</label>
@@ -170,7 +119,6 @@ const performSimilaritySearch = async () => {
                 <option value="cielab">CIELAB (Human Vision)</option>
                 <option value="rgb">RGB (Color Dist)</option>
                 <option value="saturation">HSV (Intensity)</option>
-
               </select>
             </div>
             <div class="form-group">
@@ -182,7 +130,7 @@ const performSimilaritySearch = async () => {
         </div>
         <p v-if="errorMsg" class="error-text">{{ errorMsg }}</p>
       </section>
-      <!-- Right: Similarity Results Matrix -->
+
       <section class="results-matrix" v-show="activeTab === 'similarity'">
         <template v-if="similarityResults.length">
           <h3 class="label-text matrix-title">Results ({{ similarityResults.length }})</h3>
@@ -204,8 +152,8 @@ const performSimilaritySearch = async () => {
     </div>
   </div>
 </template>
+
 <style scoped>
-/* Inherits exact styles from earlier, omitting bulk for brevity */
 .query-split {
   display: grid;
   grid-template-columns: 1fr;
@@ -336,35 +284,6 @@ const performSimilaritySearch = async () => {
 :root.cruelty .tab-btn.active {
   background: var(--color-accent);
   color: #000;
-}
-
-.autocomplete-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 4px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-  list-style: none;
-  margin: 4px 0 0;
-  padding: 4px 0;
-  z-index: 100;
-  max-height: 240px;
-  overflow-y: auto;
-}
-
-.autocomplete-dropdown li {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-  cursor: pointer;
-  color: var(--text-primary);
-}
-
-.autocomplete-dropdown li:hover,
-.autocomplete-dropdown li.highlighted {
-  background: var(--bg-element);
 }
 
 :root.cruelty .res-img {

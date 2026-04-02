@@ -13,6 +13,11 @@ public class VectorSimilarityRepoLayer {
 
     @NonNull private final JdbcTemplate jdbcTemplate;
 
+    // Extracted Tunable Weights
+    private static final double WEIGHT_HOG = 0.50;
+    private static final double WEIGHT_LAB = 0.35;
+    private static final double WEIGHT_HSV = 0.15;
+
     public VectorSimilarityRepoLayer(@NonNull JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
@@ -23,16 +28,10 @@ public class VectorSimilarityRepoLayer {
             try {
                 vectors = jdbcTemplate.queryForObject(
                     "SELECT hogvector, hsvvector, labvector FROM imagedescriptors WHERE imageid = ?",
-                    (rs, rowNum) -> {
-                        try {
-                            return new PGvector[] {
-                                new PGvector(rs.getString("hogvector")),
-                                new PGvector(rs.getString("hsvvector")),
-                                new PGvector(rs.getString("labvector"))
-                            };
-                        } catch (java.sql.SQLException e) {
-                            return null;
-                        }
+                    (rs, rowNum) -> new PGvector[] {
+                        new PGvector(rs.getString("hogvector")),
+                        new PGvector(rs.getString("hsvvector")),
+                        new PGvector(rs.getString("labvector"))
                     },
                     targetId
                 );
@@ -40,37 +39,23 @@ public class VectorSimilarityRepoLayer {
                 return null;
             }
 
-            if (vectors == null) {
-                return null;
-            }
-
-            PGvector targetHog = vectors[0];
-            PGvector targetHsv = vectors[1];
-            PGvector targetLab = vectors[2];
-
-            double wHog = 0.50;
-            double wHsv = 0.15;
-            double wLab = 0.35;
+            if (vectors == null) return null;
 
             String sql =
                 "WITH vector_matches AS (" +
                 "  SELECT imageid, " +
-                "    (? * (hogvector <-> ?) + " +
+                "    (? * (hogvector <=> ?) + " +
                 "     ? * (labvector <=> ?) + " +
-                "     ? * (hsvvector <-> ?)) as distance " +
+                "     ? * (hsvvector <=> ?)) as distance " +
                 "  FROM imagedescriptors WHERE imageid != ? " +
-                "  ORDER BY " +
-                "    (? * (hogvector <-> ?) + " +
-                "     ? * (labvector <=> ?) + " +
-                "     ? * (hsvvector <-> ?)) ASC LIMIT ?" +
+                "  ORDER BY distance ASC LIMIT ?" +
                 ") " +
                 "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
                 "FROM vector_matches v JOIN images i ON v.imageid = i.id " +
                 "ORDER BY v.distance ASC";
 
             return jdbcTemplate.queryForList(sql,
-                wHog, targetHog, wLab, targetLab, wHsv, targetHsv, targetId,
-                wHog, targetHog, wLab, targetLab, wHsv, targetHsv, limit);
+                WEIGHT_HOG, vectors[0], WEIGHT_LAB, vectors[2], WEIGHT_HSV, vectors[1], targetId, limit);
         }
 
         String vectorColumn = switch (type.toLowerCase()) {
@@ -92,13 +77,11 @@ public class VectorSimilarityRepoLayer {
             return null;
         }
 
-        String operator = vectorColumn.equals("labvector") ? "<=>" : "<->";
-
         String sql =
             "WITH vector_matches AS (" +
-            "  SELECT imageid, " + vectorColumn + " " + operator + " ? as distance " +
+            "  SELECT imageid, " + vectorColumn + " <=> ? as distance " +
             "  FROM imagedescriptors WHERE imageid != ? " +
-            "  ORDER BY " + vectorColumn + " " + operator + " ? ASC LIMIT ?" +
+            "  ORDER BY " + vectorColumn + " <=> ? ASC LIMIT ?" +
             ") " +
             "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
             "FROM vector_matches v JOIN images i ON v.imageid = i.id " +

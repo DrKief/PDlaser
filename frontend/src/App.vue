@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
-import http from "./http-api";
 import { useAuth } from "./composables/useAuth";
+import TagAutocomplete from "./components/TagAutocomplete.vue";
+
 const { isLoggedIn, logout } = useAuth();
 const router = useRouter();
 const theme = ref("light");
 let audioCtx: AudioContext | null = null;
-// --- Auth Data Extraction ---
+
 const isAdmin = computed(() => {
   const token = localStorage.getItem('token');
   if (!token) return false;
@@ -18,86 +19,22 @@ const isAdmin = computed(() => {
     return false; 
   }
 });
+
 const username = computed(() => {
   const token = localStorage.getItem('token');
   if (!token) return '';
   try {
     const payload = JSON.parse(atob(token.split(".")[1] || ""));
-    // Adjust 'sub' to 'username' if your backend uses a different payload key
     return payload.sub || payload.username || 'User';
   } catch (e) {
     return '';
   }
 });
-// --- Optimized Search Autocomplete ---
-const searchQuery = ref("");
-const allKeywords = ref<string[]>([]);
-const isSearchFocused = ref(false);
-const highlightedKeywordIndex = ref(-1);
-
-const filteredKeywords = computed(() => {
-  const current = searchQuery.value.trim().toLowerCase();
-  if (!current) return [];
-  return (allKeywords.value || [])
-    .filter(k => k && k.toLowerCase().includes(current))
-    .slice(0, 8);
-});
-
-const handleSearchFocus = () => {
-  isSearchFocused.value = true;
-  http.get('/images/keywords').then((res: any) => {
-    allKeywords.value = res.data;
-  }).catch(e => console.error("Failed to load keywords", e));
-};
-
-const handleSearchBlur = () => {
-  setTimeout(() => {
-    isSearchFocused.value = false;
-    highlightedKeywordIndex.value = -1;
-  }, 150);
-};
-
-const handleKeywordKeydown = (e: KeyboardEvent) => {
-  if (e.key === 'Escape') {
-    isSearchFocused.value = false;
-    return;
-  }
-  if (!filteredKeywords.value.length) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      executeSearch(searchQuery.value);
-    }
-    return;
-  }
-
-  if (e.key === 'ArrowDown') {
-    e.preventDefault();
-    highlightedKeywordIndex.value = Math.min(
-      highlightedKeywordIndex.value + 1,
-      filteredKeywords.value.length - 1
-    );
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault();
-    highlightedKeywordIndex.value = Math.max(highlightedKeywordIndex.value - 1, 0);
-  } else if (e.key === 'Enter') {
-    e.preventDefault();
-    if (highlightedKeywordIndex.value >= 0) {
-      executeSearch(filteredKeywords.value[highlightedKeywordIndex.value]!);
-    } else {
-      executeSearch(searchQuery.value);
-    }
-  }
-};
 
 const executeSearch = (tag: string) => {
-  if (!tag.trim()) return;
-  searchQuery.value = tag;
-  isSearchFocused.value = false;
-  highlightedKeywordIndex.value = -1;
   router.push({ path: '/', query: { tags: tag } });
-  searchQuery.value = ""; 
 };
-// --- Cruelty Audio & Theme ---
+
 const playPainSound = () => {
   if (theme.value !== 'cruelty') return;
   if (!audioCtx) {
@@ -118,16 +55,18 @@ const playPainSound = () => {
   osc.start();
   osc.stop(audioCtx.currentTime + 0.2);
 };
+
 const handleGlobalClick = () => {
   playPainSound();
 };
+
 const toggleTheme = (target: string) => {
   theme.value = target;
   document.documentElement.className = theme.value;
   localStorage.setItem('theme', theme.value);
 };
+
 onMounted(() => {
-  // Setup Theme
   const savedTheme = localStorage.getItem('theme');
   if (savedTheme) {
     theme.value = savedTheme;
@@ -140,33 +79,16 @@ onMounted(() => {
   document.addEventListener('click', handleGlobalClick);
 });
 </script>
+
 <template>
   <div class="crt-overlay"></div>
   <div class="app-layout">
     <header class="top-nav">
       <div class="nav-left">
         <router-link to="/" class="logo">pdl.</router-link>
-        <!-- Quick Tag Search Bar -->
         <div class="global-search">
           <span class="material-symbols-outlined search-icon">search</span>
-          <input 
-            type="text" 
-            placeholder="Search tags..." 
-            v-model="searchQuery"
-            @focus="handleSearchFocus"
-            @blur="handleSearchBlur"
-            @keydown="handleKeywordKeydown"
-          />
-          <ul class="autocomplete-dropdown" v-if="isSearchFocused && filteredKeywords.length > 0">
-            <li 
-              v-for="(kw, i) in filteredKeywords" 
-              :key="kw"
-              :class="{ highlighted: i === highlightedKeywordIndex }"
-              @mousedown.prevent="executeSearch(kw)"
-            >
-              {{ kw }}
-            </li>
-          </ul>
+          <TagAutocomplete @select="executeSearch" placeholder="Search tags..." />
         </div>
       </div>
       <div class="nav-right">
@@ -183,13 +105,11 @@ onMounted(() => {
           <span class="material-symbols-outlined">contrast</span>
         </button>
         <template v-if="isLoggedIn">
-          <!-- Added User Greeting -->
           <span class="user-badge" style="font-family: var(--font-mono); color: var(--text-muted); font-size: 0.85rem; cursor: default;">@{{ username }}</span>
           <button @click="logout" class="btn logout-btn" style="background: none; border: none; cursor: pointer; color: var(--text-secondary); font-family: var(--font-sans); font-weight: 500;">Logout</button>
           <router-link to="/upload" class="btn upload-btn">Upload</router-link>
         </template>
         <template v-else>
-          <!-- Added Register Link alongside Login -->
           <router-link to="/login" class="btn login-btn" style="color: var(--text-secondary); font-family: var(--font-sans); font-weight: 500; text-decoration: none; background: transparent; border: none;">Login</router-link>
           <router-link to="/register" class="btn btn-outline" style="padding: 0.4rem 1rem; border-radius: 4px;">Register</router-link>
         </template>
@@ -200,12 +120,14 @@ onMounted(() => {
     </main>
   </div>
 </template>
+
 <style scoped>
 .app-layout {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
 }
+
 .top-nav {
   position: sticky;
   top: 0;
@@ -218,12 +140,14 @@ onMounted(() => {
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border-subtle);
 }
+
 .nav-left {
   display: flex;
   align-items: center;
   gap: 2.5rem;
   flex: 1;
 }
+
 .logo {
   font-family: var(--font-headline);
   font-size: 2rem;
@@ -233,8 +157,11 @@ onMounted(() => {
   text-decoration: none;
   transition: opacity 0.2s;
 }
-.logo:hover { opacity: 0.7; }
-/* Global Search Bar */
+
+.logo:hover {
+  opacity: 0.7;
+}
+
 .global-search {
   position: relative;
   display: flex;
@@ -247,34 +174,34 @@ onMounted(() => {
   border: 1px solid transparent;
   transition: border-color 0.2s;
 }
+
 .global-search:focus-within {
   border-color: var(--border-strong);
 }
+
 .search-icon {
   color: var(--text-secondary);
   font-size: 1.25rem;
+  margin-right: 0.5rem;
 }
-.global-search input {
-  border: none;
-  background: transparent;
-  padding: 0.5rem 0.5rem;
-  font-size: 0.9rem;
-  color: var(--text-primary);
-  width: 100%;
-  outline: none;
-}
+
 .nav-right {
   display: flex;
   align-items: center;
   gap: 1.5rem;
 }
+
 .nav-links {
   display: none;
   gap: 1.5rem;
 }
+
 @media (min-width: 768px) {
-  .nav-links { display: flex; }
+  .nav-links {
+    display: flex;
+  }
 }
+
 .nav-links a {
   font-family: var(--font-sans);
   color: var(--text-secondary);
@@ -283,14 +210,18 @@ onMounted(() => {
   font-weight: 500;
   transition: color 0.2s;
 }
-.nav-links a:hover, .nav-links a.router-link-active {
+
+.nav-links a:hover,
+.nav-links a.router-link-active {
   color: var(--text-primary);
 }
+
 .divider {
   height: 24px;
   width: 1px;
   background: var(--border-subtle);
 }
+
 .cruelty-toggle {
   background: none;
   border: none;
@@ -303,7 +234,11 @@ onMounted(() => {
   cursor: pointer;
   transition: color 0.2s;
 }
-.cruelty-toggle:hover { color: var(--color-danger); }
+
+.cruelty-toggle:hover {
+  color: var(--color-danger);
+}
+
 .theme-toggle {
   background: none;
   border: none;
@@ -312,10 +247,15 @@ onMounted(() => {
   display: flex;
   align-items: center;
 }
-.theme-toggle:hover { color: var(--text-primary); }
+
+.theme-toggle:hover {
+  color: var(--text-primary);
+}
+
 .upload-btn {
   padding: 0.5rem 1.25rem;
 }
+
 .btn-outline {
   border: 1px solid var(--border-strong);
   color: var(--text-primary);
@@ -325,25 +265,67 @@ onMounted(() => {
   font-weight: 500;
   transition: background 0.2s;
 }
+
 .btn-outline:hover {
   background: var(--bg-element);
 }
+
 .content-canvas {
   flex: 1;
   padding: 2rem;
   width: 100%;
 }
+
 @media (min-width: 1024px) {
-  .content-canvas { padding: 3rem 4rem; }
+  .content-canvas {
+    padding: 3rem 4rem;
+  }
 }
+
 /* --- CRUELTY OVERRIDES --- */
-:root.cruelty .top-nav { background: #FF0000; border-bottom: 4px solid var(--border-strong); padding: 1.5rem 2rem; }
-:root.cruelty .logo { font-family: 'Impact'; font-style: normal; color: #fff; font-size: 3rem; transform: rotate(-3deg); }
-:root.cruelty .global-search { background: #000; border-radius: 0; border: 4px solid var(--color-accent); }
-:root.cruelty .global-search input { color: #00FF00; font-family: 'Impact'; font-size: 1.25rem; }
-:root.cruelty .nav-links a { font-family: 'Impact'; font-size: 1.5rem; color: #fff; text-transform: uppercase; }
-:root.cruelty .cruelty-toggle { background: #000; color: #00FF00; font-family: 'Impact'; font-size: 1rem; padding: 0.5rem 1rem; border: 2px solid #fff; animation: pulse 0.5s infinite; }
-:root.cruelty .user-badge { color: #FFFF00 !important; font-family: 'Impact' !important; font-size: 1.2rem !important; }
+:root.cruelty .top-nav {
+  background: #FF0000;
+  border-bottom: 4px solid var(--border-strong);
+  padding: 1.5rem 2rem;
+}
+
+:root.cruelty .logo {
+  font-family: 'Impact';
+  font-style: normal;
+  color: #fff;
+  font-size: 3rem;
+  transform: rotate(-3deg);
+}
+
+:root.cruelty .global-search {
+  background: #000;
+  border-radius: 0;
+  border: 4px solid var(--color-accent);
+}
+
+:root.cruelty .nav-links a {
+  font-family: 'Impact';
+  font-size: 1.5rem;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+:root.cruelty .cruelty-toggle {
+  background: #000;
+  color: #00FF00;
+  font-family: 'Impact';
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  border: 2px solid #fff;
+  animation: pulse 0.5s infinite;
+}
+
+:root.cruelty .user-badge {
+  color: #FFFF00 !important;
+  font-family: 'Impact' !important;
+  font-size: 1.2rem !important;
+}
+
 @keyframes pulse {
   0% { transform: scale(1); }
   50% { transform: scale(1.1); }
