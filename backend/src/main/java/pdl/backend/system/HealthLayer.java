@@ -1,9 +1,4 @@
-package pdl.backend;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.health.contributor.Health;
-import org.springframework.boot.health.contributor.HealthIndicator;
-import org.springframework.stereotype.Component;
+package pdl.backend.system;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -11,8 +6,13 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.health.contributor.Health;
+import org.springframework.boot.health.contributor.HealthIndicator;
+import org.springframework.stereotype.Component;
+
 @Component
-public class AppHealthIndicator implements HealthIndicator {
+public class HealthLayer implements HealthIndicator {
 
     @Value("${app.image.directory:images}")
     private String imageDirectoryPath;

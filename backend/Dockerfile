@@ -1,21 +1,38 @@
-# Stage 1: Build with Dependency Caching (Reverted to Java 21 for CI compatibility)
-FROM maven:3.9-eclipse-temurin-21-alpine AS build
+# ==========================================
+# Stage 1: Build the Application (And Run Tests)
+# ==========================================
+FROM maven:3.9.6-eclipse-temurin-21 AS builder
 WORKDIR /app
+
+# Set Maven arguments to keep logs clean across all commands
+ENV MAVEN_ARGS="-B -ntp"
+
+# Copy POM and download dependencies first to utilize Docker caching
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
+RUN mvn dependency:go-offline
+
+# Copy the source code
 COPY src ./src
-RUN mvn clean package -DskipTests
 
-# Stage 2: Optimized & Secure Runtime (Reverted to Java 21)
-FROM eclipse-temurin:21-jre-alpine
+# Package the application and run all tests.
+# If ImageLifecycleEndpointLayerTests fails, the Docker build stops here.
+RUN mvn clean package
+
+# ==========================================
+# Stage 2: Run the Application
+# ==========================================
+FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
-# Fix: Create /var/lib/pdl/images and assign ownership to appuser
-RUN mkdir -p /app/src/main/resources/images /var/lib/pdl/images \
-  && chown -R appuser:appgroup /app /var/lib/pdl/images
+# Create a non-root user for security best practices
+RUN addgroup --system spring && adduser --system --ingroup spring springuser
+USER springuser
 
-USER appuser
-COPY --from=build --chown=appuser:appgroup /app/target/*.jar app.jar
+# Copy the compiled JAR file from the builder stage
+COPY --from=builder /app/target/*.jar app.jar
+
+# Expose the default Spring Boot port
 EXPOSE 8080
+
+# Execute the application
 ENTRYPOINT ["java", "-jar", "app.jar"]

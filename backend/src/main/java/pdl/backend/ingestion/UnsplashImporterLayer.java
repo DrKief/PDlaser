@@ -1,4 +1,10 @@
-package pdl.backend;
+package pdl.backend.ingestion;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,26 +14,26 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.util.HashMap;
-import java.util.Map;
+import pdl.backend.auth.UserAccountLayer;
+import pdl.backend.auth.UserAccountRepoLayer;
+import pdl.backend.gallery.core.ImageRecordLayer;
+import pdl.backend.gallery.core.ImageStorageLayer;
+import pdl.backend.gallery.tags.ImageQueryRepoLayer;
 
 @Service
-public class UnsplashIngester {
-    private static final Logger log = LoggerFactory.getLogger(UnsplashIngester.class);
-    private final StorageService storageService;
-    private final VectorRepository vectorRepository;
-    private final UserRepository userRepository;
+public class UnsplashImporterLayer {
+    private static final Logger log = LoggerFactory.getLogger(UnsplashImporterLayer.class);
+    private final ImageStorageLayer storageService;
+    private final ImageQueryRepoLayer queryRepoLayer;
+    private final UserAccountRepoLayer userRepository;
     
     @Value("${app.unsplash.dataset-dir}")
     private String datasetDir;
     private String status = "IDLE";
     
-    public UnsplashIngester(StorageService storageService, VectorRepository vectorRepository, UserRepository userRepository) {
+    public UnsplashImporterLayer(ImageStorageLayer storageService, ImageQueryRepoLayer queryRepoLayer, UserAccountRepoLayer userRepository) {
         this.storageService = storageService;
-        this.vectorRepository = vectorRepository;
+        this.queryRepoLayer = queryRepoLayer;
         this.userRepository = userRepository;
     }
 
@@ -43,7 +49,7 @@ public class UnsplashIngester {
             return;
         }
 
-        User admin = userRepository.findByUsername("admin").orElseThrow();
+        UserAccountLayer admin = userRepository.findByUsername("admin").orElseThrow();
         Map<String, Long> unsplashToInternalId = new HashMap<>();
         RestTemplate restTemplate = new RestTemplate();
 
@@ -63,18 +69,18 @@ public class UnsplashIngester {
                 if (cols.length < 3) continue;
                 
                 String photoId = cols[0];
-                String url = cols[2] + "?w=1080"; // Resize dynamically
+                String url = cols[2] + "?w=1080"; 
                 status = "IMPORTING_PHOTOS (Progress: " + (processed + 1) + " / " + limit + ")";
 
                 try {
                     byte[] imageBytes = restTemplate.getForObject(url, byte[].class);
                     if (imageBytes != null) {
-                        Metadata img = new Metadata("unsplash_" + photoId + ".jpg", imageBytes);
+                        ImageRecordLayer img = new ImageRecordLayer("unsplash_" + photoId + ".jpg", imageBytes);
                         img.setUserId(admin.getId());
                         img.setPrivate(false);
                         storageService.processAndSaveImage(img, true);
                         unsplashToInternalId.put(photoId, img.getId());
-                        Thread.sleep(2500); // Throttling to protect queue and network
+                        Thread.sleep(2500); 
                     }
                 } catch (ResponseStatusException e) {
                     log.info("Unsplash image {} already exists.", photoId);
@@ -102,7 +108,7 @@ public class UnsplashIngester {
 
                 Long internalId = unsplashToInternalId.get(photoId);
                 if (internalId != null) {
-                    vectorRepository.addKeyword(internalId, keyword);
+                    queryRepoLayer.addKeyword(internalId, keyword);
                 }
             }
         } catch (Exception e) {

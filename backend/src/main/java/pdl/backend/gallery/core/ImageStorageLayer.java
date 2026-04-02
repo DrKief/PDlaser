@@ -1,7 +1,5 @@
-package pdl.backend;
+package pdl.backend.gallery.core;
 
-import com.pgvector.PGvector;
-import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -10,12 +8,11 @@ import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,33 +23,32 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
+import pdl.backend.gallery.processing.ImageProcessingLayer;
+
 @Service
-public class StorageService {
+public class ImageStorageLayer {
 
-  private static final Logger log = LoggerFactory.getLogger(StorageService.class);
+  private static final Logger log = LoggerFactory.getLogger(ImageStorageLayer.class);
 
-  private final MetadataRepository imageEntityRepository;
-  private final VectorRepository imageDescriptorRepository;
-  private final AsyncWorker backgroundWorker;
+  private final ImageRecordRepoLayer recordRepository;
+  private final ImageProcessingLayer backgroundWorker;
 
   @Value("${app.image.directory:images}")
   private String imageDirectoryPath;
 
-  public StorageService(
-    MetadataRepository imageEntityRepository,
-    VectorRepository imageDescriptorRepository,
-    AsyncWorker backgroundWorker
+  public ImageStorageLayer(
+    ImageRecordRepoLayer recordRepository,
+    ImageProcessingLayer backgroundWorker
   ) {
-    this.imageEntityRepository = imageEntityRepository;
-    this.imageDescriptorRepository = imageDescriptorRepository;
+    this.recordRepository = recordRepository;
     this.backgroundWorker = backgroundWorker;
   }
 
   @Transactional
-  public void processAndSaveImage(Metadata img, boolean saveToDisk) {
+  public void processAndSaveImage(ImageRecordLayer img, boolean saveToDisk) {
     String hash = calculateSHA256(img.getData());
     
-    Optional<Metadata> existing = imageEntityRepository.findByHash(hash);
+    Optional<ImageRecordLayer> existing = recordRepository.findByHash(hash);
     if (existing.isPresent()) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "Image already exists on the server.");
     }
@@ -81,7 +77,7 @@ public class StorageService {
     img.setWidth(width);
     img.setHeight(height);
 
-    Metadata savedImage = imageEntityRepository.save(img);
+    ImageRecordLayer savedImage = recordRepository.save(img);
     img.setId(savedImage.getId());
 
     if (saveToDisk) {
@@ -89,7 +85,7 @@ public class StorageService {
         Path path = Paths.get(imageDirectoryPath, img.getName());
         Files.write(path, img.getData());
       } catch (IOException e) {
-        throw new RuntimeException("Failed to write image file to disk, rolling back DB insert", e);
+        throw new RuntimeException("Failed to write image file to disk", e);
       }
     }
 
@@ -103,47 +99,10 @@ public class StorageService {
     );
   }
 
-  public List<Map<String, Object>> searchSimilarFromUpload(byte[] imageData, String type, int limit) {
-    try {
-      BufferedImage bimg = ImageIO.read(new ByteArrayInputStream(imageData));
-      if (bimg == null) return List.of();
-
-      BufferedImage resizedImage = FeatureExtractor.resizeImageLanczos3(bimg, 256, 256);
-      float[] vectorData;
-      String vectorColumn;
-
-      if ("saturation".equalsIgnoreCase(type)) {
-        vectorColumn = "hsvvector";
-        vectorData = FeatureExtractor.extractHsvHistogram(resizedImage);
-      } else if ("rgb".equalsIgnoreCase(type)) {
-        vectorColumn = "rgbvector";
-        vectorData = FeatureExtractor.extractRgbHistogram(resizedImage);
-      } else if ("cielab".equalsIgnoreCase(type)) {
-        vectorColumn = "labvector";
-        vectorData = FeatureExtractor.extractCieLabHistogram(resizedImage);
-      } else {
-        vectorColumn = "hogvector";
-        float[] hogData = FeatureExtractor.extractGlobalHog(resizedImage);
-        if (hogData.length != 31) {
-          float[] adjustedHog = new float[31];
-          System.arraycopy(hogData, 0, adjustedHog, 0, Math.min(hogData.length, 31));
-          hogData = adjustedHog;
-        }
-        vectorData = hogData;
-      }
-
-      PGvector targetVector = new PGvector(vectorData);
-      return imageDescriptorRepository.findSimilarByVector(targetVector, vectorColumn, limit);
-    } catch (Exception e) {
-      log.error("Failed to process image upload for similarity search", e);
-      return List.of();
-    }
-  }
-
-  public Optional<Metadata> getImageWithData(long id) {
-    Optional<Metadata> imageOpt = imageEntityRepository.findById(id);
+  public Optional<ImageRecordLayer> getImageWithData(long id) {
+    Optional<ImageRecordLayer> imageOpt = recordRepository.findById(id);
     if (imageOpt.isPresent()) {
-      Metadata img = imageOpt.get();
+      ImageRecordLayer img = imageOpt.get();
       try {
         Path path = Paths.get(imageDirectoryPath, img.getName());
         if (Files.exists(path)) {
@@ -159,15 +118,15 @@ public class StorageService {
 
   @Transactional
   public boolean deleteImage(long id) {
-    Optional<Metadata> imageOpt = imageEntityRepository.findById(id);
+    Optional<ImageRecordLayer> imageOpt = recordRepository.findById(id);
     if (imageOpt.isPresent()) {
-      Metadata img = imageOpt.get();
+      ImageRecordLayer img = imageOpt.get();
       try {
         Files.deleteIfExists(Paths.get(imageDirectoryPath, img.getName()));
       } catch (IOException e) {
         log.error("Could not delete file from disk for ID: " + id, e);
       }
-      imageEntityRepository.delete(img);
+      recordRepository.delete(img);
       return true;
     }
     return false;

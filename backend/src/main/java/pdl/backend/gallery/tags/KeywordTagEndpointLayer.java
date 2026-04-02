@@ -1,0 +1,69 @@
+package pdl.backend.gallery.tags;
+
+import java.util.List;
+import java.util.Map;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
+
+import pdl.backend.auth.UserAccountLayer;
+
+@RestController
+@RequestMapping("/images")
+public class KeywordTagEndpointLayer {
+
+  private final ImageQueryRepoLayer queryRepo;
+
+  public KeywordTagEndpointLayer(ImageQueryRepoLayer queryRepo) {
+    this.queryRepo = queryRepo;
+  }
+
+  @PutMapping("/{id}/keywords")
+  public ResponseEntity<?> addKeyword(@PathVariable("id") long id, @RequestParam("tag") String tag) {
+    if (!queryRepo.addKeyword(id, tag)) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+    return ResponseEntity.noContent().build();
+  }
+
+  @DeleteMapping("/{id}/keywords")
+  public ResponseEntity<?> deleteKeyword(@PathVariable("id") long id, @RequestParam("tag") String tag) {
+    try { queryRepo.getImageMetadata(id); } catch (Exception e) { throw new ResponseStatusException(HttpStatus.NOT_FOUND); }
+    if (!queryRepo.hasKeyword(id, tag)) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+    queryRepo.deleteKeyword(id, tag);
+    return ResponseEntity.noContent().build();
+  }
+
+  @GetMapping("/keywords")
+  public ResponseEntity<?> getAllKeywords() {
+    return ResponseEntity.ok(queryRepo.getAllKeywords());
+  }
+
+  @GetMapping("/keywords/search")
+  public ResponseEntity<?> searchKeywords(@RequestParam("q") String query) {
+      if(query == null || query.length() < 2) return ResponseEntity.ok(List.of());
+      return ResponseEntity.ok(queryRepo.searchKeywords(query, getCurrentUserId()));
+  }
+
+  @GetMapping("/search")
+  public ResponseEntity<List<Map<String, Object>>> searchImagesByTags(
+    @RequestParam(required = false) List<String> keywords,
+    @RequestParam(defaultValue = "0") int page,
+    @RequestParam(defaultValue = "30") int size
+  ) {
+    return ResponseEntity.ok(queryRepo.searchGalleryByTags(keywords, getCurrentUserId(), size, page * size));
+  }
+
+  private Long getCurrentUserId() {
+      org.springframework.security.core.Authentication authentication = 
+          org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+      if (authentication != null) {
+          if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+              return jwt.getClaim("userId");
+          } else if (authentication.getPrincipal() instanceof UserAccountLayer user) {
+              return user.getId();
+          }
+      }
+      return null;
+  }
+}

@@ -1,19 +1,21 @@
-package pdl.backend;
+package pdl.backend.config;
+
+import java.io.IOException;
+import java.util.regex.Pattern;
+
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.filter.OncePerRequestFilter;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.regex.Pattern;
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.web.filter.OncePerRequestFilter;
 
 @Configuration
-public class FrontendConfig {
+public class SpaRoutingLayer {
 
   @Bean
   public FilterRegistrationBean<OncePerRequestFilter> spaRedirectFiler() {
@@ -27,7 +29,6 @@ public class FrontendConfig {
 
   private OncePerRequestFilter createRedirectFilter() {
     return new OncePerRequestFilter() {
-      // Regex ignores standard API routes, actuator, raw images, auth routes, and built frontend assets.
       private final String REGEX =
         "(?!/actuator|/images|/auth|/_nuxt|/static|/index\\.html|/200\\.html|/favicon\\.ico|/sw\\.js).*$";
       private Pattern pattern = Pattern.compile(REGEX);

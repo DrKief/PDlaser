@@ -1,4 +1,7 @@
-package pdl.backend;
+package pdl.backend.auth;
+
+import java.util.Collection;
+import java.util.List;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
@@ -6,18 +9,15 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.Collection;
-import java.util.List;
-
 @Table("users")
-public class User implements UserDetails {
+public class UserAccountLayer implements UserDetails {
     @Id private Long id;
     private String username;
     private String password;
     private String role;
 
-    public User() {}
-    public User(String username, String password, String role) {
+    public UserAccountLayer() {}
+    public UserAccountLayer(String username, String password, String role) {
         this.username = username;
         this.password = password;
         this.role = role;

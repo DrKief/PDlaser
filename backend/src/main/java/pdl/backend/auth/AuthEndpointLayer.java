@@ -1,4 +1,8 @@
-package pdl.backend;
+package pdl.backend.auth;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -10,21 +14,20 @@ import org.springframework.security.oauth2.jwt.JwsHeader;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
-import org.springframework.web.bind.annotation.*;
-
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.Map;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/auth")
-public class AuthController {
-    private final UserRepository userRepository;
+public class AuthEndpointLayer {
+    private final UserAccountRepoLayer userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtEncoder jwtEncoder;
 
-    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder,
+    public AuthEndpointLayer(UserAccountRepoLayer userRepository, PasswordEncoder passwordEncoder,
                           AuthenticationManager authenticationManager, JwtEncoder jwtEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -37,7 +40,7 @@ public class AuthController {
         if (userRepository.findByUsername(request.get("username")).isPresent()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Username taken"));
         }
-        User user = new User(request.get("username"), passwordEncoder.encode(request.get("password")), "ROLE_USER");
+        UserAccountLayer user = new UserAccountLayer(request.get("username"), passwordEncoder.encode(request.get("password")), "ROLE_USER");
         userRepository.save(user);
         return ResponseEntity.ok(Map.of("message", "User registered successfully"));
     }
@@ -48,7 +51,7 @@ public class AuthController {
                 new UsernamePasswordAuthenticationToken(request.get("username"), request.get("password"))
         );
 
-        User userDetails = (User) authentication.getPrincipal();
+        UserAccountLayer userDetails = (UserAccountLayer) authentication.getPrincipal();
         Instant now = Instant.now();
         String role = userDetails.getAuthorities().iterator().next().getAuthority();
 
