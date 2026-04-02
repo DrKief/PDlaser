@@ -2,6 +2,7 @@ package pdl.backend.gallery.processing;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.util.List;
 import javax.imageio.ImageIO;
 
 import org.slf4j.Logger;
@@ -50,15 +51,24 @@ public class ImageProcessingLayer {
         return;
       }
 
-      // Classic features
+      // 1. Extract Classic Descriptors
       resizedImage = ImageFeatureExtractorLayer.resizeImageLanczos3(bimg, 256, 256);
       float[] hogData = ImageFeatureExtractorLayer.extractGlobalHog(resizedImage);
       float[] hsvData = ImageFeatureExtractorLayer.extractHsvHistogram(resizedImage);
       float[] rgbData = ImageFeatureExtractorLayer.extractRgbHistogram(resizedImage);
       float[] labData = ImageFeatureExtractorLayer.extractCieLabHistogram(resizedImage);
 
-      // Semantic AI Feature
-      float[] semanticData = SemanticExtractor.extractSemanticFeatures(bimg);
+      // 2. Extract Semantic AI Data & Auto-Tags
+      float[] rawSemanticData = SemanticExtractor.extractSemanticFeatures(bimg);
+      
+      // Auto-Tagging logic
+      List<String> aiTags = SemanticExtractor.getAutoTags(rawSemanticData);
+      for (String tag : aiTags) {
+        queryRepoLayer.addKeyword(id, "ai:" + tag);
+      }
+
+      // 3. Normalize vector for the similarity search database
+      float[] semanticVector = SemanticExtractor.normalizeL2(rawSemanticData.clone());
 
       if (hogData.length != 31) {
         float[] adjustedHog = new float[31];
@@ -66,6 +76,7 @@ public class ImageProcessingLayer {
         hogData = adjustedHog;
       }
 
+      // 4. Save everything to Postgres
       jdbcTemplate.update(
         "INSERT INTO imagedescriptors (imageid, hogvector, hsvvector, rgbvector, labvector, semanticvector) VALUES (?, ?, ?, ?, ?, ?) " +
           "ON CONFLICT (imageid) DO UPDATE SET " +
@@ -79,7 +90,7 @@ public class ImageProcessingLayer {
         new PGvector(hsvData),
         new PGvector(rgbData),
         new PGvector(labData),
-        new PGvector(semanticData)
+        new PGvector(semanticVector)
       );
 
       queryRepoLayer.updateStatus(id, "COMPLETED");
