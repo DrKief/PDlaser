@@ -82,8 +82,12 @@ public class ImageStorageLayer {
 
     if (saveToDisk) {
       try {
-        Path path = Paths.get(imageDirectoryPath, img.getName());
-        Files.write(path, img.getData());
+        Path dirPath = Paths.get(imageDirectoryPath);
+        // Add this line to create the folder if it's missing
+        Files.createDirectories(dirPath); 
+
+        Path filePath = dirPath.resolve(img.getName());
+        Files.write(filePath, img.getData());
       } catch (IOException e) {
         throw new RuntimeException("Failed to write image file to disk", e);
       }

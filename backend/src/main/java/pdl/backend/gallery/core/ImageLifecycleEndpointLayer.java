@@ -19,7 +19,7 @@ import pdl.backend.gallery.processing.UploadStatusTrackerLayer;
 import pdl.backend.gallery.tags.ImageQueryRepoLayer;
 
 @RestController
-@RequestMapping("/api/v1/images")
+@RequestMapping("/images")
 public class ImageLifecycleEndpointLayer {
 
   private final ImageStorageLayer storageService;
@@ -65,12 +65,12 @@ public class ImageLifecycleEndpointLayer {
     return ResponseEntity.noContent().build();
   }
 
-  @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<Void> addImage(
+@PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+public ResponseEntity<?> addImage(
     @RequestPart("file") MultipartFile file,
     @RequestParam(value = "keywords", required = false) List<String> keywords,
     HttpServletRequest request
-  ) throws Exception {
+) throws Exception {
 
     if (file.isEmpty()) {
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is empty");
@@ -90,8 +90,8 @@ public class ImageLifecycleEndpointLayer {
       }
     }
 
-    return ResponseEntity.accepted().build();
-  }
+    return ResponseEntity.accepted().body(Map.of("id", id)); 
+}
 
   @GetMapping(value = "/{id}/status", produces = MediaType.APPLICATION_JSON_VALUE)
   public Object getImageStatus(@PathVariable("id") long id) {

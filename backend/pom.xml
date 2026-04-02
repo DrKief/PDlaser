@@ -21,6 +21,8 @@
     <java.version>21</java.version>
     <spring-boot.version>4.0.5</spring-boot.version>
     <mockito.version>5.16.0</mockito.version>
+    <!-- Initializing argLine to an empty string so Maven doesn't pass the literal '@{argLine}' to the JVM -->
+    <argLine></argLine>
   </properties>
 
   <dependencies>
