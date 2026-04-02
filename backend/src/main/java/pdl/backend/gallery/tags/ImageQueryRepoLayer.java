@@ -75,8 +75,14 @@ public class ImageQueryRepoLayer {
         jdbcTemplate.update("DELETE FROM imagekeywords WHERE imageid = ? AND keyword = ?", id, normalizeTag(keyword));
     }
 
-    public List<String> getAllKeywords() {
-        return jdbcTemplate.queryForList("SELECT DISTINCT keyword FROM imagekeywords ORDER BY keyword ASC", String.class);
+    public List<String> getAllKeywords(Long currentUserId) {
+        return jdbcTemplate.queryForList(
+            "SELECT DISTINCT k.keyword FROM imagekeywords k " +
+            "JOIN images i ON k.imageid = i.id " +
+            "WHERE i.is_private = false OR i.user_id = ? " +
+            "ORDER BY k.keyword ASC", 
+            String.class, currentUserId
+        );
     }
 
     public List<String> searchKeywords(String query, Long currentUserId) {

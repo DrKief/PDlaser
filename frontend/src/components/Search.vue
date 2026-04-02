@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import http from "../http-api";
 interface Image { id: number; name: string; }
@@ -10,9 +10,9 @@ const allImages = ref<Image[]>([]);
 // Attribute Search State
 const tagsInput = ref("");
 const searchKeywords = ref<string[]>([]);
-const filteredKeywords = ref<string[]>([]);
+const allKeywords = ref<string[]>([]);
 const isTagFocused = ref(false);
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+const highlightedKeywordIndex = ref(-1);
 // Similarity State
 const selectedSourceImageId = ref<number | null>(null);
 const similarityAlgorithm = ref("weighted");
@@ -20,6 +20,9 @@ const similarityCount = ref(10);
 const similarityResults = ref<any[]>([]);
 const errorMsg = ref("");
 onMounted(() => {
+  http.get('/images/keywords').then(r => {
+    allKeywords.value = r.data;
+  });
   http.get(`/images?size=1000`).then(r => {
     // Only grab images that exist in the system for the similarity dropdown
     allImages.value = r.data.content.map((img: any) => ({ id: img.id, name: img.filename || `Image #${img.id}` }));
@@ -31,30 +34,58 @@ onMounted(() => {
 });
 const getImageUrl = (id: number) => `/images/${id}`;
 const goToImage = (id: number) => router.push(`/image/${id}`);
-const handleTagBlur = () => setTimeout(() => isTagFocused.value = false, 200);
-const onTagInput = () => {
-  if (debounceTimer) clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(async () => {
-    if (tagsInput.value.length < 2) {
-      filteredKeywords.value = [];
-      return;
+const handleTagBlur = () => setTimeout(() => {
+  isTagFocused.value = false;
+  highlightedKeywordIndex.value = -1;
+}, 150);
+
+const filteredKeywords = computed(() => {
+  const current = tagsInput.value.trim().toLowerCase();
+  if (!current || !isTagFocused.value) return [];
+  return allKeywords.value
+    .filter(k => k.toLowerCase().includes(current) && !searchKeywords.value.includes(k))
+    .slice(0, 8);
+});
+
+const handleKeywordKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'Escape') {
+    isTagFocused.value = false;
+    return;
+  }
+  if (!filteredKeywords.value.length) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addTag();
     }
-    try {
-      const res = await http.get(`/images/keywords/search?q=${tagsInput.value}`);
-      filteredKeywords.value = res.data.filter((k: string) => !searchKeywords.value.includes(k));
-    } catch (e) {
-      filteredKeywords.value = [];
+    return;
+  }
+  
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    highlightedKeywordIndex.value = Math.min(
+      highlightedKeywordIndex.value + 1,
+      filteredKeywords.value.length - 1
+    );
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    highlightedKeywordIndex.value = Math.max(highlightedKeywordIndex.value - 1, 0);
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (highlightedKeywordIndex.value >= 0) {
+      addTag(filteredKeywords.value[highlightedKeywordIndex.value]);
+    } else {
+      addTag();
     }
-  }, 300);
+  }
 };
+
 const addTag = (tag?: string) => {
   const t = tag || tagsInput.value.trim().toLowerCase();
   if (t && !searchKeywords.value.includes(t)) {
     searchKeywords.value.push(t);
   }
   tagsInput.value = "";
-  filteredKeywords.value = [];
-  isTagFocused.value = false;
+  highlightedKeywordIndex.value = -1;
 };
 const removeTag = (tag: string) => {
   searchKeywords.value = searchKeywords.value.filter(t => t !== tag);
@@ -107,12 +138,14 @@ const performSimilaritySearch = async () => {
               <span v-for="tag in searchKeywords" :key="tag" class="tag-pill">
                 {{ tag }} <button @click="removeTag(tag)" class="tag-remove">&times;</button>
               </span>
-              <input v-model="tagsInput" class="tag-input" placeholder="Search tags..." @input="onTagInput"
+              <input v-model="tagsInput" class="tag-input" placeholder="Search tags..."
                 @focus="isTagFocused = true" @blur="handleTagBlur"
-                @keydown.enter="filteredKeywords.length ? addTag(filteredKeywords[0]) : addTag()" />
+                @keydown="handleKeywordKeydown" />
             </div>
             <ul class="autocomplete-dropdown" v-if="isTagFocused && filteredKeywords.length > 0">
-              <li v-for="kw in filteredKeywords" :key="kw" @mousedown.prevent="addTag(kw)">
+              <li v-for="(kw, i) in filteredKeywords" :key="kw"
+                :class="{ highlighted: i === highlightedKeywordIndex }"
+                @mousedown.prevent="addTag(kw)">
                 {{ kw }}
               </li>
             </ul>
@@ -303,6 +336,35 @@ const performSimilaritySearch = async () => {
 :root.cruelty .tab-btn.active {
   background: var(--color-accent);
   color: #000;
+}
+
+.autocomplete-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 4px 0;
+  z-index: 100;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.autocomplete-dropdown li {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+.autocomplete-dropdown li:hover,
+.autocomplete-dropdown li.highlighted {
+  background: var(--bg-element);
 }
 
 :root.cruelty .res-img {

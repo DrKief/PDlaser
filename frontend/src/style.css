@@ -342,7 +342,8 @@ input:focus, select:focus, textarea:focus {
   font-size: 0.9rem;
   cursor: pointer;
 }
-.autocomplete-dropdown li:hover {
+.autocomplete-dropdown li:hover,
+.autocomplete-dropdown li.highlighted {
   background: var(--bg-element);
 }
 
@@ -379,7 +380,8 @@ input:focus, select:focus, textarea:focus {
   font-family: 'Impact';
   border-radius: 0;
 }
-:root.cruelty .autocomplete-dropdown li:hover {
+:root.cruelty .autocomplete-dropdown li:hover,
+:root.cruelty .autocomplete-dropdown li.highlighted {
   background: #ff00ff;
   color: #fff;
 }

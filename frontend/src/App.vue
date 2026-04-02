@@ -29,34 +29,71 @@ const username = computed(() => {
     return '';
   }
 });
-// --- Optimized Debounced Search ---
+// --- Optimized Search Autocomplete ---
 const searchQuery = ref("");
-const filteredKeywords = ref<string[]>([]);
+const allKeywords = ref<string[]>([]);
 const isSearchFocused = ref(false);
-let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-const onSearchInput = () => {
-  if (debounceTimer) clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(async () => {
-    if (searchQuery.value.length < 2) {
-      filteredKeywords.value = [];
-      return;
-    }
-    try {
-      const res = await http.get(`/images/keywords/search?q=${searchQuery.value}`);
-      filteredKeywords.value = res.data;
-    } catch (e) {
-      console.error("Failed to fetch search suggestions", e);
-    }
-  }, 300);
+const highlightedKeywordIndex = ref(-1);
+
+const filteredKeywords = computed(() => {
+  const current = searchQuery.value.trim().toLowerCase();
+  if (!current) return [];
+  return (allKeywords.value || [])
+    .filter(k => k && k.toLowerCase().includes(current))
+    .slice(0, 8);
+});
+
+const handleSearchFocus = () => {
+  isSearchFocused.value = true;
+  http.get('/images/keywords').then((res: any) => {
+    allKeywords.value = res.data;
+  }).catch(e => console.error("Failed to load keywords", e));
 };
+
 const handleSearchBlur = () => {
   setTimeout(() => {
     isSearchFocused.value = false;
-  }, 200);
+    highlightedKeywordIndex.value = -1;
+  }, 150);
 };
+
+const handleKeywordKeydown = (e: KeyboardEvent) => {
+  if (e.key === 'Escape') {
+    isSearchFocused.value = false;
+    return;
+  }
+  if (!filteredKeywords.value.length) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      executeSearch(searchQuery.value);
+    }
+    return;
+  }
+
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    highlightedKeywordIndex.value = Math.min(
+      highlightedKeywordIndex.value + 1,
+      filteredKeywords.value.length - 1
+    );
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    highlightedKeywordIndex.value = Math.max(highlightedKeywordIndex.value - 1, 0);
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (highlightedKeywordIndex.value >= 0) {
+      executeSearch(filteredKeywords.value[highlightedKeywordIndex.value]!);
+    } else {
+      executeSearch(searchQuery.value);
+    }
+  }
+};
+
 const executeSearch = (tag: string) => {
+  if (!tag.trim()) return;
   searchQuery.value = tag;
   isSearchFocused.value = false;
+  highlightedKeywordIndex.value = -1;
   router.push({ path: '/', query: { tags: tag } });
   searchQuery.value = ""; 
 };
@@ -110,20 +147,21 @@ onMounted(() => {
       <div class="nav-left">
         <router-link to="/" class="logo">pdl.</router-link>
         <!-- Quick Tag Search Bar -->
-        <div class="global-search" @blur="handleSearchBlur">
+        <div class="global-search">
           <span class="material-symbols-outlined search-icon">search</span>
           <input 
             type="text" 
             placeholder="Search tags..." 
             v-model="searchQuery"
-            @input="onSearchInput"
-            @focus="isSearchFocused = true"
-            @keydown.enter="filteredKeywords.length ? executeSearch(filteredKeywords[0]!) : executeSearch(searchQuery)"
+            @focus="handleSearchFocus"
+            @blur="handleSearchBlur"
+            @keydown="handleKeywordKeydown"
           />
           <ul class="autocomplete-dropdown" v-if="isSearchFocused && filteredKeywords.length > 0">
             <li 
-              v-for="kw in filteredKeywords" 
+              v-for="(kw, i) in filteredKeywords" 
               :key="kw"
+              :class="{ highlighted: i === highlightedKeywordIndex }"
               @mousedown.prevent="executeSearch(kw)"
             >
               {{ kw }}

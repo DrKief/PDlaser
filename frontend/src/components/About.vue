@@ -7,8 +7,8 @@ onMounted(async () => {
     http.get("/images"),
     http.get("/images/keywords")
   ]);
-  stats.value.total = imgRes.data.length;
-  stats.value.tags = tagRes.data.length;
+  stats.value.total = imgRes.data.totalElements ?? imgRes.data.content?.length ?? imgRes.data.length ?? 0;
+  stats.value.tags = tagRes.data.length || 0;
 });
 </script>
 <template>

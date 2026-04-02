@@ -36,7 +36,7 @@ public class KeywordTagEndpointLayer {
 
   @GetMapping("/keywords")
   public ResponseEntity<?> getAllKeywords() {
-    return ResponseEntity.ok(queryRepo.getAllKeywords());
+    return ResponseEntity.ok(queryRepo.getAllKeywords(getCurrentUserId()));
   }
 
   @GetMapping("/keywords/search")
