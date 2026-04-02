@@ -23,32 +23,32 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
-import pdl.backend.gallery.processing.ImageProcessingLayer;
+import pdl.backend.vision.VisionProcessor;
 
 @Service
-public class ImageStorageLayer {
+public class FileStorageService {
 
-  private static final Logger log = LoggerFactory.getLogger(ImageStorageLayer.class);
+  private static final Logger log = LoggerFactory.getLogger(FileStorageService.class);
 
-  private final ImageRecordRepoLayer recordRepository;
-  private final ImageProcessingLayer backgroundWorker;
+  private final MediaRepository recordRepository;
+  private final VisionProcessor backgroundWorker;
 
   @Value("${app.image.directory:images}")
   private String imageDirectoryPath;
 
-  public ImageStorageLayer(
-    ImageRecordRepoLayer recordRepository,
-    ImageProcessingLayer backgroundWorker
+  public FileStorageService(
+    MediaRepository recordRepository,
+    VisionProcessor backgroundWorker
   ) {
     this.recordRepository = recordRepository;
     this.backgroundWorker = backgroundWorker;
   }
 
   @Transactional
-  public void processAndSaveImage(ImageRecordLayer img, boolean saveToDisk) {
+  public void processAndSaveImage(MediaRecord img, boolean saveToDisk) {
     String hash = calculateSHA256(img.getData());
     
-    Optional<ImageRecordLayer> existing = recordRepository.findByHash(hash);
+    Optional<MediaRecord> existing = recordRepository.findByHash(hash);
     if (existing.isPresent()) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "Image already exists on the server.");
     }
@@ -77,7 +77,7 @@ public class ImageStorageLayer {
     img.setWidth(width);
     img.setHeight(height);
 
-    ImageRecordLayer savedImage = recordRepository.save(img);
+    MediaRecord savedImage = recordRepository.save(img);
     img.setId(savedImage.getId());
 
     if (saveToDisk) {
@@ -103,10 +103,10 @@ public class ImageStorageLayer {
     );
   }
 
-  public Optional<ImageRecordLayer> getImageWithData(long id) {
-    Optional<ImageRecordLayer> imageOpt = recordRepository.findById(id);
+  public Optional<MediaRecord> getImageWithData(long id) {
+    Optional<MediaRecord> imageOpt = recordRepository.findById(id);
     if (imageOpt.isPresent()) {
-      ImageRecordLayer img = imageOpt.get();
+      MediaRecord img = imageOpt.get();
       try {
         Path path = Paths.get(imageDirectoryPath, img.getName());
         if (Files.exists(path)) {
@@ -122,9 +122,9 @@ public class ImageStorageLayer {
 
   @Transactional
   public boolean deleteImage(long id) {
-    Optional<ImageRecordLayer> imageOpt = recordRepository.findById(id);
+    Optional<MediaRecord> imageOpt = recordRepository.findById(id);
     if (imageOpt.isPresent()) {
-      ImageRecordLayer img = imageOpt.get();
+      MediaRecord img = imageOpt.get();
       try {
         Files.deleteIfExists(Paths.get(imageDirectoryPath, img.getName()));
       } catch (IOException e) {

@@ -17,31 +17,31 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import pdl.backend.gallery.core.ImageLifecycleEndpointLayer;
-import pdl.backend.gallery.core.ImageStorageLayer;
-import pdl.backend.gallery.tags.ImageQueryRepoLayer;
-import pdl.backend.gallery.processing.UploadStatusTrackerLayer;
-import pdl.backend.auth.UserAccountRepoLayer;
+import pdl.backend.gallery.core.GalleryController;
+import pdl.backend.gallery.core.FileStorageService;
+import pdl.backend.gallery.search.TagRepository;
+import pdl.backend.vision.UploadStatusTracker;
+import pdl.backend.auth.UserRepository;
 
-@WebMvcTest(ImageLifecycleEndpointLayer.class)
-public class ImageLifecycleEndpointLayerTests {
+@WebMvcTest(GalleryController.class)
+public class GalleryControllerTests {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockitoBean
-    private ImageStorageLayer storageService;
+    private FileStorageService storageService;
 
     @MockitoBean
-    private ImageQueryRepoLayer queryRepo;
+    private TagRepository queryRepo;
 
     @MockitoBean
-    private UploadStatusTrackerLayer statusNotifier;
+    private UploadStatusTracker statusNotifier;
 
     // These two mocks are required to satisfy Application.java (dataSeeder) 
     // and SecurityLayer.java (userDetailsService) during the sliced test.
     @MockitoBean
-    private UserAccountRepoLayer userRepository;
+    private UserRepository userRepository;
 
     @MockitoBean
     private PasswordEncoder passwordEncoder;

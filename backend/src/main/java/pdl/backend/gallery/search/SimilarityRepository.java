@@ -9,7 +9,7 @@ import org.springframework.stereotype.Repository;
 import com.pgvector.PGvector;
 
 @Repository
-public class VectorSimilarityRepoLayer {
+public class SimilarityRepository {
 
     @NonNull private final JdbcTemplate jdbcTemplate;
 
@@ -17,7 +17,7 @@ public class VectorSimilarityRepoLayer {
     private static final double WEIGHT_LAB = 0.35;
     private static final double WEIGHT_HSV = 0.15;
 
-    public VectorSimilarityRepoLayer(@NonNull JdbcTemplate jdbcTemplate) {
+    public SimilarityRepository(@NonNull JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 

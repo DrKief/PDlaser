@@ -1,4 +1,4 @@
-package pdl.backend.gallery.processing;
+package pdl.backend.vision;
 
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
@@ -13,22 +13,20 @@ import org.springframework.stereotype.Service;
 
 import com.pgvector.PGvector;
 
-import pdl.backend.gallery.tags.ImageQueryRepoLayer;
-import pdl.backend.vision.ImageFeatureExtractorLayer;
-import pdl.backend.vision.SemanticExtractor;
+import pdl.backend.gallery.search.TagRepository;
 
 @Service
-public class ImageProcessingLayer {
+public class VisionProcessor {
 
-  private static final Logger log = LoggerFactory.getLogger(ImageProcessingLayer.class);
+  private static final Logger log = LoggerFactory.getLogger(VisionProcessor.class);
   private final JdbcTemplate jdbcTemplate;
-  private final ImageQueryRepoLayer queryRepoLayer;
-  private final UploadStatusTrackerLayer statusNotifier;
+  private final TagRepository queryRepoLayer;
+  private final UploadStatusTracker statusNotifier;
 
-  public ImageProcessingLayer(
+  public VisionProcessor(
     JdbcTemplate jdbcTemplate,
-    ImageQueryRepoLayer queryRepoLayer,
-    UploadStatusTrackerLayer statusNotifier
+    TagRepository queryRepoLayer,
+    UploadStatusTracker statusNotifier
   ) {
     this.jdbcTemplate = jdbcTemplate;
     this.queryRepoLayer = queryRepoLayer;
@@ -52,11 +50,11 @@ public class ImageProcessingLayer {
       }
 
       // 1. Extract Classic Descriptors
-      resizedImage = ImageFeatureExtractorLayer.resizeImageLanczos3(bimg, 256, 256);
-      float[] hogData = ImageFeatureExtractorLayer.extractGlobalHog(resizedImage);
-      float[] hsvData = ImageFeatureExtractorLayer.extractHsvHistogram(resizedImage);
-      float[] rgbData = ImageFeatureExtractorLayer.extractRgbHistogram(resizedImage);
-      float[] labData = ImageFeatureExtractorLayer.extractCieLabHistogram(resizedImage);
+      resizedImage = FeatureExtractor.resizeImageLanczos3(bimg, 256, 256);
+      float[] hogData = FeatureExtractor.extractGlobalHog(resizedImage);
+      float[] hsvData = FeatureExtractor.extractHsvHistogram(resizedImage);
+      float[] rgbData = FeatureExtractor.extractRgbHistogram(resizedImage);
+      float[] labData = FeatureExtractor.extractCieLabHistogram(resizedImage);
 
       // 2. Extract Semantic AI Data & Auto-Tags
       float[] rawSemanticData = SemanticExtractor.extractSemanticFeatures(bimg);

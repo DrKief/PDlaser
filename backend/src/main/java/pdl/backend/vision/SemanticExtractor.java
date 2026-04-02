@@ -51,7 +51,7 @@ public class SemanticExtractor {
     public static float[] extractSemanticFeatures(BufferedImage img) {
         if (session == null) return new float[1000];
         try {
-            BufferedImage resized = ImageFeatureExtractorLayer.resizeImageLanczos3(img, 224, 224);
+            BufferedImage resized = FeatureExtractor.resizeImageLanczos3(img, 224, 224);
             float[][][][] inputTensor = new float[1][3][224][224];
             
             for (int y = 0; y < 224; y++) {

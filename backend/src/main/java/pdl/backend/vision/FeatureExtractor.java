@@ -20,7 +20,7 @@ import boofcv.struct.image.Planar;
  * Utility class aggregating all heavy image manipulation and feature extraction logic.
  * Wraps BoofCV and TwelveMonkeys operations.
  */
-public class ImageFeatureExtractorLayer {
+public class FeatureExtractor {
 
   public static BufferedImage resizeImageLanczos3(
     BufferedImage inputImage,

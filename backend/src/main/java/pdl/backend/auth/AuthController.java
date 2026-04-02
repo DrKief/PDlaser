@@ -21,13 +21,13 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/auth")
-public class AuthEndpointLayer {
-    private final UserAccountRepoLayer userRepository;
+public class AuthController {
+    private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtEncoder jwtEncoder;
 
-    public AuthEndpointLayer(UserAccountRepoLayer userRepository, PasswordEncoder passwordEncoder,
+    public AuthController(UserRepository userRepository, PasswordEncoder passwordEncoder,
                           AuthenticationManager authenticationManager, JwtEncoder jwtEncoder) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -40,7 +40,7 @@ public class AuthEndpointLayer {
         if (userRepository.findByUsername(request.get("username")).isPresent()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Username taken"));
         }
-        UserAccountLayer user = new UserAccountLayer(request.get("username"), passwordEncoder.encode(request.get("password")), "ROLE_USER");
+        UserAccount user = new UserAccount(request.get("username"), passwordEncoder.encode(request.get("password")), "ROLE_USER");
         userRepository.save(user);
         return ResponseEntity.ok(Map.of("message", "User registered successfully"));
     }
@@ -51,7 +51,7 @@ public class AuthEndpointLayer {
                 new UsernamePasswordAuthenticationToken(request.get("username"), request.get("password"))
         );
 
-        UserAccountLayer userDetails = (UserAccountLayer) authentication.getPrincipal();
+        UserAccount userDetails = (UserAccount) authentication.getPrincipal();
         Instant now = Instant.now();
         String role = userDetails.getAuthorities().iterator().next().getAuthority();
 

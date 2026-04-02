@@ -10,11 +10,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/images")
-public class ImageSearchEndpointLayer {
+public class SearchController {
 
-  private final VectorSimilarityRepoLayer similarityRepo;
+  private final SimilarityRepository similarityRepo;
 
-  public ImageSearchEndpointLayer(VectorSimilarityRepoLayer similarityRepo) {
+  public SearchController(SimilarityRepository similarityRepo) {
     this.similarityRepo = similarityRepo;
   }
 

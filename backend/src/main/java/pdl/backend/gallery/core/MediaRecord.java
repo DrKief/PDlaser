@@ -6,7 +6,7 @@ import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
 @Table("images")
-public class ImageRecordLayer {
+public class MediaRecord {
 
   @Id
   private Long id;
@@ -31,9 +31,9 @@ public class ImageRecordLayer {
   @Transient
   private byte[] data;
 
-  public ImageRecordLayer() {}
+  public MediaRecord() {}
 
-  public ImageRecordLayer(final String name, final byte[] data) {
+  public MediaRecord(final String name, final byte[] data) {
     this.name = name;
     this.data = data;
   }

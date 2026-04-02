@@ -12,7 +12,7 @@ import org.springframework.boot.health.contributor.HealthIndicator;
 import org.springframework.stereotype.Component;
 
 @Component
-public class HealthLayer implements HealthIndicator {
+public class HealthCheck implements HealthIndicator {
 
     @Value("${app.image.directory:images}")
     private String imageDirectoryPath;

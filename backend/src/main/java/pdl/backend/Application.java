@@ -14,8 +14,8 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import pdl.backend.auth.UserAccountLayer;
-import pdl.backend.auth.UserAccountRepoLayer;
+import pdl.backend.auth.UserAccount;
+import pdl.backend.auth.UserRepository;
 
 @SpringBootApplication
 @EnableAsync
@@ -28,11 +28,11 @@ public class Application implements AsyncConfigurer {
   }
 
   @Bean
-  public CommandLineRunner dataSeeder(UserAccountRepoLayer userRepository, PasswordEncoder passwordEncoder) {
+  public CommandLineRunner dataSeeder(UserRepository userRepository, PasswordEncoder passwordEncoder) {
       return args -> {
           if (userRepository.findByUsername("admin").isEmpty()) {
               log.info("Seeding default ADMIN account...");
-              UserAccountLayer admin = new UserAccountLayer("admin", passwordEncoder.encode("admin"), "ROLE_ADMIN");
+              UserAccount admin = new UserAccount("admin", passwordEncoder.encode("admin"), "ROLE_ADMIN");
               userRepository.save(admin);
               log.info("Default ADMIN account successfully seeded. Username: admin | Password: admin");
           }

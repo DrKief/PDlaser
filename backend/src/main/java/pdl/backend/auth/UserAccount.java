@@ -10,14 +10,14 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 @Table("users")
-public class UserAccountLayer implements UserDetails {
+public class UserAccount implements UserDetails {
     @Id private Long id;
     private String username;
     private String password;
     private String role;
 
-    public UserAccountLayer() {}
-    public UserAccountLayer(String username, String password, String role) {
+    public UserAccount() {}
+    public UserAccount(String username, String password, String role) {
         this.username = username;
         this.password = password;
         this.role = role;

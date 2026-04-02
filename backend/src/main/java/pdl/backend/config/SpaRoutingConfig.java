@@ -15,7 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
-public class SpaRoutingLayer {
+public class SpaRoutingConfig {
 
   @Bean
   public FilterRegistrationBean<OncePerRequestFilter> spaRedirectFiler() {

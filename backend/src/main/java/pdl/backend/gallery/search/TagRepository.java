@@ -1,4 +1,4 @@
-package pdl.backend.gallery.tags;
+package pdl.backend.gallery.search;
 
 import java.util.List;
 import java.util.Map;
@@ -13,14 +13,14 @@ import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public class ImageQueryRepoLayer {
+public class TagRepository {
 
-    private static final Logger log = LoggerFactory.getLogger(ImageQueryRepoLayer.class);
+    private static final Logger log = LoggerFactory.getLogger(TagRepository.class);
 
     @NonNull
     private final JdbcTemplate jdbcTemplate;
 
-    public ImageQueryRepoLayer(@NonNull JdbcTemplate jdbcTemplate) {
+    public TagRepository(@NonNull JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 

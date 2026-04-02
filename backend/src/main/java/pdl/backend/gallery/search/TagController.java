@@ -1,4 +1,4 @@
-package pdl.backend.gallery.tags;
+package pdl.backend.gallery.search;
 
 import java.util.List;
 import java.util.Map;
@@ -8,15 +8,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import pdl.backend.auth.UserAccountLayer;
+import pdl.backend.auth.UserAccount;
 
 @RestController
 @RequestMapping("/images")
-public class KeywordTagEndpointLayer {
+public class TagController {
 
-  private final ImageQueryRepoLayer queryRepo;
+  private final TagRepository queryRepo;
 
-  public KeywordTagEndpointLayer(ImageQueryRepoLayer queryRepo) {
+  public TagController(TagRepository queryRepo) {
     this.queryRepo = queryRepo;
   }
 
@@ -72,7 +72,7 @@ public class KeywordTagEndpointLayer {
       if (authentication != null) {
           if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
               return jwt.getClaim("userId");
-          } else if (authentication.getPrincipal() instanceof UserAccountLayer user) {
+          } else if (authentication.getPrincipal() instanceof UserAccount user) {
               return user.getId();
           }
       }

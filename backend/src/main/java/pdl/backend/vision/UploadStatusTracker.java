@@ -1,4 +1,4 @@
-package pdl.backend.gallery.processing;
+package pdl.backend.vision;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.context.request.async.DeferredResult;
 
 @Service
-public class UploadStatusTrackerLayer {
+public class UploadStatusTracker {
 
   private final Map<Long, DeferredResult<ResponseEntity<Map<String, Object>>>> requests =
     new ConcurrentHashMap<>();

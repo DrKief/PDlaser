@@ -6,6 +6,6 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface UserAccountRepoLayer extends CrudRepository<UserAccountLayer, Long> {
-    Optional<UserAccountLayer> findByUsername(String username);
+public interface UserRepository extends CrudRepository<UserAccount, Long> {
+    Optional<UserAccount> findByUsername(String username);
 }

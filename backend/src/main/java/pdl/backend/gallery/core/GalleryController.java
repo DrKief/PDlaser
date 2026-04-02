@@ -14,22 +14,22 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.servlet.http.HttpServletRequest;
-import pdl.backend.auth.UserAccountLayer;
-import pdl.backend.gallery.processing.UploadStatusTrackerLayer;
-import pdl.backend.gallery.tags.ImageQueryRepoLayer;
+import pdl.backend.auth.UserAccount;
+import pdl.backend.gallery.search.TagRepository;
+import pdl.backend.vision.UploadStatusTracker;
 
 @RestController
 @RequestMapping("/images")
-public class ImageLifecycleEndpointLayer {
+public class GalleryController {
 
-  private final ImageStorageLayer storageService;
-  private final ImageQueryRepoLayer queryRepo;
-  private final UploadStatusTrackerLayer statusNotifier;
+  private final FileStorageService storageService;
+  private final TagRepository queryRepo;
+  private final UploadStatusTracker statusNotifier;
 
-  public ImageLifecycleEndpointLayer(
-    ImageStorageLayer storageService,
-    ImageQueryRepoLayer queryRepo,
-    UploadStatusTrackerLayer statusNotifier
+  public GalleryController(
+    FileStorageService storageService,
+    TagRepository queryRepo,
+    UploadStatusTracker statusNotifier
   ) {
     this.storageService = storageService;
     this.queryRepo = queryRepo;
@@ -58,7 +58,7 @@ public class ImageLifecycleEndpointLayer {
 
   @GetMapping(value = "/{id}")
   public ResponseEntity<?> getImage(@PathVariable("id") long id) {
-    Optional<ImageRecordLayer> image = storageService.getImageWithData(id);
+    Optional<MediaRecord> image = storageService.getImageWithData(id);
     if (image.isEmpty() || image.get().getData() == null) {
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Image not found");
     }
@@ -86,7 +86,7 @@ public ResponseEntity<?> addImage(
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is empty");
     }
 
-    ImageRecordLayer image = new ImageRecordLayer(file.getOriginalFilename(), file.getBytes());
+    MediaRecord image = new MediaRecord(file.getOriginalFilename(), file.getBytes());
     image.setUserId(getCurrentUserId());
     storageService.processAndSaveImage(image, true);
     long id = image.getId();
@@ -138,7 +138,7 @@ public ResponseEntity<?> addImage(
       if (authentication != null) {
           if (authentication.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
               return jwt.getClaim("userId");
-          } else if (authentication.getPrincipal() instanceof UserAccountLayer user) {
+          } else if (authentication.getPrincipal() instanceof UserAccount user) {
               return user.getId();
           }
       }

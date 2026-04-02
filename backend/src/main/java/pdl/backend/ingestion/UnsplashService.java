@@ -14,24 +14,24 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
-import pdl.backend.auth.UserAccountLayer;
-import pdl.backend.auth.UserAccountRepoLayer;
-import pdl.backend.gallery.core.ImageRecordLayer;
-import pdl.backend.gallery.core.ImageStorageLayer;
-import pdl.backend.gallery.tags.ImageQueryRepoLayer;
+import pdl.backend.auth.UserAccount;
+import pdl.backend.auth.UserRepository;
+import pdl.backend.gallery.core.MediaRecord;
+import pdl.backend.gallery.search.TagRepository;
+import pdl.backend.gallery.core.FileStorageService;
 
 @Service
-public class UnsplashImporterLayer {
-    private static final Logger log = LoggerFactory.getLogger(UnsplashImporterLayer.class);
-    private final ImageStorageLayer storageService;
-    private final ImageQueryRepoLayer queryRepoLayer;
-    private final UserAccountRepoLayer userRepository;
+public class UnsplashService {
+    private static final Logger log = LoggerFactory.getLogger(UnsplashService.class);
+    private final FileStorageService storageService;
+    private final TagRepository queryRepoLayer;
+    private final UserRepository userRepository;
     
     @Value("${app.unsplash.dataset-dir}")
     private String datasetDir;
     private String status = "IDLE";
     
-    public UnsplashImporterLayer(ImageStorageLayer storageService, ImageQueryRepoLayer queryRepoLayer, UserAccountRepoLayer userRepository) {
+    public UnsplashService(FileStorageService storageService, TagRepository queryRepoLayer, UserRepository userRepository) {
         this.storageService = storageService;
         this.queryRepoLayer = queryRepoLayer;
         this.userRepository = userRepository;
@@ -49,7 +49,7 @@ public class UnsplashImporterLayer {
             return;
         }
 
-        UserAccountLayer admin = userRepository.findByUsername("admin").orElseThrow();
+        UserAccount admin = userRepository.findByUsername("admin").orElseThrow();
         Map<String, Long> unsplashToInternalId = new HashMap<>();
         RestTemplate restTemplate = new RestTemplate();
 
@@ -75,7 +75,7 @@ public class UnsplashImporterLayer {
                 try {
                     byte[] imageBytes = restTemplate.getForObject(url, byte[].class);
                     if (imageBytes != null) {
-                        ImageRecordLayer img = new ImageRecordLayer("unsplash_" + photoId + ".jpg", imageBytes);
+                        MediaRecord img = new MediaRecord("unsplash_" + photoId + ".jpg", imageBytes);
                         img.setUserId(admin.getId());
                         img.setPrivate(false);
                         storageService.processAndSaveImage(img, true);

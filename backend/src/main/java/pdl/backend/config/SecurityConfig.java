@@ -34,12 +34,12 @@ import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 
-import pdl.backend.auth.UserAccountRepoLayer;
+import pdl.backend.auth.UserRepository;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
-public class SecurityLayer {
+public class SecurityConfig {
 
     @Value("${jwt.secret}")
     private String jwtKey;
@@ -78,7 +78,7 @@ public class SecurityLayer {
     }
 
     @Bean
-    public UserDetailsService userDetailsService(UserAccountRepoLayer userRepository) {
+    public UserDetailsService userDetailsService(UserRepository userRepository) {
         return username -> userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
     }

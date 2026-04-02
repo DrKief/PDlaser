@@ -13,11 +13,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/admin")
 @PreAuthorize("hasRole('ADMIN')")
-public class DatasetIngestionLayer {
+public class DatasetIngestController {
 
-    private final UnsplashImporterLayer unsplashImporter;
+    private final UnsplashService unsplashImporter;
 
-    public DatasetIngestionLayer(UnsplashImporterLayer unsplashImporter) {
+    public DatasetIngestController(UnsplashService unsplashImporter) {
         this.unsplashImporter = unsplashImporter;
     }
 
