@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import http from '../api/http-client';
 
 const props = defineProps({
@@ -12,34 +12,49 @@ const emit = defineEmits(['select']);
 
 const searchQuery = ref('');
 const filteredKeywords = ref<string[]>([]);
+const defaultKeywords = ref<string[]>([]);
 const isSearchFocused = ref(false);
 const highlightedIndex = ref(-1);
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+
+onMounted(async () => {
+  try {
+    const res = await http.get('/images/keywords/popular?limit=8');
+    defaultKeywords.value = res.data;
+  } catch (e) {}
+});
+
+const onFocus = () => {
+  isSearchFocused.value = true;
+  if (searchQuery.value.trim().length < 2) {
+    filteredKeywords.value = defaultKeywords.value;
+  }
+};
 
 const onInput = () => {
   highlightedIndex.value = -1;
   if (debounceTimer) clearTimeout(debounceTimer);
   
+  if (searchQuery.value.trim().length < 2) {
+    filteredKeywords.value = defaultKeywords.value;
+    return;
+  }
+
   debounceTimer = setTimeout(async () => {
-    if (searchQuery.value.trim().length < 2) {
-      filteredKeywords.value = [];
-      return;
-    }
     try {
       const res = await http.get(`/images/keywords/search?q=${encodeURIComponent(searchQuery.value.trim())}`);
       filteredKeywords.value = res.data.slice(0, 8);
     } catch (e) {
-      console.error("Failed to fetch suggestions", e);
       filteredKeywords.value = [];
     }
-  }, 300);
+  }, 200); // Fast 200ms debounce for smooth typing
 };
 
 const handleBlur = () => {
   setTimeout(() => {
     isSearchFocused.value = false;
     highlightedIndex.value = -1;
-  }, 150);
+  }, 200);
 };
 
 const handleKeydown = (e: KeyboardEvent) => {
@@ -93,21 +108,26 @@ const selectTag = (tag: string) => {
       :disabled="disabled"
       v-model="searchQuery"
       @input="onInput"
-      @focus="isSearchFocused = true"
+      @focus="onFocus"
       @blur="handleBlur"
       @keydown="handleKeydown"
       class="autocomplete-input"
     />
-    <ul class="autocomplete-dropdown" v-if="isSearchFocused && filteredKeywords.length > 0">
-      <li 
-        v-for="(kw, i) in filteredKeywords" 
-        :key="kw"
-        :class="{ highlighted: i === highlightedIndex }"
-        @mousedown.prevent="selectTag(kw)"
-      >
-        {{ kw }}
-      </li>
-    </ul>
+    <Transition name="fade">
+      <ul class="autocomplete-dropdown" v-if="isSearchFocused && filteredKeywords.length > 0">
+        <TransitionGroup name="list">
+          <li 
+            v-for="(kw, i) in filteredKeywords" 
+            :key="kw"
+            :class="{ highlighted: i === highlightedIndex }"
+            @mousedown.prevent="selectTag(kw)"
+          >
+            <span class="material-symbols-outlined tag-icon">tag</span>
+            {{ kw }}
+          </li>
+        </TransitionGroup>
+      </ul>
+    </Transition>
   </div>
 </template>
 
@@ -129,32 +149,70 @@ const selectTag = (tag: string) => {
 
 .autocomplete-dropdown {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 8px);
   left: 0;
   right: 0;
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
-  border-radius: 4px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  box-shadow: var(--shadow-subtle);
   list-style: none;
-  margin: 4px 0 0;
-  padding: 4px 0;
+  margin: 0;
+  padding: 0.5rem;
   z-index: 100;
-  max-height: 240px;
+  max-height: 300px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .autocomplete-dropdown li {
   padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
+  font-size: 0.9rem;
   cursor: pointer;
   color: var(--text-primary);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.tag-icon {
+  font-size: 1.1rem;
+  color: var(--text-muted);
 }
 
 .autocomplete-dropdown li:hover,
 .autocomplete-dropdown li.highlighted {
   background: var(--bg-element);
+  color: var(--color-accent);
 }
 
+.autocomplete-dropdown li:hover .tag-icon,
+.autocomplete-dropdown li.highlighted .tag-icon {
+  color: var(--color-accent);
+}
 
+/* Animations */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.list-move, 
+.list-enter-active, 
+.list-leave-active {
+  transition: all 0.3s ease;
+}
+.list-enter-from, 
+.list-leave-to {
+  opacity: 0;
+  transform: translateX(-15px);
+}
+.list-leave-active {
+  position: absolute;
+}
 </style>

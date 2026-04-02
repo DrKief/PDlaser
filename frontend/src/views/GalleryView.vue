@@ -6,9 +6,11 @@ import { useAuth } from "../composables/useAuth";
 import AdvancedSearchSidebar from '../components/AdvancedSearchSidebar.vue';
 
 interface Image {
-  id: number;
+  id: number | string;
   uploader?: string;
   keywords: string[];
+  extraction_status?: string;
+  url?: string;
 }
 
 const route = useRoute();
@@ -21,31 +23,52 @@ const currentPage = ref(0);
 const totalPages = ref(1);
 
 const isSidebarOpen = ref(false);
-const similarityResultsOverride = ref<any[] | null>(null);
+const similarityResultsOverride = ref<Image[] | null>(null);
+const similaritySourceOverride = ref<Image | null>(null);
 const selectedSourceId = ref<number | null>(null);
 
-// Handle clicking the hover button
-const openSimilarityForImage = (id: number) => {
-  selectedSourceId.value = id;
-  isSidebarOpen.value = true;
+const openSimilarityForImage = (id: number | string) => {
+  if (typeof id === 'number') {
+    selectedSourceId.value = id;
+    isSidebarOpen.value = true;
+  }
 };
 
-// When the sidebar emits similarity results, override the gallery view
-const handleSimilarityResults = (results: any[]) => {
-  // Mapping similarity results to the Image interface
-  similarityResultsOverride.value = results.map((res) => ({
+const handleSimilarityResults = (payload: any) => {
+  const { results, sourceId, isEphemeral, fileUrl } = payload;
+  
+  // 1. Establish the visual Source Image highlight
+  if (isEphemeral && fileUrl) {
+    similaritySourceOverride.value = {
+      id: 'Ephemeral',
+      url: fileUrl,
+      uploader: 'Uploaded Target',
+      keywords: ['Source Image']
+    };
+  } else if (sourceId) {
+    similaritySourceOverride.value = {
+      id: sourceId,
+      url: `/images/${sourceId}`,
+      uploader: 'Database Target',
+      keywords: ['Source Image']
+    };
+  }
+
+  // 2. Map the mathematical results
+  similarityResultsOverride.value = results.map((res: any) => ({
     id: res.id,
-    uploader: 'Matched',
+    url: `/images/${res.id}`,
+    uploader: 'Matched Result',
+    extraction_status: 'COMPLETED',
     keywords: [`${((1 - res.score) * 100).toFixed(2)}% Match`]
   }));
 };
 
 const loadImages = async (reset = false) => {
-  if (reset) {
-    currentPage.value = 0;
-  }
+  if (reset) currentPage.value = 0;
   isLoading.value = true;
   similarityResultsOverride.value = null; 
+  similaritySourceOverride.value = null;
 
   try {
     const activeTag = route.query.tags as string;
@@ -57,13 +80,15 @@ const loadImages = async (reset = false) => {
     }
 
     const { content, totalElements } = response.data as { content: any[], totalElements: number };
-    const formatted: Image[] = content.map((img: any) => ({ 
+    
+    // Map full backend data including extraction_status
+    displayedImages.value = content.map((img: any) => ({ 
         id: img.id,
+        url: `/images/${img.id}`,
         uploader: img.uploader,
-        keywords: img.keywords || [] 
+        keywords: img.keywords || [],
+        extraction_status: img.extraction_status
     }));
-
-    displayedImages.value = formatted;
     totalPages.value = Math.ceil(totalElements / displayLimit.value) || 1;
 
   } catch (error) {
@@ -86,6 +111,7 @@ const goToPage = (pageNumber: number) => {
 const clearFilter = () => {
   router.push('/');
   similarityResultsOverride.value = null;
+  similaritySourceOverride.value = null;
 };
 
 onMounted(() => {
@@ -98,7 +124,9 @@ onMounted(() => {
 
 watch(() => route.query.tags, () => loadImages(true));
 
-const goToImage = (id: number) => router.push(`/image/${id}`);
+const goToImage = (id: number | string) => {
+  if (typeof id === 'number') router.push(`/image/${id}`);
+};
 </script>
 
 <template>
@@ -111,7 +139,8 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
         
         <div class="header-actions">
           <button class="btn btn-outline" @click="isSidebarOpen = !isSidebarOpen" style="margin-right: 1rem;">
-            <span class="material-symbols-outlined" style="vertical-align: middle;">tune</span> Filters
+            <span class="material-symbols-outlined" style="vertical-align: middle; margin-right: 0.25rem;">image_search</span> 
+            Similarity Search
           </button>
           <button class="btn btn-outline" v-if="route.query.tags || similarityResultsOverride" @click="clearFilter">Clear Filter</button>
         </div>
@@ -128,20 +157,39 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
 
       <div v-else>
         <div class="masonry-grid">
+          
+          <article 
+            v-if="similaritySourceOverride"
+            class="artifact-card source-card"
+          >
+            <div class="source-badge">
+              <span class="material-symbols-outlined" style="font-size: 1rem;">target</span>
+              SOURCE TARGET
+            </div>
+            <img :src="similaritySourceOverride.url" class="artifact-img" />
+          </article>
+
           <article 
             v-for="image in (similarityResultsOverride || displayedImages)" 
             :key="image.id" 
             class="artifact-card"
           >
-            <img :src="`/images/${image.id}`" @click="goToImage(image.id)" class="artifact-img" loading="lazy" />
+            <img :src="image.url" @click="goToImage(image.id)" class="artifact-img" loading="lazy" />
             
-            <div class="hover-actions">
-              <button @click.stop="openSimilarityForImage(image.id)" title="Find Similar" class="btn-icon" style="background: var(--bg-surface); padding: 0.5rem; border-radius: 4px; color: var(--text-primary);">
+            <div class="hover-actions" v-if="typeof image.id === 'number'">
+              <button @click.stop="openSimilarityForImage(image.id)" title="Find Similar" class="btn-icon similarity-btn">
                 <span class="material-symbols-outlined">image_search</span>
               </button>
             </div>
 
             <div class="card-overlay" @click="goToImage(image.id)">
+              <div class="meta-chips">
+                <span class="meta-chip status-chip" :class="image.extraction_status?.toLowerCase()">
+                  {{ image.extraction_status || 'PENDING' }}
+                </span>
+                <span class="meta-chip id-chip">ID: {{ image.id }}</span>
+              </div>
+
               <div class="overlay-content">
                 <h3 class="artifact-name">@{{ image.uploader || 'System' }}</h3>
                 <div class="tags" v-if="image.keywords && image.keywords.length">
@@ -156,7 +204,6 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
           <button class="btn btn-outline" @click="goToPage(currentPage - 1)" :disabled="currentPage === 0 || isLoading">
             &laquo; Prev
           </button>
-
           <div class="page-numbers">
             <button 
               v-for="page in totalPages" 
@@ -169,7 +216,6 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
               {{ page }}
             </button>
           </div>
-
           <button class="btn btn-outline" @click="goToPage(currentPage + 1)"
             :disabled="currentPage === totalPages - 1 || isLoading">
             Next &raquo;
@@ -197,6 +243,31 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
   flex: 1;
   min-width: 0;
 }
+
+/* Source Image Outline CSS */
+.source-card {
+  border: 3px solid var(--color-accent);
+  box-shadow: 0 0 20px color-mixin(in oklch, var(--color-accent) 40%, transparent);
+  transform: translateY(-4px);
+  z-index: 5;
+}
+.source-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: var(--color-accent);
+  color: var(--text-on-accent);
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  z-index: 10;
+  box-shadow: var(--shadow-subtle);
+}
+
 .hover-actions {
   position: absolute;
   top: 10px;
@@ -209,9 +280,18 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
   opacity: 1;
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(5px); }
-  to { opacity: 1; transform: translateY(0); }
+.similarity-btn {
+  background: var(--bg-surface); 
+  padding: 0.5rem; 
+  border-radius: 4px; 
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-subtle);
+}
+.similarity-btn:hover {
+  color: var(--color-accent);
 }
 
 .gallery-header {
@@ -222,47 +302,21 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
   padding-bottom: var(--space-sm);
   border-bottom: 1px solid var(--border-subtle);
 }
+.filter-title { font-family: var(--font-headline); font-size: 2.5rem; margin: 0; }
+.highlight { color: var(--color-accent); font-style: italic; }
 
-.filter-title {
-  font-family: var(--font-headline);
-  font-size: 2.5rem;
-  margin: 0;
-}
+.empty-state { text-align: center; padding: var(--space-xl) 0; color: var(--text-muted); }
 
-.highlight {
-  color: var(--color-accent);
-  font-style: italic;
-}
-
-.empty-state {
-  text-align: center;
-  padding: var(--space-xl) 0;
-  color: var(--text-muted);
-}
-
-.masonry-grid {
-  columns: 1;
-  column-gap: 1.5rem;
-}
-
-@media (min-width: 640px) {
-  .masonry-grid { columns: 2; }
-}
-
-@media (min-width: 1024px) {
-  .masonry-grid { columns: 3; }
-}
-
-@media (min-width: 1536px) {
-  .masonry-grid { columns: 4; }
-}
+.masonry-grid { columns: 1; column-gap: 1.5rem; }
+@media (min-width: 640px) { .masonry-grid { columns: 2; } }
+@media (min-width: 1024px) { .masonry-grid { columns: 3; } }
+@media (min-width: 1536px) { .masonry-grid { columns: 4; } }
 
 .artifact-card {
   break-inside: avoid;
   margin-bottom: 1.5rem;
   position: relative;
   background: var(--bg-element);
-  cursor: zoom-in;
   overflow: hidden;
   border-radius: 4px;
 }
@@ -277,18 +331,38 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
 .card-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0) 40%);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0) 60%);
   opacity: 0;
   transition: opacity 0.3s ease;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: space-between;
   padding: 1.5rem;
   color: #fff;
   cursor: pointer;
 }
-
 .artifact-card:hover .card-overlay { opacity: 1; }
+
+/* Metadata Chips CSS */
+.meta-chips {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+.meta-chip {
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(4px);
+  text-transform: uppercase;
+}
+.status-chip.completed { color: var(--color-success); border: 1px solid var(--color-success); }
+.status-chip.processing, .status-chip.pending { color: #f59e0b; border: 1px solid #f59e0b; }
+.status-chip.failed { color: var(--color-danger); border: 1px solid var(--color-danger); }
+.id-chip { color: #fff; border: 1px solid rgba(255,255,255,0.3); }
 
 .artifact-name {
   font-family: var(--font-sans);
@@ -300,44 +374,19 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
   overflow: hidden;
   white-space: nowrap;
 }
-
-.tag-text {
-  font-family: var(--font-sans);
-  font-size: 0.8rem;
-  color: rgba(255, 255, 255, 0.8);
-}
+.tag-text { font-family: var(--font-sans); font-size: 0.8rem; color: rgba(255, 255, 255, 0.8); }
 
 .pagination-controls {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: var(--space-md);
-  margin-top: var(--space-xl);
-  padding-bottom: var(--space-lg);
+  display: flex; justify-content: center; align-items: center;
+  gap: var(--space-md); margin-top: var(--space-xl); padding-bottom: var(--space-lg);
 }
-
-.page-numbers {
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-}
-
-.page-btn {
-  background: var(--bg-surface);
-  color: var(--text-primary);
-  border: 1px solid var(--border-subtle);
-  padding: 0.5rem 1rem;
-  min-width: 40px;
-}
-
-.page-btn:hover:not(:disabled) {
-  background: var(--bg-element);
-  border-color: var(--text-primary);
-}
-
-.page-btn.active {
-  background: var(--color-accent);
-  color: #fff;
-  border-color: var(--color-accent);
-}
+.page-numbers { display: flex; gap: 0.5rem; overflow-x: auto; }
+.page-btn { background: var(--bg-surface); color: var(--text-primary); border: 1px solid var(--border-subtle); padding: 0.5rem 1rem; min-width: 40px; }
+.page-btn:hover:not(:disabled) { background: var(--bg-element); border-color: var(--text-primary); }
+.page-btn.active { background: var(--color-accent); color: #fff; border-color: var(--color-accent); }
 </style>
+
+
+
+
+

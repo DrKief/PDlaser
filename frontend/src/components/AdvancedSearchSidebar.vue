@@ -13,7 +13,6 @@ const similarityAlgorithm = ref("semantic");
 const similarityCount = ref(10);
 const errorMsg = ref("");
 
-// Automatically update state if gallery hovers update the prop
 watch(() => props.initialSourceId, (newId) => {
   if (newId) {
     selectedDbId.value = newId;
@@ -21,11 +20,8 @@ watch(() => props.initialSourceId, (newId) => {
   }
 });
 
-// Interactive design heuristic: Do not allow interaction without valid state
 const isSourceSelected = computed(() => {
-  if (uploadMode.value === 'db') {
-    return !!selectedDbId.value;
-  }
+  if (uploadMode.value === 'db') return !!selectedDbId.value;
   return !!uploadTarget.value;
 });
 
@@ -60,7 +56,14 @@ const triggerSimilaritySearch = async () => {
       results = res.data;
     }
     
-    emit('executeSimilarity', results);
+    // NEW: Emit the complete payload including the source context
+    emit('executeSimilarity', {
+      results: results,
+      sourceId: uploadMode.value === 'db' ? selectedDbId.value : null,
+      isEphemeral: uploadMode.value === 'ephemeral',
+      fileUrl: uploadTarget.value ? URL.createObjectURL(uploadTarget.value) : null
+    });
+
     emit('close');
   } catch (e) {
     errorMsg.value = "Similarity scan failed.";
@@ -130,7 +133,7 @@ const triggerSimilaritySearch = async () => {
   border-radius: 8px;
   height: calc(100vh - 140px);
   position: sticky;
-  top: 120px; /* Offset for both Nav bars */
+  top: 120px;
   padding: 1.5rem;
   overflow-y: auto;
   box-shadow: var(--shadow-subtle);
@@ -144,7 +147,6 @@ const triggerSimilaritySearch = async () => {
 .btn-icon { background: none; border: none; cursor: pointer; color: var(--text-secondary); padding: 0;}
 .btn-icon:hover { color: var(--color-danger); }
 
-/* Impeccable Context: Disabled States */
 .disabled-group { opacity: 0.5; pointer-events: none; transition: opacity 0.2s; }
 .help-text { 
   display: flex; align-items: center; gap: 0.5rem; 
