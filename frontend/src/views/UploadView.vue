@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
-import http from "../http-api";
+import http from "../api/http-client";
 import { useImageStatus } from "../composables/useImageStatus";
 interface UploadTask {
   internalId: string;
@@ -355,21 +355,6 @@ const clearAll = () => {
   gap: 1rem;
 }
 
-:root.cruelty .drop-zone {
-  border: 4px dashed #FF00FF;
-  background: #000;
-  border-radius: 0;
-}
 
-:root.cruelty .task-item {
-  background: #111;
-  border: 2px solid var(--color-accent);
-  border-radius: 0;
-}
 
-:root.cruelty .meta-card {
-  background: #000;
-  border: 4px solid var(--border-strong);
-  border-radius: 0;
-}
 </style>

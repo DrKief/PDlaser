@@ -1,5 +1,5 @@
 import { reactive } from "vue";
-import http from "../http-api";
+import http from "../api/http-client";
 
 const statusCache = reactive<Record<number, string>>({});
 const activeConnections = new Set<number>();

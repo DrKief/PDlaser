@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
-import http from '../http-api';
+import http from '../api/http-client';
 
 const props = defineProps({
   placeholder: { type: String, default: 'Search tags...' },
@@ -64,8 +64,9 @@ const handleKeydown = (e: KeyboardEvent) => {
     highlightedIndex.value = Math.max(highlightedIndex.value - 1, 0);
   } else if (e.key === 'Enter') {
     e.preventDefault();
-    if (highlightedIndex.value >= 0) {
-      selectTag(filteredKeywords.value[highlightedIndex.value]);
+    const selected = filteredKeywords.value[highlightedIndex.value];
+    if (highlightedIndex.value >= 0 && selected) {
+      selectTag(selected);
     } else {
       selectTag(searchQuery.value);
     }
@@ -155,15 +156,5 @@ const selectTag = (tag: string) => {
   background: var(--bg-element);
 }
 
-:root.cruelty .autocomplete-dropdown {
-  background: #000;
-  border: 4px solid var(--color-accent);
-  border-radius: 0;
-}
 
-:root.cruelty .autocomplete-dropdown li:hover,
-:root.cruelty .autocomplete-dropdown li.highlighted {
-  background: #ff00ff;
-  color: #fff;
-}
 </style>

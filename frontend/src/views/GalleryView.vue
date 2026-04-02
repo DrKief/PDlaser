@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import http from "../http-api";
+import http from "../api/http-client";
 import { useAuth } from "../composables/useAuth";
 
 interface Image {
@@ -271,42 +271,11 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
   border-color: var(--color-accent);
 }
 
-:root.cruelty .filter-title {
-  font-family: 'Impact';
-  color: #FF00FF;
-  text-transform: uppercase;
-}
 
-:root.cruelty .highlight { color: #00FF00; }
 
-:root.cruelty .artifact-card {
-  border-radius: 0;
-  border: 4px solid var(--border-strong);
-  transform: rotate(calc(-2deg + (4deg * var(--n, 1))));
-}
 
-:root.cruelty .artifact-card:nth-child(even) {
-  --n: 0;
-  border-color: var(--color-accent);
-}
 
-:root.cruelty .artifact-img {
-  filter: contrast(200%) saturate(300%) hue-rotate(90deg);
-}
 
-:root.cruelty .artifact-card:hover .artifact-img { filter: invert(1); }
 
-:root.cruelty .card-overlay {
-  opacity: 1;
-  background: transparent;
-  mix-blend-mode: difference;
-}
 
-:root.cruelty .artifact-name {
-  font-family: 'Impact';
-  font-size: 1.5rem;
-  background: #000;
-  padding: 0.25rem;
-  display: inline-block;
-}
 </style>

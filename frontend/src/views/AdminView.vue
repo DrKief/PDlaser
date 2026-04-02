@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue';
-import http from '../http-api';
+import http from '../api/http-client';
 const status = ref("Loading...");
 const limit = ref(50);
 const offset = ref(0);

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import http from "../http-api";
-import TagAutocomplete from "./TagAutocomplete.vue";
+import http from "../api/http-client";
+import TagAutocomplete from "../shared/TagAutocomplete.vue";
 
 interface Image { id: number; name: string; }
 interface SimilarityResult { id: number; score: number; filename?: string; }
@@ -277,19 +277,6 @@ const performSimilaritySearch = async () => {
   border-radius: 4px;
 }
 
-:root.cruelty .tab-btn {
-  font-family: 'Impact';
-  font-size: 1.2rem;
-}
 
-:root.cruelty .tab-btn.active {
-  background: var(--color-accent);
-  color: #000;
-}
 
-:root.cruelty .res-img {
-  filter: sepia(1) hue-rotate(180deg) saturate(300%);
-  border: 4px solid #fff;
-  border-radius: 0;
-}
 </style>

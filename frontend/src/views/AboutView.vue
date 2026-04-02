@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import http from "../http-api";
+import http from "../api/http-client";
 const stats = ref({ total: 0, tags: 0 });
 onMounted(async () => {
   const [imgRes, tagRes] = await Promise.all([
@@ -82,15 +82,5 @@ onMounted(async () => {
 }
 
 /* --- CRUELTY OVERRIDES --- */
-:root.cruelty .stat-card {
-  background: #000;
-  border: 4px solid var(--color-accent);
-  border-radius: 0;
-  transform: rotate(-2deg);
-}
 
-:root.cruelty .stat-val {
-  font-family: 'Impact';
-  color: #00FF00;
-}
 </style>

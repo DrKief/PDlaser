@@ -2,7 +2,7 @@
 import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useAuth } from "./composables/useAuth";
-import TagAutocomplete from "./components/TagAutocomplete.vue";
+import TagAutocomplete from "./shared/TagAutocomplete.vue";
 
 const { isLoggedIn, logout } = useAuth();
 const router = useRouter();
@@ -60,10 +60,28 @@ const handleGlobalClick = () => {
   playPainSound();
 };
 
-const toggleTheme = (target: string) => {
+const toggleTheme = async (target: string) => {
   theme.value = target;
   document.documentElement.className = theme.value;
   localStorage.setItem('theme', theme.value);
+
+  const linkId = 'cruelty-theme-link';
+  let link = document.getElementById(linkId) as HTMLLinkElement;
+  
+  if (target === 'cruelty') {
+    if (!link) {
+      link = document.createElement('link');
+      link.id = linkId;
+      link.rel = 'stylesheet';
+      const cssUrl = (await import('./assets/theme-cruelty.css?url')).default;
+      link.href = cssUrl;
+      document.head.appendChild(link);
+    }
+  } else {
+    if (link) {
+      link.remove();
+    }
+  }
 };
 
 onMounted(() => {
@@ -75,7 +93,7 @@ onMounted(() => {
   } else {
     theme.value = 'light';
   }
-  document.documentElement.className = theme.value;
+  toggleTheme(theme.value);
   document.addEventListener('click', handleGlobalClick);
 });
 </script>
@@ -283,48 +301,11 @@ onMounted(() => {
 }
 
 /* --- CRUELTY OVERRIDES --- */
-:root.cruelty .top-nav {
-  background: #FF0000;
-  border-bottom: 4px solid var(--border-strong);
-  padding: 1.5rem 2rem;
-}
 
-:root.cruelty .logo {
-  font-family: 'Impact';
-  font-style: normal;
-  color: #fff;
-  font-size: 3rem;
-  transform: rotate(-3deg);
-}
 
-:root.cruelty .global-search {
-  background: #000;
-  border-radius: 0;
-  border: 4px solid var(--color-accent);
-}
 
-:root.cruelty .nav-links a {
-  font-family: 'Impact';
-  font-size: 1.5rem;
-  color: #fff;
-  text-transform: uppercase;
-}
 
-:root.cruelty .cruelty-toggle {
-  background: #000;
-  color: #00FF00;
-  font-family: 'Impact';
-  font-size: 1rem;
-  padding: 0.5rem 1rem;
-  border: 2px solid #fff;
-  animation: pulse 0.5s infinite;
-}
 
-:root.cruelty .user-badge {
-  color: #FFFF00 !important;
-  font-family: 'Impact' !important;
-  font-size: 1.2rem !important;
-}
 
 @keyframes pulse {
   0% { transform: scale(1); }

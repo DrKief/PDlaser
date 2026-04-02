@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import http from "../http-api";
+import http from "../api/http-client";
 const route = useRoute();
 const router = useRouter();
 const imageId = route.params.id as string;
@@ -270,22 +270,6 @@ const findSimilar = () => {
 }
 
 /* --- CRUELTY OVERRIDES --- */
-:root.cruelty .image-container {
-  background: #000;
-  border: 8px dashed var(--color-accent);
-  border-radius: 0;
-}
 
-:root.cruelty .meta-sidebar {
-  background: #111;
-  border: 4px solid var(--border-strong);
-  border-radius: 0;
-}
 
-:root.cruelty .image-title {
-  font-family: 'Impact';
-  font-size: 2.5rem;
-  color: #00FF00;
-  text-transform: uppercase;
-}
 </style>
