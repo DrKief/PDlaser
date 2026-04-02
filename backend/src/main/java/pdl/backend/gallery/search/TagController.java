@@ -45,17 +45,25 @@ public class TagController {
       return ResponseEntity.ok(queryRepo.searchKeywords(query, getCurrentUserId()));
   }
 
+  @GetMapping("/keywords/popular")
+  public ResponseEntity<List<String>> getPopularKeywords(
+      @RequestParam(defaultValue = "15") int limit
+  ) {
+      return ResponseEntity.ok(queryRepo.getPopularKeywords(limit));
+  }
+
   @GetMapping("/search")
   public ResponseEntity<Map<String, Object>> searchImagesByTags(
     @RequestParam(required = false) List<String> keywords,
     @RequestParam(defaultValue = "0") int page,
-    @RequestParam(defaultValue = "30") int size
+    @RequestParam(defaultValue = "30") int size,
+    @RequestParam(value = "mine", defaultValue = "false") boolean mine
   ) {
     Long userId = getCurrentUserId();
     int offset = page * size;
     
-    List<Map<String, Object>> content = queryRepo.searchGalleryByTags(keywords, userId, size, offset);
-    long totalElements = queryRepo.getSearchGalleryByTagsTotalCount(keywords, userId);
+    List<Map<String, Object>> content = queryRepo.searchGalleryByTags(keywords, userId, size, offset, mine);
+    long totalElements = queryRepo.getSearchGalleryByTagsTotalCount(keywords, userId, mine);
     boolean hasNext = (offset + size) < totalElements;
     
     Map<String, Object> response = new java.util.HashMap<>();

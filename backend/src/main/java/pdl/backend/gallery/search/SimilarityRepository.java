@@ -57,7 +57,6 @@ public class SimilarityRepository {
                 WEIGHT_HOG, vectors[0], WEIGHT_LAB, vectors[2], WEIGHT_HSV, vectors[1], targetId, limit);
         }
 
-        // Added Semantic Case
         String vectorColumn = switch (type.toLowerCase()) {
             case "gradient" -> "hogvector";
             case "saturation" -> "hsvvector";
@@ -89,5 +88,28 @@ public class SimilarityRepository {
             "ORDER BY v.distance ASC";
 
         return jdbcTemplate.queryForList(sql, targetVector, targetId, targetVector, limit);
+    }
+
+    public List<Map<String, Object>> findSimilarByVector(PGvector targetVector, String type, int limit) {
+        String vectorColumn = switch (type.toLowerCase()) {
+            case "gradient" -> "hogvector";
+            case "saturation" -> "hsvvector";
+            case "rgb" -> "rgbvector";
+            case "cielab" -> "labvector";
+            case "semantic" -> "semanticvector";
+            default -> "hogvector";
+        };
+
+        String sql = 
+            "WITH vector_matches AS (" +
+            "  SELECT imageid, " + vectorColumn + " <=> ? as distance " +
+            "  FROM imagedescriptors " +
+            "  ORDER BY " + vectorColumn + " <=> ? ASC LIMIT ?" +
+            ") " +
+            "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
+            "FROM vector_matches v JOIN images i ON v.imageid = i.id " +
+            "ORDER BY v.distance ASC";
+
+        return jdbcTemplate.queryForList(sql, targetVector, targetVector, limit);
     }
 }

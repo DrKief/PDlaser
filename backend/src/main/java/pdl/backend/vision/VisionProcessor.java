@@ -3,6 +3,7 @@ package pdl.backend.vision;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.util.List;
+import java.util.Map;
 import javax.imageio.ImageIO;
 
 import org.slf4j.Logger;
@@ -101,5 +102,43 @@ public class VisionProcessor {
       if (bimg != null) bimg.flush();
       if (resizedImage != null) resizedImage.flush();
     }
+  }
+
+  public Map<String, float[]> extractEphemeralVectors(byte[] data) throws Exception {
+      BufferedImage bimg = ImageIO.read(new ByteArrayInputStream(data));
+      if (bimg == null) {
+          throw new IllegalArgumentException("Failed to decode image data.");
+      }
+
+      BufferedImage resizedImage = FeatureExtractor.resizeImageLanczos3(bimg, 256, 256);
+      
+      // Extract base histograms
+      float[] hogData = FeatureExtractor.extractGlobalHog(resizedImage);
+      float[] hsvData = FeatureExtractor.extractHsvHistogram(resizedImage);
+      float[] rgbData = FeatureExtractor.extractRgbHistogram(resizedImage);
+      float[] labData = FeatureExtractor.extractCieLabHistogram(resizedImage);
+      
+      // Extract semantics
+      float[] rawSemanticData = SemanticExtractor.extractSemanticFeatures(bimg);
+      float[] semanticVector = SemanticExtractor.normalizeL2(rawSemanticData.clone());
+
+      // Fix HOG length mismatch
+      if (hogData.length != 31) {
+          float[] adjustedHog = new float[31];
+          System.arraycopy(hogData, 0, adjustedHog, 0, Math.min(hogData.length, 31));
+          hogData = adjustedHog;
+      }
+
+      // Cleanup resources
+      bimg.flush();
+      resizedImage.flush();
+
+      return Map.of(
+          "gradient", hogData,
+          "saturation", hsvData,
+          "rgb", rgbData,
+          "cielab", labData,
+          "semantic", semanticVector
+      );
   }
 }

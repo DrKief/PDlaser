@@ -96,10 +96,17 @@ public class TagRepository {
         );
     }
 
-    public List<Map<String, Object>> getPaginatedGallery(Long currentUserId, int limit, int offset) {
+    public List<String> getPopularKeywords(int limit) {
+        return jdbcTemplate.queryForList(
+            "SELECT keyword FROM imagekeywords GROUP BY keyword ORDER BY COUNT(imageid) DESC LIMIT ?",
+            String.class, limit
+        );
+    }
+
+    public List<Map<String, Object>> getPaginatedGallery(Long currentUserId, int limit, int offset, boolean onlyUser) {
         String sql = "SELECT i.id, i.extraction_status, u.username as uploader " +
             "FROM images i LEFT JOIN users u ON i.user_id = u.id " +
-            "WHERE i.is_private = false OR i.user_id = ? " +
+            "WHERE (i.user_id = ?) OR (? = false AND i.is_private = false) " +
             "ORDER BY i.id DESC LIMIT ? OFFSET ?";
 
         return jdbcTemplate.query(sql, (rs, rowNum) -> {
@@ -109,17 +116,18 @@ public class TagRepository {
             map.put("keywords", getKeywords(rs.getLong("id")));
             map.put("extraction_status", rs.getString("extraction_status"));
             return map;
-        }, currentUserId, limit, offset);
+        }, currentUserId, onlyUser, limit, offset);
     }
 
-    public List<Map<String, Object>> searchGalleryByTags(List<String> keywords, Long currentUserId, int limit, int offset) {
+    public List<Map<String, Object>> searchGalleryByTags(List<String> keywords, Long currentUserId, int limit, int offset, boolean onlyUser) {
         StringBuilder sql = new StringBuilder(
             "SELECT i.id, i.extraction_status, u.username as uploader " +
             "FROM images i LEFT JOIN users u ON i.user_id = u.id " +
-            "WHERE (i.is_private = false OR i.user_id = :currentUserId) "
+            "WHERE (i.user_id = :currentUserId OR (:onlyUser = false AND i.is_private = false)) "
         );
         MapSqlParameterSource params = new MapSqlParameterSource();
         params.addValue("currentUserId", currentUserId);
+        params.addValue("onlyUser", onlyUser);
 
         if (keywords != null && !keywords.isEmpty()) {
             sql.append("AND (SELECT count(DISTINCT keyword) FROM imagekeywords WHERE imageid = i.id AND keyword IN (:keywords)) = :keywordCount ");
@@ -142,22 +150,23 @@ public class TagRepository {
         });
     }
 
-    public long getGalleryTotalCount(Long currentUserId) {
-        String sql = "SELECT COUNT(*) FROM images i WHERE i.is_private = false OR i.user_id = ?";
-        Long count = jdbcTemplate.queryForObject(sql, Long.class, currentUserId);
+    public long getGalleryTotalCount(Long currentUserId, boolean onlyUser) {
+        String sql = "SELECT COUNT(*) FROM images i WHERE (i.user_id = ?) OR (? = false AND i.is_private = false)";
+        Long count = jdbcTemplate.queryForObject(sql, Long.class, currentUserId, onlyUser);
         return count != null ? count : 0L;
     }
 
-    public long getSearchGalleryByTagsTotalCount(List<String> keywords, Long currentUserId) {
+    public long getSearchGalleryByTagsTotalCount(List<String> keywords, Long currentUserId, boolean onlyUser) {
         if (keywords == null || keywords.isEmpty()) {
-            return getGalleryTotalCount(currentUserId);
+            return getGalleryTotalCount(currentUserId, onlyUser);
         }
 
         StringBuilder sql = new StringBuilder(
-            "SELECT COUNT(*) FROM images i WHERE (i.is_private = false OR i.user_id = :currentUserId) "
+            "SELECT COUNT(*) FROM images i WHERE (i.user_id = :currentUserId OR (:onlyUser = false AND i.is_private = false)) "
         );
         MapSqlParameterSource params = new MapSqlParameterSource();
         params.addValue("currentUserId", currentUserId);
+        params.addValue("onlyUser", onlyUser);
 
         sql.append("AND (SELECT count(DISTINCT keyword) FROM imagekeywords WHERE imageid = i.id AND keyword IN (:keywords)) = :keywordCount ");
         List<String> normalizedKeywords = keywords.stream().map(this::normalizeTag).collect(Collectors.toList());

@@ -39,13 +39,14 @@ public class GalleryController {
   @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<Map<String, Object>> getImages(
       @RequestParam(value = "page", defaultValue = "0") int page,
-      @RequestParam(value = "size", defaultValue = "30") int size
+      @RequestParam(value = "size", defaultValue = "30") int size,
+      @RequestParam(value = "mine", defaultValue = "false") boolean mine
   ) {
       int offset = page * size;
       Long userId = getCurrentUserId();
       
-      List<Map<String, Object>> content = queryRepo.getPaginatedGallery(userId, size, offset);
-      long totalElements = queryRepo.getGalleryTotalCount(userId);
+      List<Map<String, Object>> content = queryRepo.getPaginatedGallery(userId, size, offset, mine);
+      long totalElements = queryRepo.getGalleryTotalCount(userId, mine);
       boolean hasNext = (offset + size) < totalElements;
       
       Map<String, Object> response = new java.util.HashMap<>();
@@ -75,33 +76,33 @@ public class GalleryController {
     return ResponseEntity.noContent().build();
   }
 
-@PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-public ResponseEntity<?> addImage(
-    @RequestPart("file") MultipartFile file,
-    @RequestParam(value = "keywords", required = false) List<String> keywords,
-    HttpServletRequest request
-) throws Exception {
+  @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity<?> addImage(
+      @RequestPart("file") MultipartFile file,
+      @RequestParam(value = "keywords", required = false) List<String> keywords,
+      HttpServletRequest request
+  ) throws Exception {
 
-    if (file.isEmpty()) {
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is empty");
-    }
+      if (file.isEmpty()) {
+          throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is empty");
+      }
 
-    MediaRecord image = new MediaRecord(file.getOriginalFilename(), file.getBytes());
-    image.setUserId(getCurrentUserId());
-    storageService.processAndSaveImage(image, true);
-    long id = image.getId();
+      MediaRecord image = new MediaRecord(file.getOriginalFilename(), file.getBytes());
+      image.setUserId(getCurrentUserId());
+      storageService.processAndSaveImage(image, true);
+      long id = image.getId();
 
-    if (keywords != null && !keywords.isEmpty()) {
-      for (String k : keywords) {
-        String[] splits = k.split(",");
-        for (String tag : splits) {
-          queryRepo.addKeyword(id, tag.trim());
+      if (keywords != null && !keywords.isEmpty()) {
+        for (String k : keywords) {
+          String[] splits = k.split(",");
+          for (String tag : splits) {
+            queryRepo.addKeyword(id, tag.trim());
+          }
         }
       }
-    }
 
-    return ResponseEntity.accepted().body(Map.of("id", id)); 
-}
+      return ResponseEntity.accepted().body(Map.of("id", id)); 
+  }
 
   @GetMapping(value = "/{id}/status", produces = MediaType.APPLICATION_JSON_VALUE)
   public Object getImageStatus(@PathVariable("id") long id) {
