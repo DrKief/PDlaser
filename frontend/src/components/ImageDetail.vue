@@ -7,6 +7,29 @@ const router = useRouter();
 const imageId = route.params.id as string;
 const metadata = ref<any>(null);
 const isLoading = ref(true);
+
+const newTag = ref("");
+const isAddingTag = ref(false);
+
+const addTag = async () => {
+  const tag = newTag.value.trim();
+  if (!tag) return;
+  isAddingTag.value = true;
+  try {
+    await http.put(`/images/${imageId}/keywords?tag=${encodeURIComponent(tag)}`);
+    if (!metadata.value.Keywords) metadata.value.Keywords = [];
+    if (!metadata.value.Keywords.includes(tag)) {
+      metadata.value.Keywords.push(tag);
+    }
+    newTag.value = '';
+  } catch (error) {
+    console.error("Failed to add tag", error);
+    alert("Failed to add tag. It may already exist or you might not have permission.");
+  } finally {
+    isAddingTag.value = false;
+  }
+};
+
 onMounted(async () => {
   try {
     const res = await http.get(`/images/${imageId}/metadata`);
@@ -66,10 +89,28 @@ const findSimilar = () => {
             </span>
           </div>
         </div>
-        <div class="meta-section" v-if="metadata.Keywords && metadata.Keywords.length > 0">
+        <div class="meta-section">
           <span class="label-text">Tags</span>
-          <div class="tags-list">
+          <div class="tags-list" v-if="metadata.Keywords && metadata.Keywords.length > 0">
             <span v-for="tag in metadata.Keywords" :key="tag" class="tag-pill">{{ tag }}</span>
+          </div>
+          <div class="tag-input-container">
+            <input
+              v-model="newTag"
+              type="text"
+              class="input-tag"
+              placeholder="Add a tag..."
+              @keyup.enter="addTag"
+              :disabled="isAddingTag"
+            />
+            <button
+              class="btn btn-tag"
+              @click="addTag"
+              :disabled="!newTag || isAddingTag"
+            >
+              <span v-if="isAddingTag">...</span>
+              <span v-else>+</span>
+            </button>
           </div>
         </div>
         <div class="actions">
@@ -150,6 +191,38 @@ const findSimilar = () => {
   gap: 0.5rem;
   margin-top: 0.5rem;
 }
+.tag-input-container {
+  display: flex;
+  margin-top: 0.75rem;
+  gap: 0.25rem;
+}
+.input-tag {
+  flex: 1;
+  background: var(--bg-element);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  border-radius: 4px;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  outline: none;
+}
+.input-tag::placeholder { color: var(--text-muted); }
+.input-tag:focus { border-color: var(--color-accent); }
+.btn-tag {
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.btn-tag:disabled { opacity: 0.5; cursor: not-allowed; }
 .actions { display: flex; flex-direction: column; gap: 1rem; }
 .danger { color: var(--color-danger); border-color: var(--color-danger); }
 .danger:hover { background: var(--color-danger); color: #fff; }

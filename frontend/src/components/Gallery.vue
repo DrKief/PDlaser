@@ -62,6 +62,7 @@ const clearFilter = () => {
 };
 onMounted(() => loadImages(true));
 watch(() => route.query.tags, () => loadImages(true));
+
 const getImageUrl = (image: Image) => `/images/${image.id}`;
 const goToImage = (id: number) => router.push(`/image/${id}`);
 </script>
@@ -124,6 +125,40 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
 .artifact-card:hover .card-overlay { opacity: 1; }
 .artifact-name { font-family: var(--font-sans); font-size: 1rem; font-weight: 500; margin: 0 0 0.25rem 0; color: #fff; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
 .tag-text { font-family: var(--font-sans); font-size: 0.8rem; color: rgba(255,255,255,0.8); }
+
+.tag-input-container {
+  display: flex;
+  margin-top: 0.75rem;
+  gap: 0.25rem;
+}
+.input-tag {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  outline: none;
+}
+.input-tag::placeholder { color: rgba(255, 255, 255, 0.6); }
+.input-tag:focus { border-color: var(--color-accent); background: rgba(0, 0, 0, 0.4); }
+.btn-tag {
+  background: var(--color-accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.btn-tag:disabled { opacity: 0.5; cursor: not-allowed; }
+
 .load-more-container { display: flex; justify-content: center; margin-top: var(--space-xl); padding-bottom: var(--space-lg); }
 :root.cruelty .filter-title { font-family: 'Impact'; color: #FF00FF; text-transform: uppercase; }
 :root.cruelty .highlight { color: #00FF00; }
