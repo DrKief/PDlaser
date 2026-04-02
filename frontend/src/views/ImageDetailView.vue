@@ -40,20 +40,24 @@ onMounted(async () => {
     isLoading.value = false;
   }
 });
+
 const getImageUrl = () => `/images/${imageId}`;
 const deleteImage = async () => {
   if (!confirm("Are you sure you want to delete this image?")) return;
   try {
     await http.delete(`/images/${imageId}`);
-    router.push("/"); // Back to gallery
+    router.push("/");
   } catch (error) {
     console.error(error);
   }
 };
+
+// Optional: Open advanced similarity search in gallery (as Sidebar triggers similarity from GalleryView)
 const findSimilar = () => {
-  router.push({ path: '/search', query: { sourceId: imageId } });
+  router.push({ path: '/', query: { sourceId: imageId } });
 };
 </script>
+
 <template>
   <div class="view-wrapper">
     <div v-if="isLoading" class="loading">Loading metadata...</div>
@@ -94,13 +98,21 @@ const findSimilar = () => {
           <div class="tags-list" v-if="metadata.Keywords && metadata.Keywords.length > 0">
             <span v-for="tag in metadata.Keywords" :key="tag" class="tag-pill">{{ tag }}</span>
           </div>
-          <div class="tag-input-container">
-            <input v-model="newTag" type="text" class="input-tag" placeholder="Add a tag..." @keyup.enter="addTag"
-              :disabled="isAddingTag" />
-            <button class="btn btn-tag" @click="addTag" :disabled="!newTag || isAddingTag">
-              <span v-if="isAddingTag">...</span>
-              <span v-else>+</span>
-            </button>
+          <div class="tag-input-container" style="position: relative; display: flex; align-items: center; margin-top: 0.75rem;">
+            <input 
+              v-model="newTag" 
+              type="text" 
+              class="input-tag" 
+              placeholder="Type a tag and press enter..." 
+              @keyup.enter="addTag"
+              :disabled="isAddingTag" 
+              style="width: 100%; padding-right: 2.5rem;"
+            />
+            <span 
+              v-if="isAddingTag" 
+              class="material-symbols-outlined" 
+              style="position: absolute; right: 10px; color: var(--text-secondary); animation: spin 1s linear infinite;"
+            >sync</span>
           </div>
         </div>
         <div class="actions">
@@ -115,12 +127,16 @@ const findSimilar = () => {
     </div>
   </div>
 </template>
+
 <style scoped>
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
   }
-
   to {
     opacity: 1;
   }
@@ -208,14 +224,7 @@ const findSimilar = () => {
   margin-top: 0.5rem;
 }
 
-.tag-input-container {
-  display: flex;
-  margin-top: 0.75rem;
-  gap: 0.25rem;
-}
-
 .input-tag {
-  flex: 1;
   background: var(--bg-element);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
@@ -233,26 +242,6 @@ const findSimilar = () => {
   border-color: var(--color-accent);
 }
 
-.btn-tag {
-  background: var(--color-accent);
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 1.2rem;
-  line-height: 1;
-}
-
-.btn-tag:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 .actions {
   display: flex;
   flex-direction: column;
@@ -268,8 +257,4 @@ const findSimilar = () => {
   background: var(--color-danger);
   color: #fff;
 }
-
-/* --- CRUELTY OVERRIDES --- */
-
-
 </style>

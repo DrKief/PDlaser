@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import http from '../api/http-client';
+
 const username = ref('');
 const password = ref('');
 const errorMessage = ref('');
+
 const handleLogin = async () => {
   try {
     const res = await http.post('/auth/login', {
@@ -11,13 +13,18 @@ const handleLogin = async () => {
       password: password.value
     });
     localStorage.setItem('token', res.data.token);
-    // Hard reload forces App.vue to instantly re-evaluate the auth/admin state
-    window.location.href = '/';
+    
+    // Retrieve and clear the intended route
+    const redirectUrl = localStorage.getItem('intendedRoute') || '/';
+    localStorage.removeItem('intendedRoute');
+    
+    window.location.href = redirectUrl;
   } catch (e) {
     errorMessage.value = "Invalid credentials.";
   }
 };
 </script>
+
 <template>
   <div class="view-wrapper auth-wrapper">
     <div class="meta-card login-card">
@@ -40,6 +47,7 @@ const handleLogin = async () => {
     </div>
   </div>
 </template>
+
 <style scoped>
 .auth-wrapper {
   display: flex;
@@ -74,6 +82,4 @@ const handleLogin = async () => {
 .text-link:hover {
   opacity: 0.7;
 }
-
-/* Cruelty Overrides */
 </style>

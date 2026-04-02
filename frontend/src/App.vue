@@ -3,11 +3,13 @@ import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import { useAuth } from "./composables/useAuth";
 import TagAutocomplete from "./shared/TagAutocomplete.vue";
+import http from "./api/http-client";
 
 const { isLoggedIn, logout } = useAuth();
 const router = useRouter();
 const theme = ref("light");
 let audioCtx: AudioContext | null = null;
+const popularTags = ref<string[]>([]);
 
 const isAdmin = computed(() => {
   const token = localStorage.getItem('token');
@@ -30,6 +32,13 @@ const username = computed(() => {
     return '';
   }
 });
+
+const fetchPopularTags = async () => {
+  try {
+    const res = await http.get('/images/keywords/popular?limit=15');
+    popularTags.value = res.data;
+  } catch (e) { console.error(e); }
+};
 
 const executeSearch = (tag: string) => {
   router.push({ path: '/', query: { tags: tag } });
@@ -73,14 +82,13 @@ const toggleTheme = async (target: string) => {
       link = document.createElement('link');
       link.id = linkId;
       link.rel = 'stylesheet';
+      // FIX: Append to DOM before awaiting the import
+      document.head.appendChild(link); 
       const cssUrl = (await import('./assets/theme-cruelty.css?url')).default;
       link.href = cssUrl;
-      document.head.appendChild(link);
     }
   } else {
-    if (link) {
-      link.remove();
-    }
+    if (link) link.remove();
   }
 };
 
@@ -95,6 +103,7 @@ onMounted(() => {
   }
   toggleTheme(theme.value);
   document.addEventListener('click', handleGlobalClick);
+  fetchPopularTags();
 });
 </script>
 
@@ -111,7 +120,6 @@ onMounted(() => {
       </div>
       <div class="nav-right">
         <nav class="nav-links">
-          <router-link to="/search">Advanced</router-link>
           <router-link to="/about">About</router-link>
           <router-link v-if="isAdmin" to="/admin">Admin</router-link>
         </nav>
@@ -123,7 +131,7 @@ onMounted(() => {
           <span class="material-symbols-outlined">contrast</span>
         </button>
         <template v-if="isLoggedIn">
-          <span class="user-badge" style="font-family: var(--font-mono); color: var(--text-muted); font-size: 0.85rem; cursor: default;">@{{ username }}</span>
+          <router-link to="/profile" class="user-badge" style="font-family: var(--font-mono); color: var(--text-muted); font-size: 0.85rem; text-decoration: none;">@{{ username }}</router-link>
           <button @click="logout" class="btn logout-btn" style="background: none; border: none; cursor: pointer; color: var(--text-secondary); font-family: var(--font-sans); font-weight: 500;">Logout</button>
           <router-link to="/upload" class="btn upload-btn">Upload</router-link>
         </template>
@@ -133,6 +141,16 @@ onMounted(() => {
         </template>
       </div>
     </header>
+
+    <div class="popular-tags-bar" v-if="popularTags.length">
+      <span class="trending-icon material-symbols-outlined">trending_up</span>
+      <div class="tags-scroll">
+        <button v-for="tag in popularTags" :key="tag" @click="executeSearch(tag)" class="popular-tag-btn">
+          #{{ tag }}
+        </button>
+      </div>
+    </div>
+
     <main class="content-canvas">
       <router-view></router-view>
     </main>
@@ -300,16 +318,35 @@ onMounted(() => {
   }
 }
 
-/* --- CRUELTY OVERRIDES --- */
-
-
-
-
-
-
 @keyframes pulse {
   0% { transform: scale(1); }
   50% { transform: scale(1.1); }
   100% { transform: scale(1); }
 }
+
+.popular-tags-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 2rem;
+  background: var(--bg-element);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.trending-icon { color: var(--text-secondary); font-size: 1.2rem; }
+.tags-scroll {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+.tags-scroll::-webkit-scrollbar { display: none; }
+.popular-tag-btn {
+  background: none; border: none;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.popular-tag-btn:hover { color: var(--color-accent); }
 </style>

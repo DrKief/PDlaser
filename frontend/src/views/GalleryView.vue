@@ -3,6 +3,7 @@ import { ref, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import http from "../api/http-client";
 import { useAuth } from "../composables/useAuth";
+import AdvancedSearchSidebar from '../components/AdvancedSearchSidebar.vue';
 
 interface Image {
   id: number;
@@ -19,11 +20,32 @@ const displayLimit = ref(30);
 const currentPage = ref(0);
 const totalPages = ref(1);
 
+const isSidebarOpen = ref(false);
+const similarityResultsOverride = ref<any[] | null>(null);
+const selectedSourceId = ref<number | null>(null);
+
+// Handle clicking the hover button
+const openSimilarityForImage = (id: number) => {
+  selectedSourceId.value = id;
+  isSidebarOpen.value = true;
+};
+
+// When the sidebar emits similarity results, override the gallery view
+const handleSimilarityResults = (results: any[]) => {
+  // Mapping similarity results to the Image interface
+  similarityResultsOverride.value = results.map((res) => ({
+    id: res.id,
+    uploader: 'Matched',
+    keywords: [`${((1 - res.score) * 100).toFixed(2)}% Match`]
+  }));
+};
+
 const loadImages = async (reset = false) => {
   if (reset) {
     currentPage.value = 0;
   }
   isLoading.value = true;
+  similarityResultsOverride.value = null; 
 
   try {
     const activeTag = route.query.tags as string;
@@ -34,7 +56,6 @@ const loadImages = async (reset = false) => {
       response = await http.get(`/images?page=${currentPage.value}&size=${displayLimit.value}`);
     }
 
-    // Fixed 'unknown' types by explicitly typing the data coming from the repository
     const { content, totalElements } = response.data as { content: any[], totalElements: number };
     const formatted: Image[] = content.map((img: any) => ({ 
         id: img.id,
@@ -64,81 +85,130 @@ const goToPage = (pageNumber: number) => {
 
 const clearFilter = () => {
   router.push('/');
+  similarityResultsOverride.value = null;
 };
 
-onMounted(() => loadImages(true));
+onMounted(() => {
+  if (route.query.sourceId) {
+    selectedSourceId.value = parseInt(route.query.sourceId as string);
+    isSidebarOpen.value = true;
+  }
+  loadImages(true);
+});
+
 watch(() => route.query.tags, () => loadImages(true));
 
-const getImageUrl = (image: Image) => `/images/${image.id}`;
 const goToImage = (id: number) => router.push(`/image/${id}`);
 </script>
 
 <template>
-  <div class="view-wrapper">
-    <div class="gallery-header" v-if="route.query.tags">
-      <h2 class="filter-title">
-        Results for: <span class="highlight">#{{ route.query.tags }}</span>
-      </h2>
-      <button class="btn btn-outline" @click="clearFilter">Clear Filter</button>
-    </div>
+  <div class="gallery-layout">
+    <div class="main-content">
+      <div class="gallery-header">
+        <h2 class="filter-title" v-if="similarityResultsOverride">Visual Matches</h2>
+        <h2 class="filter-title" v-else-if="route.query.tags">Results for: <span class="highlight">#{{ route.query.tags }}</span></h2>
+        <h2 class="filter-title" v-else>Gallery</h2>
+        
+        <div class="header-actions">
+          <button class="btn btn-outline" @click="isSidebarOpen = !isSidebarOpen" style="margin-right: 1rem;">
+            <span class="material-symbols-outlined" style="vertical-align: middle;">tune</span> Filters
+          </button>
+          <button class="btn btn-outline" v-if="route.query.tags || similarityResultsOverride" @click="clearFilter">Clear Filter</button>
+        </div>
+      </div>
 
-    <div v-if="isLoading && displayedImages.length === 0" class="empty-state label-text">Loading archive...</div>
-    
-    <div v-else-if="displayedImages.length === 0" class="empty-state">
-      <h2 style="margin-bottom: 1rem;">No images found.</h2>
-      <p class="label-text" v-if="route.query.tags">Try a different search term.</p>
-      <router-link to="/upload" class="btn" v-else-if="isLoggedIn">Upload your first image</router-link>
-      <p class="label-text" v-else>You must log in to upload images.</p>
-    </div>
+      <div v-if="isLoading && displayedImages.length === 0" class="empty-state label-text">Loading archive...</div>
+      
+      <div v-else-if="!similarityResultsOverride && displayedImages.length === 0" class="empty-state">
+        <h2 style="margin-bottom: 1rem;">No images found.</h2>
+        <p class="label-text" v-if="route.query.tags">Try a different search term.</p>
+        <router-link to="/upload" class="btn" v-else-if="isLoggedIn">Upload your first image</router-link>
+        <p class="label-text" v-else>You must log in to upload images.</p>
+      </div>
 
-    <div v-else>
-      <div class="masonry-grid">
-        <article 
-          v-for="image in displayedImages" 
-          :key="image.id" 
-          class="artifact-card" 
-          @click="goToImage(image.id)"
-        >
-          <img :src="getImageUrl(image)" :alt="'Image ' + image.id" class="artifact-img" loading="lazy" />
-          <div class="card-overlay">
-            <div class="overlay-content">
-              <h3 class="artifact-name">@{{ image.uploader || 'System' }}</h3>
-              <div class="tags" v-if="image.keywords && image.keywords.length">
-                <span class="tag-text">#{{ image.keywords.join(', #') }}</span>
+      <div v-else>
+        <div class="masonry-grid">
+          <article 
+            v-for="image in (similarityResultsOverride || displayedImages)" 
+            :key="image.id" 
+            class="artifact-card"
+          >
+            <img :src="`/images/${image.id}`" @click="goToImage(image.id)" class="artifact-img" loading="lazy" />
+            
+            <div class="hover-actions">
+              <button @click.stop="openSimilarityForImage(image.id)" title="Find Similar" class="btn-icon" style="background: var(--bg-surface); padding: 0.5rem; border-radius: 4px; color: var(--text-primary);">
+                <span class="material-symbols-outlined">image_search</span>
+              </button>
+            </div>
+
+            <div class="card-overlay" @click="goToImage(image.id)">
+              <div class="overlay-content">
+                <h3 class="artifact-name">@{{ image.uploader || 'System' }}</h3>
+                <div class="tags" v-if="image.keywords && image.keywords.length">
+                  <span class="tag-text">#{{ image.keywords.join(', #') }}</span>
+                </div>
               </div>
             </div>
-          </div>
-        </article>
-      </div>
-
-      <div class="pagination-controls" v-if="totalPages > 1">
-        <button class="btn btn-outline" @click="goToPage(currentPage - 1)" :disabled="currentPage === 0 || isLoading">
-          &laquo; Prev
-        </button>
-
-        <div class="page-numbers">
-          <button 
-            v-for="page in totalPages" 
-            :key="page" 
-            class="btn page-btn"
-            :class="{ 'active': page - 1 === currentPage }" 
-            @click="goToPage(page - 1)" 
-            :disabled="isLoading"
-          >
-            {{ page }}
-          </button>
+          </article>
         </div>
 
-        <button class="btn btn-outline" @click="goToPage(currentPage + 1)"
-          :disabled="currentPage === totalPages - 1 || isLoading">
-          Next &raquo;
-        </button>
+        <div class="pagination-controls" v-if="!similarityResultsOverride && totalPages > 1">
+          <button class="btn btn-outline" @click="goToPage(currentPage - 1)" :disabled="currentPage === 0 || isLoading">
+            &laquo; Prev
+          </button>
+
+          <div class="page-numbers">
+            <button 
+              v-for="page in totalPages" 
+              :key="page" 
+              class="btn page-btn"
+              :class="{ 'active': page - 1 === currentPage }" 
+              @click="goToPage(page - 1)" 
+              :disabled="isLoading"
+            >
+              {{ page }}
+            </button>
+          </div>
+
+          <button class="btn btn-outline" @click="goToPage(currentPage + 1)"
+            :disabled="currentPage === totalPages - 1 || isLoading">
+            Next &raquo;
+          </button>
+        </div>
       </div>
     </div>
+
+    <AdvancedSearchSidebar 
+      v-if="isSidebarOpen" 
+      :initial-source-id="selectedSourceId"
+      @close="isSidebarOpen = false; selectedSourceId = null;"
+      @executeSimilarity="handleSimilarityResults"
+    />
   </div>
 </template>
 
 <style scoped>
+.gallery-layout {
+  display: flex;
+  gap: 2rem;
+  align-items: flex-start;
+}
+.main-content {
+  flex: 1;
+  min-width: 0;
+}
+.hover-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 10;
+}
+.artifact-card:hover .hover-actions {
+  opacity: 1;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
@@ -215,7 +285,7 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
   justify-content: flex-end;
   padding: 1.5rem;
   color: #fff;
-  pointer-events: none;
+  cursor: pointer;
 }
 
 .artifact-card:hover .card-overlay { opacity: 1; }
@@ -270,12 +340,4 @@ const goToImage = (id: number) => router.push(`/image/${id}`);
   color: #fff;
   border-color: var(--color-accent);
 }
-
-
-
-
-
-
-
-
 </style>
