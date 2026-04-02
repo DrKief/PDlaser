@@ -22,9 +22,9 @@ public class ImageSearchEndpointLayer {
   public ResponseEntity<?> getSimilarImages(
     @PathVariable("id") long id,
     @RequestParam(value = "number", defaultValue = "10") int number,
-    @RequestParam(value = "descriptor", defaultValue = "rgb") String descriptor
+    @RequestParam(value = "descriptor", defaultValue = "weighted") String descriptor
   ) {
-    List<String> validDescriptors = List.of("gradient", "saturation", "rgb", "cielab");
+    List<String> validDescriptors = List.of("gradient", "saturation", "rgb", "cielab", "weighted");
     if (!validDescriptors.contains(descriptor.toLowerCase())) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid descriptor.");
     }

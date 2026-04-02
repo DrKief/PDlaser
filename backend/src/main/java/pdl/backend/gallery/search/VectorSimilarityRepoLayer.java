@@ -18,6 +18,61 @@ public class VectorSimilarityRepoLayer {
     }
 
     public List<Map<String, Object>> findSimilar(long targetId, String type, int limit) {
+        if ("weighted".equalsIgnoreCase(type)) {
+            PGvector[] vectors;
+            try {
+                vectors = jdbcTemplate.queryForObject(
+                    "SELECT hogvector, hsvvector, labvector FROM imagedescriptors WHERE imageid = ?",
+                    (rs, rowNum) -> {
+                        try {
+                            return new PGvector[] {
+                                new PGvector(rs.getString("hogvector")),
+                                new PGvector(rs.getString("hsvvector")),
+                                new PGvector(rs.getString("labvector"))
+                            };
+                        } catch (java.sql.SQLException e) {
+                            return null;
+                        }
+                    },
+                    targetId
+                );
+            } catch (EmptyResultDataAccessException e) {
+                return null;
+            }
+
+            if (vectors == null) {
+                return null;
+            }
+
+            PGvector targetHog = vectors[0];
+            PGvector targetHsv = vectors[1];
+            PGvector targetLab = vectors[2];
+
+            double wHog = 0.50;
+            double wHsv = 0.15;
+            double wLab = 0.35;
+
+            String sql =
+                "WITH vector_matches AS (" +
+                "  SELECT imageid, " +
+                "    (? * (hogvector <-> ?) + " +
+                "     ? * (labvector <=> ?) + " +
+                "     ? * (hsvvector <-> ?)) as distance " +
+                "  FROM imagedescriptors WHERE imageid != ? " +
+                "  ORDER BY " +
+                "    (? * (hogvector <-> ?) + " +
+                "     ? * (labvector <=> ?) + " +
+                "     ? * (hsvvector <-> ?)) ASC LIMIT ?" +
+                ") " +
+                "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
+                "FROM vector_matches v JOIN images i ON v.imageid = i.id " +
+                "ORDER BY v.distance ASC";
+
+            return jdbcTemplate.queryForList(sql,
+                wHog, targetHog, wLab, targetLab, wHsv, targetHsv, targetId,
+                wHog, targetHog, wLab, targetLab, wHsv, targetHsv, limit);
+        }
+
         String vectorColumn = switch (type.toLowerCase()) {
             case "gradient" -> "hogvector";
             case "saturation" -> "hsvvector";

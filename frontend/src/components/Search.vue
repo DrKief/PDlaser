@@ -15,7 +15,7 @@ const isTagFocused = ref(false);
 let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 // Similarity State
 const selectedSourceImageId = ref<number | null>(null);
-const similarityAlgorithm = ref("gradient");
+const similarityAlgorithm = ref("weighted");
 const similarityCount = ref(10);
 const similarityResults = ref<any[]>([]);
 const errorMsg = ref("");
@@ -136,10 +136,12 @@ const performSimilaritySearch = async () => {
             <div class="form-group">
               <label class="label-text">Algorithm</label>
               <select v-model="similarityAlgorithm">
+                <option value="weighted">Weighted (All Factors)</option>
                 <option value="gradient">HOG (Shape/Edges)</option>
                 <option value="cielab">CIELAB (Human Vision)</option>
                 <option value="rgb">RGB (Color Dist)</option>
                 <option value="saturation">HSV (Intensity)</option>
+
               </select>
             </div>
             <div class="form-group">
