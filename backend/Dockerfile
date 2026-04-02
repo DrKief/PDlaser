@@ -1,27 +1,19 @@
-# Stage 1: Build the Application and Run Tests
+# Stage 1: Build remains the same (Alpine is fine for building)
 FROM maven:3.9.6-eclipse-temurin-21-alpine AS builder
 WORKDIR /app
-
-# The -B (Batch mode) and -ntp (No Transfer Progress) flags 
-# prevent the massive "Download 1/500 KB" spam in logs.
 ENV MAVEN_ARGS="-B -ntp"
-
-# Copy POM and download dependencies to utilize Docker caching
 COPY pom.xml .
 RUN mvn $MAVEN_ARGS dependency:go-offline
-
-# Copy the source code
 COPY src ./src
-
-# Run tests and package. If tests fail, the build stops here.
 RUN mvn $MAVEN_ARGS clean package
 
 # Stage 2: Run the Application
-FROM eclipse-temurin:21-jre-alpine
+# CHANGED: Switched from alpine to the standard Ubuntu-based image for native AI support
+FROM eclipse-temurin:21-jre
 WORKDIR /app
 
-# Create security user and group
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+# Create security user and group (Ubuntu syntax is slightly different)
+RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 
 # Pre-create image directory with correct ownership
 RUN mkdir -p /var/lib/pdl/images \
