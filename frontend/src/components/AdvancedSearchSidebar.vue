@@ -1,18 +1,9 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
-import { useRouter } from "vue-router";
+import { ref, watch, computed } from "vue";
 import http from "../api/http-client";
-import TagAutocomplete from "../shared/TagAutocomplete.vue";
 
 const props = defineProps<{ initialSourceId?: number | null }>();
 const emit = defineEmits(['close', 'executeSimilarity']);
-
-const router = useRouter();
-
-const activeTab = ref<"attributes" | "similarity">(props.initialSourceId ? "similarity" : "attributes");
-
-// Attributes State
-const searchKeywords = ref<string[]>([]);
 
 // Similarity State
 const uploadMode = ref<"db" | "ephemeral">("db");
@@ -22,13 +13,20 @@ const similarityAlgorithm = ref("semantic");
 const similarityCount = ref(10);
 const errorMsg = ref("");
 
-// If the Gallery passes a new ID, update the sidebar automatically
+// Automatically update state if gallery hovers update the prop
 watch(() => props.initialSourceId, (newId) => {
   if (newId) {
     selectedDbId.value = newId;
-    activeTab.value = "similarity";
     uploadMode.value = "db";
   }
+});
+
+// Interactive design heuristic: Do not allow interaction without valid state
+const isSourceSelected = computed(() => {
+  if (uploadMode.value === 'db') {
+    return !!selectedDbId.value;
+  }
+  return !!uploadTarget.value;
 });
 
 const onFileSelect = (e: Event) => {
@@ -36,22 +34,6 @@ const onFileSelect = (e: Event) => {
   if (target.files && target.files.length > 0) {
     uploadTarget.value = target.files[0];
   }
-};
-
-const addTag = (tag: string) => {
-  if (tag && !searchKeywords.value.includes(tag)) {
-    searchKeywords.value.push(tag);
-  }
-};
-
-const removeTag = (tag: string) => {
-  searchKeywords.value = searchKeywords.value.filter((t: string) => t !== tag);
-};
-
-const triggerAttributeSearch = () => {
-  if (searchKeywords.value.length === 0) return;
-  router.push({ path: '/', query: { tags: searchKeywords.value.join(',') } });
-  emit('close');
 };
 
 const triggerSimilaritySearch = async () => {
@@ -89,32 +71,21 @@ const triggerSimilaritySearch = async () => {
 <template>
   <aside class="search-sidebar">
     <div class="sidebar-header">
-      <h3>Filters & Matches</h3>
-      <button @click="$emit('close')" class="btn-icon material-symbols-outlined">close</button>
-    </div>
-    
-    <div class="tab-switcher">
-      <button :class="{ active: activeTab === 'attributes' }" @click="activeTab = 'attributes'">Tags</button>
-      <button :class="{ active: activeTab === 'similarity' }" @click="activeTab = 'similarity'">Visual Match</button>
+      <h3>Visual Match</h3>
+      <button @click="$emit('close')" class="btn-icon material-symbols-outlined" title="Close Filters">close</button>
     </div>
 
-    <div v-show="activeTab === 'attributes'" class="sidebar-content">
-       <p class="label-text mb-2">Must Contain Tags (AND condition)</p>
-       <div class="tags-list mb-4" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-          <span v-for="tag in searchKeywords" :key="tag" class="tag-pill">
-            {{ tag }} <button @click="removeTag(tag)" class="tag-remove">&times;</button>
-          </span>
-       </div>
-       <TagAutocomplete @select="addTag" placeholder="Add a tag..." />
-       <button class="btn w-full mt-4" @click="triggerAttributeSearch">Apply Filters</button>
-    </div>
+    <div class="sidebar-content">
+      <p v-if="!isSourceSelected" class="help-text warning-text">
+        <span class="material-symbols-outlined" style="font-size: 1.2rem;">info</span>
+        Select a gallery image or upload a target file to enable similarity settings.
+      </p>
 
-    <div v-show="activeTab === 'similarity'" class="sidebar-content">
       <div class="form-group mb-4">
-        <label class="label-text">Source Image Type</label>
+        <label class="label-text">Source Target</label>
         <select v-model="uploadMode" style="margin-top: 0.5rem;">
           <option value="db">From Database (ID)</option>
-          <option value="ephemeral">Upload Temporary Target</option>
+          <option value="ephemeral">Upload Temporary Image</option>
         </select>
       </div>
 
@@ -128,21 +99,24 @@ const triggerSimilaritySearch = async () => {
         <input type="file" @change="onFileSelect" accept="image/*" style="margin-top: 0.5rem; padding-bottom: 0;" />
       </div>
 
-      <div class="form-group mt-4">
-        <label class="label-text">Algorithm</label>
-        <select v-model="similarityAlgorithm" style="margin-top: 0.5rem;">
-          <option value="semantic">Semantic (AI)</option>
-          <option value="cielab">CIELAB (Human Vision)</option>
-          <option value="gradient">HOG (Shape/Edges)</option>
-        </select>
-      </div>
+      <fieldset :disabled="!isSourceSelected" style="border: none; padding: 0; margin: 0;">
+        <div class="form-group mt-4" :class="{ 'disabled-group': !isSourceSelected }">
+          <label class="label-text">Algorithm</label>
+          <select v-model="similarityAlgorithm" style="margin-top: 0.5rem;">
+            <option value="semantic">Semantic (AI)</option>
+            <option value="cielab">CIELAB (Human Vision)</option>
+            <option value="gradient">HOG (Shape/Edges)</option>
+          </select>
+        </div>
 
-      <div class="form-group mt-4">
-        <label class="label-text">Result Limit</label>
-        <input type="number" v-model.number="similarityCount" min="1" max="50" />
-      </div>
+        <div class="form-group mt-4" :class="{ 'disabled-group': !isSourceSelected }">
+          <label class="label-text">Result Limit</label>
+          <input type="number" v-model.number="similarityCount" min="1" max="50" />
+        </div>
 
-      <button class="btn w-full mt-4" @click="triggerSimilaritySearch">Find Matches</button>
+        <button class="btn w-full mt-4" @click="triggerSimilaritySearch" :disabled="!isSourceSelected">Find Matches</button>
+      </fieldset>
+
       <p v-if="errorMsg" class="error-text">{{ errorMsg }}</p>
     </div>
   </aside>
@@ -154,25 +128,29 @@ const triggerSimilaritySearch = async () => {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
-  height: calc(100vh - 120px);
+  height: calc(100vh - 140px);
   position: sticky;
-  top: 100px;
+  top: 120px; /* Offset for both Nav bars */
   padding: 1.5rem;
   overflow-y: auto;
   box-shadow: var(--shadow-subtle);
 }
-.sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-.sidebar-header h3 { margin: 0; font-size: 1.25rem; }
-.tab-switcher { display: flex; border-bottom: 1px solid var(--border-subtle); margin-bottom: 1.5rem; }
-.tab-switcher button { flex: 1; background: none; border: none; padding: 0.75rem; cursor: pointer; color: var(--text-secondary); font-weight: 500;}
-.tab-switcher button.active { border-bottom: 2px solid var(--color-accent); color: var(--text-primary); }
-.mb-2 { margin-bottom: 0.5rem; }
+.sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 1rem;}
+.sidebar-header h3 { margin: 0; font-size: 1.25rem; font-family: var(--font-headline); }
 .mb-4 { margin-bottom: 1rem; }
 .mt-4 { margin-top: 1rem; }
 .w-full { width: 100%; }
-.btn-icon { background: none; border: none; cursor: pointer; color: var(--text-secondary); }
+
+.btn-icon { background: none; border: none; cursor: pointer; color: var(--text-secondary); padding: 0;}
 .btn-icon:hover { color: var(--color-danger); }
-.tag-pill { background: var(--bg-element); padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.8rem; display: flex; align-items: center; gap: 0.25rem; }
-.tag-remove { background: none; border: none; cursor: pointer; color: var(--text-secondary); padding: 0 2px; }
-.tag-remove:hover { color: var(--color-danger); }
+
+/* Impeccable Context: Disabled States */
+.disabled-group { opacity: 0.5; pointer-events: none; transition: opacity 0.2s; }
+.help-text { 
+  display: flex; align-items: center; gap: 0.5rem; 
+  font-size: 0.85rem; padding: 0.75rem; 
+  border-radius: 4px; background: var(--bg-element); 
+  color: var(--text-secondary); margin-bottom: 1rem; 
+}
+.warning-text { border-left: 3px solid var(--color-accent); }
 </style>
