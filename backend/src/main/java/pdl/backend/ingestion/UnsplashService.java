@@ -116,10 +116,14 @@ public class UnsplashService {
           // Extract only the filename from potential folder structure in ZIP (Prevents ZipSlip vulnerability)
           String fileName = new File(entryName).getName();
           
-          if (fileName.endsWith(".tsv")) {
-            Path targetPath = Paths.get(datasetDir, fileName);
-            Files.copy(zis, targetPath, StandardCopyOption.REPLACE_EXISTING);
-            filesExtracted++;
+
+          if (fileName.contains(".tsv")) {
+              // Normalize Unsplash filenames like 'photos.tsv000' to 'photos.tsv'
+              String targetName = fileName.substring(0, fileName.indexOf(".tsv") + 4);
+              Path targetPath = Paths.get(datasetDir, targetName);
+              
+              Files.copy(zis, targetPath, StandardCopyOption.REPLACE_EXISTING);
+              filesExtracted++;
           }
           zipEntry = zis.getNextEntry();
         }
