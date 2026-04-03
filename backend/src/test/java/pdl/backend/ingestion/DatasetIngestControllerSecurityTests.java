@@ -35,21 +35,23 @@ class DatasetIngestControllerSecurityTests {
 
     String payload = "{\"limit\":50,\"offset\":0}";
 
-        mockMvc
-            .perform(
-                post("/admin/unsplash/sync")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(payload)
-                    .with(
-                        SecurityMockMvcRequestPostProcessors.jwt()
-                            .authorities(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"))
-                            .jwt(jwt -> {
-                                jwt.claim("role", "ROLE_ADMIN");
-                                jwt.claim("userId", 1L);
-                            })
-                    )
-            )
-            .andExpect(status().isOk());
+    mockMvc
+      .perform(
+        post("/admin/unsplash/sync")
+          .contentType(MediaType.APPLICATION_JSON)
+          .content(payload)
+          .with(
+            SecurityMockMvcRequestPostProcessors.jwt()
+              .authorities(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN")
+              )
+              .jwt(jwt -> {
+                jwt.claim("role", "ROLE_ADMIN");
+                jwt.claim("userId", 1L);
+              })
+          )
+      )
+      .andExpect(status().isOk());
 
     verify(unsplashService).syncMetadata(50, 0);
   }
@@ -62,11 +64,11 @@ class DatasetIngestControllerSecurityTests {
           .contentType(MediaType.APPLICATION_JSON)
           .content("{}")
           .with(
-          SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> {
-            jwt.claim("role", "ROLE_USER");
-            jwt.claim("userId", 2L);
-          })
-        )
+            SecurityMockMvcRequestPostProcessors.jwt().jwt(jwt -> {
+              jwt.claim("role", "ROLE_USER");
+              jwt.claim("userId", 2L);
+            })
+          )
       )
       .andExpect(status().isForbidden());
   }

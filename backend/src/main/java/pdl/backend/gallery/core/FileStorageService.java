@@ -43,10 +43,10 @@ public class FileStorageService {
     String hash = calculateSHA256(img.getData());
 
     // Prevent duplicates EXCEPT when updating an existing REMOTE_METADATA record
-  Optional<MediaRecord> existing = recordRepository.findByHash(hash);
-  if (existing.isPresent() && (img.getId() == 0 || existing.get().getId() != img.getId())) {
+    Optional<MediaRecord> existing = recordRepository.findByHash(hash);
+    if (existing.isPresent() && (img.getId() == 0 || existing.get().getId() != img.getId())) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "Image already exists on the server.");
-  }
+    }
 
     img.setHash(hash);
     img.setFormat(getFileExtension(img.getName()));
@@ -54,7 +54,9 @@ public class FileStorageService {
 
     int width = 0;
     int height = 0;
-    try (ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(img.getData()))) {
+    try (
+      ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(img.getData()))
+    ) {
       Iterator<ImageReader> readers = ImageIO.getImageReaders(in);
       if (readers.hasNext()) {
         ImageReader reader = readers.next();

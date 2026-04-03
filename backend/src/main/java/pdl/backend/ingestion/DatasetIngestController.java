@@ -24,7 +24,10 @@ public class DatasetIngestController {
 
   @PostMapping("/unsplash/sync")
   public ResponseEntity<?> syncMetadata(@RequestBody Map<String, Integer> request) {
-    if (unsplashService.getStatus().startsWith("SYNCING") || unsplashService.getStatus().startsWith("DOWNLOADING")) {
+    if (
+      unsplashService.getStatus().startsWith("SYNCING") ||
+      unsplashService.getStatus().startsWith("DOWNLOADING")
+    ) {
       return ResponseEntity.badRequest().body(Map.of("message", "Job already in progress."));
     }
     int limit = request.getOrDefault("limit", 1000);
@@ -35,16 +38,19 @@ public class DatasetIngestController {
 
   @GetMapping("/unsplash/catalog")
   public ResponseEntity<?> getCatalog(
-      @RequestParam(defaultValue = "0") int page,
-      @RequestParam(defaultValue = "30") int size,
-      @RequestParam(required = false) String query
+    @RequestParam(defaultValue = "0") int page,
+    @RequestParam(defaultValue = "30") int size,
+    @RequestParam(required = false) String query
   ) {
-      return ResponseEntity.ok(unsplashService.getCatalog(page, size, query));
+    return ResponseEntity.ok(unsplashService.getCatalog(page, size, query));
   }
 
   @PostMapping("/unsplash/import")
   public ResponseEntity<?> importSelected(@RequestBody List<Long> imageIds) {
-    if (unsplashService.getStatus().startsWith("SYNCING") || unsplashService.getStatus().startsWith("DOWNLOADING")) {
+    if (
+      unsplashService.getStatus().startsWith("SYNCING") ||
+      unsplashService.getStatus().startsWith("DOWNLOADING")
+    ) {
       return ResponseEntity.badRequest().body(Map.of("message", "Job already in progress."));
     }
     unsplashService.importSelectedImages(imageIds);

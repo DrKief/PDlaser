@@ -37,7 +37,7 @@ const fetchCatalog = async (page = 0) => {
   currentPage.value = page;
   try {
     const res = await http.get(`/admin/unsplash/catalog`, {
-      params: { page, size: 24, query: searchQuery.value }
+      params: { page, size: 24, query: searchQuery.value },
     });
     catalogImages.value = res.data.content;
     totalPages.value = res.data.totalPages || 1;
@@ -58,7 +58,7 @@ const selectAll = () => {
   if (selectedIds.value.size === catalogImages.value.length) {
     selectedIds.value.clear();
   } else {
-    catalogImages.value.forEach(img => selectedIds.value.add(img.id));
+    catalogImages.value.forEach((img) => selectedIds.value.add(img.id));
   }
 };
 
@@ -93,7 +93,9 @@ onUnmounted(() => {
   <div class="view-wrapper">
     <header class="page-header text-center">
       <h1 class="page-title">Dataset Orchestrator</h1>
-      <p class="page-subtitle">Map remote metadata, search, and selectively import High-Res assets.</p>
+      <p class="page-subtitle">
+        Map remote metadata, search, and selectively import High-Res assets.
+      </p>
     </header>
 
     <div class="system-status-bar" :class="{ active: status !== 'IDLE' }">
@@ -102,19 +104,23 @@ onUnmounted(() => {
     </div>
 
     <div class="tabs">
-      <button :class="{ active: activeTab === 'sync' }" @click="activeTab = 'sync'">1. Sync Metadata</button>
-      <button :class="{ active: activeTab === 'catalog' }" @click="activeTab = 'catalog'">2. Remote Catalog</button>
+      <button :class="{ active: activeTab === 'sync' }" @click="activeTab = 'sync'">
+        1. Sync Metadata
+      </button>
+      <button :class="{ active: activeTab === 'catalog' }" @click="activeTab = 'catalog'">
+        2. Remote Catalog
+      </button>
     </div>
 
     <!-- TAB 1: METADATA SYNC -->
-    <div v-if="activeTab === 'sync'" class="card meta-card max-w-lg" style="margin: 0 auto;">
+    <div v-if="activeTab === 'sync'" class="card meta-card max-w-lg" style="margin: 0 auto">
       <h3 class="meta-title">Map Unsplash TSV Database</h3>
       <p class="help-text">
-        Reads <code>photos.tsv</code> and populates the database with EXIF and location data. 
+        Reads <code>photos.tsv</code> and populates the database with EXIF and location data.
         <strong>Does NOT download images yet.</strong> Fast and lightweight.
       </p>
-      
-      <div style="display: flex; gap: 1rem; margin: 1.5rem 0;">
+
+      <div style="display: flex; gap: 1rem; margin: 1.5rem 0">
         <div class="form-group" style="flex: 1">
           <label class="label-text">Rows to Process (Limit)</label>
           <input type="number" v-model="limit" min="1" max="100000" />
@@ -132,11 +138,11 @@ onUnmounted(() => {
     <!-- TAB 2: REMOTE CATALOG -->
     <div v-if="activeTab === 'catalog'" class="catalog-section">
       <div class="catalog-toolbar">
-        <input 
-          type="text" 
-          v-model="searchQuery" 
+        <input
+          type="text"
+          v-model="searchQuery"
           @keydown.enter="handleSearch"
-          placeholder="Search by Camera, Location, or Photographer..." 
+          placeholder="Search by Camera, Location, or Photographer..."
           class="search-bar"
         />
         <button class="btn" @click="handleSearch">Search</button>
@@ -144,22 +150,24 @@ onUnmounted(() => {
       </div>
 
       <div class="catalog-grid">
-        <div 
-          v-for="img in catalogImages" 
-          :key="img.id" 
+        <div
+          v-for="img in catalogImages"
+          :key="img.id"
           class="catalog-card"
           :class="{ selected: selectedIds.has(img.id) }"
           @click="toggleSelection(img.id)"
         >
           <div class="checkbox-indicator">
-            <span class="material-symbols-outlined" v-if="selectedIds.has(img.id)">check_circle</span>
+            <span class="material-symbols-outlined" v-if="selectedIds.has(img.id)"
+              >check_circle</span
+            >
           </div>
           <!-- Request a 400px wide thumbnail from Unsplash CDN for fast previewing -->
           <img :src="img.remote_url + '?w=400'" class="thumb" loading="lazy" />
           <div class="info">
-            <span class="photog">📸 {{ img.photographer_name || 'Unknown' }}</span>
-            <span class="detail">🌍 {{ img.location_country || 'Unknown Loc' }}</span>
-            <span class="detail">📷 {{ img.camera_make || 'Unknown Camera' }}</span>
+            <span class="photog">📸 {{ img.photographer_name || "Unknown" }}</span>
+            <span class="detail">🌍 {{ img.location_country || "Unknown Loc" }}</span>
+            <span class="detail">📷 {{ img.camera_make || "Unknown Camera" }}</span>
             <span class="detail">⬇️ {{ img.stats_downloads }} downloads</span>
           </div>
         </div>
@@ -170,13 +178,27 @@ onUnmounted(() => {
       </div>
 
       <div class="pagination" v-if="totalPages > 1">
-        <button class="btn-outline" @click="fetchCatalog(currentPage - 1)" :disabled="currentPage === 0">Prev</button>
+        <button
+          class="btn-outline"
+          @click="fetchCatalog(currentPage - 1)"
+          :disabled="currentPage === 0"
+        >
+          Prev
+        </button>
         <span class="page-info">Page {{ currentPage + 1 }} of {{ totalPages }}</span>
-        <button class="btn-outline" @click="fetchCatalog(currentPage + 1)" :disabled="currentPage === totalPages - 1">Next</button>
+        <button
+          class="btn-outline"
+          @click="fetchCatalog(currentPage + 1)"
+          :disabled="currentPage === totalPages - 1"
+        >
+          Next
+        </button>
       </div>
 
       <div class="sticky-action-bar" v-if="selectedIds.size > 0">
-        <span><strong>{{ selectedIds.size }}</strong> images selected for import.</span>
+        <span
+          ><strong>{{ selectedIds.size }}</strong> images selected for import.</span
+        >
         <button class="btn" @click="importSelected" :disabled="status !== 'IDLE'">
           Download & Vectorize
         </button>
@@ -186,8 +208,12 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-.text-center { text-align: center; }
-.max-w-lg { max-width: 600px; }
+.text-center {
+  text-align: center;
+}
+.max-w-lg {
+  max-width: 600px;
+}
 
 .system-status-bar {
   background: var(--bg-surface);
@@ -210,7 +236,11 @@ onUnmounted(() => {
 .system-status-bar.active .icon {
   animation: spin 2s linear infinite;
 }
-@keyframes spin { 100% { transform: rotate(360deg); } }
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
 
 .tabs {
   display: flex;
@@ -232,12 +262,15 @@ onUnmounted(() => {
   border-radius: 4px;
   transition: all 0.2s;
 }
-.tabs button.active, .tabs button:hover {
+.tabs button.active,
+.tabs button:hover {
   background: var(--bg-element);
   color: var(--text-primary);
 }
 
-.meta-card { padding: 2rem; }
+.meta-card {
+  padding: 2rem;
+}
 
 .catalog-toolbar {
   display: flex;
@@ -266,7 +299,9 @@ onUnmounted(() => {
   overflow: hidden;
   cursor: pointer;
   position: relative;
-  transition: transform 0.2s, border-color 0.2s;
+  transition:
+    transform 0.2s,
+    border-color 0.2s;
 }
 .catalog-card:hover {
   transform: translateY(-4px);
@@ -280,7 +315,7 @@ onUnmounted(() => {
   top: 8px;
   left: 8px;
   color: var(--color-accent);
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0, 0.5);
   border-radius: 50%;
   display: flex;
 }
@@ -297,8 +332,19 @@ onUnmounted(() => {
   gap: 0.25rem;
   font-size: 0.8rem;
 }
-.photog { font-weight: bold; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.detail { color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.photog {
+  font-weight: bold;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.detail {
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 .empty-catalog {
   text-align: center;
@@ -322,7 +368,10 @@ onUnmounted(() => {
   border-radius: 4px;
   cursor: pointer;
 }
-.btn-outline:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-outline:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .sticky-action-bar {
   position: fixed;
@@ -336,6 +385,6 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   z-index: 100;
-  box-shadow: 0 -4px 20px rgba(0,0,0,0.2);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
 }
 </style>
