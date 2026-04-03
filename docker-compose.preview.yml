@@ -27,8 +27,12 @@ services:
       - DATABASE_USER=pdl_user
       - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
       - APP_IMAGE_DIRECTORY=/var/lib/pdl/images
+      - APP_UNSPLASH_DATASET_DIR=/var/lib/pdl/datasets
     expose:
       - "8080"
+    volumes:
+      - preview_images:/var/lib/pdl/images
+      - preview_datasets:/var/lib/pdl/datasets
     depends_on:
       db:
         condition: service_healthy
@@ -43,3 +47,7 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+volumes:
+  preview_images:
+  preview_datasets:
