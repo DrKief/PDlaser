@@ -268,6 +268,6 @@ const findSimilar = () => {
 
 .danger:hover {
   background: var(--color-danger);
-  color: var(--text-on-danger);
+  color: #fff;
 }
 </style>

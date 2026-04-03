@@ -66,24 +66,8 @@ public class DatasetIngestController {
     );
   }
 
-<<<<<<< HEAD
   @GetMapping("/unsplash/status")
   public ResponseEntity<?> getImportStatus() {
     return ResponseEntity.ok(Map.of("status", unsplashImporter.getStatus()));
   }
-=======
-    @PostMapping("/unsplash/import/full")
-    public ResponseEntity<?> startUnsplashFullImport() {
-        if (unsplashImporter.getStatus().startsWith("IMPORTING") || unsplashImporter.getStatus().startsWith("FINDING")) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Import already in progress."));
-        }
-        unsplashImporter.importFullDataset();
-        return ResponseEntity.ok(Map.of("message", "Raw Postgres dataset import initiated."));
-    }
-
-    @GetMapping("/unsplash/status")
-    public ResponseEntity<?> getImportStatus() {
-        return ResponseEntity.ok(Map.of("status", unsplashImporter.getStatus()));
-    }
->>>>>>> 2524825 (refactor : minor css contrast changes started work on ingestion straight from unsplash dataset (WIP))
 }
