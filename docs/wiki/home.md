@@ -2,7 +2,7 @@
 
 Welcome to the official documentation for the **PDLaser Image Management System (v3a)**.
 
-This wiki contains the technical documentation for the backend API, frontend architecture, database schema, and deployment infrastructure.
+This wiki contains the comprehensive technical documentation detailing our architectural decisions, backend API, frontend Vue structure, database schema tuning, and deployment infrastructure.
 
 ## 📚 Navigation
 
@@ -12,19 +12,19 @@ Comprehensive guide to the Spring Boot 4.0.5 REST API, including core image oper
 
 ### [Frontend Architecture & Views](Frontend-Architecture-and-Views)
 
-Overview of the Vue 3.5 SPA, detailing the component structure, Vue Router configuration, Long-Polling tracking, Axios interceptors, and the Cruelty Squad easter-egg theme.
+Detailed overview of the Vue 3.5 SPA, exploring the component structure, Vue Router 5 configuration, HTTP Long-Polling logic, Axios interceptors, and the Cruelty Squad easter-egg theme (HUX).
 
 ### [Frontend Views Routing](Frontend-views)
 
-Detailed breakdown of the specific route targets (`/gallery`, `/search`, `/profile`, `/admin`, etc.) and the expected client-side functionality on each page.
+In-depth breakdown of the specific route targets (`/gallery`, `/search`, `/profile`, `/admin`, etc.) and the expected client-side data flows on each page.
 
-### [Database Schema](Database-Schema)
+### [Database Schema & HNSW](Database-Schema)
 
-Details on the PostgreSQL 18 implementation, including the `pgvector` extension usage, table structures (`images`, `imagedescriptors`, `imagekeywords`, `users`), and multi-dimensional HNSW vector indexing.
+Extensive details on the PostgreSQL 18 implementation, including the `pgvector` extension usage, table structures (`images`, `imagedescriptors`, `imagekeywords`, `users`), and the mathematically tuned multi-dimensional HNSW vector indexing parameters.
 
 ### [Docker & Deployment](Docker-and-Deployment)
 
-Guide to our containerized microservices architecture, explaining the different Docker Compose environments (local, preview, production), Dokploy integration, and Nginx reverse proxying.
+Guide to our containerized microservices architecture, explaining the different Docker Compose environments (local `tmpfs`, preview, production), Dokploy integration, Nginx reverse proxying, and Cryptographic Subresource Integrity checks.
 
 ---
 

@@ -2,7 +2,7 @@
 
 All backend endpoints are relative to the application's base URL (e.g., `http://localhost:8080`).
 
-**Note on Error Handling:** The API uses RFC 7807 Problem Details for standardizing error responses. All errors return a `traceId` for debugging purposes.
+**Note on Error Handling:** The Spring Boot API uses RFC 7807 Problem Details for standardizing error responses. All errors globally return a unique `traceId` for debugging tracing in production.
 
 ## 1. Authentication & Users
 
@@ -17,7 +17,7 @@ Creates a new account with `ROLE_USER` privileges.
 
 ### Login
 
-Authenticates a user and issues a stateless JSON Web Token (JWT).
+Authenticates a user via `AuthenticationManager` and issues a stateless JSON Web Token (JWT) valid for 24 hours.
 
 - **URL:** `/auth/login`
 - **Method:** `POST`
@@ -30,7 +30,7 @@ Authenticates a user and issues a stateless JSON Web Token (JWT).
 
 ### List All Images (Paginated)
 
-Retrieves a paginated list of all images. Supports filtering by the authenticated user's ownership.
+Retrieves a paginated list of all images. Fully respects privacy scoping and ownership.
 
 - **URL:** `/images`
 - **Method:** `GET`
@@ -48,7 +48,7 @@ Retrieves a paginated list of all images. Supports filtering by the authenticate
 
 ### Get Image Content
 
-Retrieves the actual binary content of a specific image.
+Retrieves the actual binary payload of a specific image.
 
 - **URL:** `/images/{id}`
 - **Method:** `GET`
@@ -56,22 +56,22 @@ Retrieves the actual binary content of a specific image.
 
 ### Upload Image (Asynchronous)
 
-Uploads a new image file. Calculates SHA-256 hashes to prevent duplicates. Vectors (HOG, HSV, RGB, CIELAB, Semantic) are extracted asynchronously via virtual threads.
+Uploads a new image file. Calculates SHA-256 hashes to actively prevent storage duplication. Feature vectors (HOG, HSV, RGB, CIELAB, Semantic) are extracted **asynchronously** in the background using Java 21 Virtual Threads.
 
 - **URL:** `/images`
 - **Method:** `POST`
 - **Content-Type:** `multipart/form-data`
 - **Headers:** `Authorization: Bearer <JWT>`
 - **Body:** `file` (Image binary), `keywords` (Optional, list of tags)
-- **Response:** `202 Accepted` with `{ "id": 1 }`, `415 Unsupported Media Type`, `409 Conflict` (Duplicate)
+- **Response:** `202 Accepted` with `{ "id": 1 }`, `415 Unsupported Media Type`, `409 Conflict` (Duplicate Hash)
 
-### Check Image Processing Status (Long-Polling)
+### Check Image Processing Status (HTTP Long-Polling)
 
-Retrieves the background processing status. Uses `DeferredResult` to hang the connection securely until the status changes or a timeout occurs.
+Retrieves the background processing status. Uses Spring's `DeferredResult` to hold the HTTP connection open securely in memory until the status changes or a 10-second timeout occurs.
 
 - **URL:** `/images/{id}/status`
 - **Method:** `GET`
-- **Response:** `200 OK` or `202 Accepted` (Timeout)
+- **Response:** `200 OK` (State Changed) or `202 Accepted` (Timeout - client should reconnect)
   ```json
   {
     "id": 1,
@@ -81,7 +81,7 @@ Retrieves the background processing status. Uses `DeferredResult` to hang the co
 
 ### Delete Image
 
-Permanently deletes an image. Protected by JWT claims (must be original uploader or Admin).
+Permanently deletes an image. Protected by JWT Authority claims (must be original uploader or Admin).
 
 - **URL:** `/images/{id}`
 - **Method:** `DELETE`
@@ -111,9 +111,11 @@ Retrieves file metadata, dimensions, processing status, and associated keywords.
 
 ### Get/Search Keywords
 
-- **URL:** `/images/keywords` (GET all unique keywords available to user)
-- **URL:** `/images/keywords/search?q=xyz` (Search for autocomplete)
-- **URL:** `/images/keywords/popular?limit=15` (Top tags)
+Endpoints optimized for fast Vue autocomplete rendering.
+
+- **URL:** `/images/keywords` (GET all unique keywords available to user context)
+- **URL:** `/images/keywords/search?q=xyz` (Search string mapping)
+- **URL:** `/images/keywords/popular?limit=15` (Top tags sorted by count)
 - **Method:** `GET`
 - **Response:** `200 OK` (Array of strings)
 
@@ -129,16 +131,16 @@ Retrieves file metadata, dimensions, processing status, and associated keywords.
 
 ### Search by Attributes (Paginated)
 
-Finds images matching specific keyword tags.
+Finds images matching specific keyword tags dynamically mapped via Spring Data JDBC.
 
 - **URL:** `/images/search`
 - **Method:** `GET`
 - **Query Params:** `keywords` (List), `page`, `size`, `mine`
 - **Response:** `200 OK` (Paginated Object)
 
-### Find Similar Images (Database Source)
+### Find Similar Images (Database Target)
 
-Uses `pgvector` HNSW indexes to find visually similar images.
+Uses `pgvector` HNSW indexes to execute hyper-fast mathematical distance calculations.
 
 - **URL:** `/images/{id}/similar`
 - **Method:** `GET`
@@ -148,9 +150,9 @@ Uses `pgvector` HNSW indexes to find visually similar images.
   [{ "id": 5, "filename": "beach.jpg", "score": 0.9842 }]
   ```
 
-### Ephemeral Similarity Search (Upload Source)
+### Ephemeral Similarity Search (Upload Target)
 
-Upload an image purely to search the database. Vectors are extracted in RAM and searched without persisting the image to disk or the DB.
+Upload an image strictly to search the database. Vectors are extracted entirely in RAM and passed into the `pgvector` distance operator without ever writing the file to disk or indexing the image in the database.
 
 - **URL:** `/images/search/ephemeral`
 - **Method:** `POST`
@@ -162,7 +164,7 @@ Upload an image purely to search the database. Vectors are extracted in RAM and 
 
 ## 5. Administrative Controls
 
-_Requires `ROLE_ADMIN` JWT claim._
+_Requires `ROLE_ADMIN` JWT claim. Triggers background ThreadPool execution._
 
 - **Start Bulk Import:** `POST /admin/unsplash/import` (Body: `{ "limit": 50, "offset": 0 }`)
 - **Start Keyword Import:** `POST /admin/unsplash/import/keyword` (Body: `{ "keyword": "mountain", "limit": 25 }`)
