@@ -28,7 +28,7 @@ const isSourceSelected = computed(() => {
 const onFileSelect = (e: Event) => {
   const target = e.target as HTMLInputElement;
   if (target.files && target.files.length > 0) {
-    uploadTarget.value = target.files[0];
+    uploadTarget.value = target.files[0] || null;
   }
 };
 

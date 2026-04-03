@@ -17,6 +17,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/auth/, ""),
       },
+      "/admin": {
+        target: "http://backend:8080/admin",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/admin/, ""),
+      },
     },
   },
 });

@@ -30,7 +30,7 @@ public class SpaRoutingConfig {
   private OncePerRequestFilter createRedirectFilter() {
     return new OncePerRequestFilter() {
       private final String REGEX =
-        "(?!/actuator|/images|/auth|/_nuxt|/static|/index\\.html|/200\\.html|/favicon\\.ico|/sw\\.js).*$";
+        "(?!/actuator|/images|/auth|/admin/unsplash|/_nuxt|/static|/index\\.html|/200\\.html|/favicon\\.ico|/sw\\.js).*$";
       private Pattern pattern = Pattern.compile(REGEX);
 
       @Override

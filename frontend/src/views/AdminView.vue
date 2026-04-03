@@ -6,26 +6,36 @@ const limit = ref(50);
 const offset = ref(0);
 let pollingInterval: any = null;
 const checkStatus = async () => {
+  console.log('[AdminView] checkStatus triggered');
   try {
     const res = await http.get('/admin/unsplash/status');
+    console.log('[AdminView] Status response:', res.data);
     status.value = res.data.status;
   } catch (e) {
+    console.error('[AdminView] Error in checkStatus:', e);
     status.value = "Access Denied / Error";
   }
 };
 const startImport = async () => {
+  console.log('[AdminView] startImport triggered with limit:', limit.value, 'offset:', offset.value);
   try {
-    await http.post('/admin/unsplash/import', { limit: limit.value, offset: offset.value });
+    const res = await http.post('/admin/unsplash/import', { limit: limit.value, offset: offset.value });
+    console.log('[AdminView] startImport response:', res);
     checkStatus();
   } catch (e: any) {
+    console.error('[AdminView] Error in startImport:', e);
     alert(e.response?.data?.message || "Failed to start import");
   }
 };
 onMounted(() => {
+  console.log('[AdminView] Component mounted. Starting polling...');
   checkStatus();
   pollingInterval = setInterval(checkStatus, 5000);
 });
-onUnmounted(() => clearInterval(pollingInterval));
+onUnmounted(() => {
+  console.log('[AdminView] Component unmounted. Clearing polling interval...');
+  clearInterval(pollingInterval);
+});
 </script>
 <template>
   <div class="view-wrapper max-w-lg">
@@ -50,7 +60,7 @@ onUnmounted(() => clearInterval(pollingInterval));
           <input type="number" v-model="offset" min="0" />
         </div>
       </div>
-      <button class="btn w-full" @click="startImport" :disabled="status.includes('IMPORTING')">
+      <button class="btn w-full" @click="startImport" :disabled="typeof status === 'string' && status.includes('IMPORTING')">
         Start Background Import
       </button>
     </div>
