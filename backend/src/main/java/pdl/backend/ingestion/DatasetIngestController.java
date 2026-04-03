@@ -1,10 +1,19 @@
 package pdl.backend.ingestion;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 @RestController
@@ -18,20 +27,36 @@ public class DatasetIngestController {
     this.unsplashService = unsplashService;
   }
 
-  @PostMapping("/unsplash/upload")
-  public ResponseEntity<?> uploadCatalog(
+  @PostMapping(value = "/unsplash/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<?> uploadAndSyncMetadata(
       @RequestPart("file") MultipartFile file,
-      @RequestParam(defaultValue = "1000") int limit
+      @RequestParam(defaultValue = "1000") int limit,
+      @RequestParam(defaultValue = "0") int offset
   ) {
-    if (file.isEmpty()) return ResponseEntity.badRequest().body("File is empty");
-    unsplashService.processTsvUpload(file, limit);
-    return ResponseEntity.ok(Map.of("message", "Catalog upload started."));
+    if (
+      !unsplashService.getStatus().equals("IDLE") &&
+      !unsplashService.getStatus().startsWith("ERROR") &&
+      !unsplashService.getStatus().startsWith("COMPLETED")
+    ) {
+      return ResponseEntity.badRequest().body(Map.of("message", "A job is already in progress."));
+    }
+
+    try {
+      // Save uploaded file to container's temp directory, then trigger async parsing
+      Path tempFile = Files.createTempFile("unsplash_", ".tmp");
+      file.transferTo(tempFile.toFile());
+      
+      unsplashService.syncMetadataFromFile(tempFile, limit, offset);
+      return ResponseEntity.ok(Map.of("message", "File uploaded. Metadata sync initiated."));
+    } catch (Exception e) {
+      return ResponseEntity.internalServerError().body(Map.of("message", "Failed to process uploaded file."));
+    }
   }
 
   @GetMapping("/unsplash/catalog")
   public ResponseEntity<?> getCatalog(
     @RequestParam(defaultValue = "0") int page,
-    @RequestParam(defaultValue = "24") int size,
+    @RequestParam(defaultValue = "30") int size,
     @RequestParam(required = false) String query
   ) {
     return ResponseEntity.ok(unsplashService.getCatalog(page, size, query));
@@ -39,8 +64,15 @@ public class DatasetIngestController {
 
   @PostMapping("/unsplash/import")
   public ResponseEntity<?> importSelected(@RequestBody List<Long> imageIds) {
+    if (
+      !unsplashService.getStatus().equals("IDLE") &&
+      !unsplashService.getStatus().startsWith("ERROR") &&
+      !unsplashService.getStatus().startsWith("COMPLETED")
+    ) {
+      return ResponseEntity.badRequest().body(Map.of("message", "A job is already in progress."));
+    }
     unsplashService.importSelectedImages(imageIds);
-    return ResponseEntity.ok(Map.of("message", "Import initiated."));
+    return ResponseEntity.ok(Map.of("message", "Batch import initiated."));
   }
 
   @GetMapping("/unsplash/status")
