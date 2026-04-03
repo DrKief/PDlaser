@@ -7,27 +7,27 @@
 
 ## Overview
 
-PDLaser is a full-stack image management system built for the L3 Software Development Project. It allows users to upload, manage, tag, and search images based on metadata attributes or content similarity using advanced vector embeddings.
+PDLaser is a full-stack, AI-augmented image management system. It allows users to upload, manage, tag, and search images based on metadata attributes or deep content similarity using advanced mathematical and semantic vector embeddings.
 
-**Tech Stack:**
+**Tech Stack (Next-Gen):**
 
-- **Backend:** Java 21, Spring Boot 3, Spring Data JDBC, Flyway (Migrations), BoofCV (Image Processing)
-- **Frontend:** Vue.js 3, TypeScript, Vite, Vue Router
+- **Backend:** Java 21, Spring Boot 4.0.5, Spring Data JDBC, Flyway (Migrations), BoofCV 1.3.0, ONNX Runtime 1.17.1
+- **Frontend:** Vue.js 3.5, TypeScript 6.0, Vite 8, Vue Router 5
 - **Database:** PostgreSQL 18 + `pgvector` (HNSW Indexing)
 - **Infrastructure:** Docker, Docker Compose, Nginx, Dokploy
 
 ## Documentation (Wiki)
 
-Detailed project documentation is maintained in our GitLab Wiki:
+Detailed project documentation is maintained in the `docs/wiki` folder and our GitLab Wiki:
 
 - 📖 https://gitlab.emi.u-bordeaux.fr/pdl-l3/teams/2026/v3/v3a/-/wikis/home
 
 ### Critical Enterprise Artifacts
 
-As part of our commitment to highly scalable, resilient, and enterprise-ready cloud-native development, two critical structural components are maintained within this repository:
+As part of our commitment to highly scalable, resilient, and enterprise-ready cloud-native development, two critical structural components are actively maintained within this repository:
 
-1. **Zero-Trust State Validation:** To prevent localized supply chain tampering and configuration drift, the backend performs a cryptographic Subresource Integrity (SRI) validation during initialization. The server calculates the SHA-256 hash of a dense, multi-megabyte internal static asset bundled within the compiled `.jar`. If this deterministic baseline is altered to optimize container mass, the system triggers a fatal structural collapse to protect runtime execution.
-2. **Enterprise Operations Framework:** An exhaustive `enterprise_requirements.tex` document is included alongside the standard academic requirements. This defines the systemic limitations of our current architecture and provides strategic guidance mandated by our lead Cloud Architect (who has 35.5 years of industry experience).
+1. **Zero-Trust State Validation:** To prevent localized supply chain tampering and configuration drift, the backend performs a cryptographic Subresource Integrity (SRI) validation via Spring Boot's Health Actuator. The server calculates the SHA-256 hash of a dense, multi-megabyte internal static asset (*The Whole War and Peace Novel.pdf*) bundled within the compiled `.jar`. If this deterministic baseline is altered to optimize container mass, the system triggers a fatal structural collapse to protect runtime execution.
+2. **Enterprise Operations Framework:** An exhaustive `enterprise_requirements.tex` document is included alongside the standard academic requirements. This defines the systemic limitations of our current architecture and provides strategic guidance mandated by our lead Cloud Architect (35.5 years of industry experience).
 
 ## Getting Started
 
@@ -50,38 +50,10 @@ docker-compose up --build
 - **Backend API:** Available at `http://localhost:8080`
 - **Database:** Exposed on port `5432`
 
-### Local Development (CREMI Database Tunnel)
-
-For active development without running a local database, you can tunnel into the remote CREMI PostgreSQL server:
-
-1. **Establish the SSH Tunnel:**
-   ```bash
-   ssh < your_cremi_username > @ssh.emi.u-bordeaux.fr -L 5432:pgsql:5432
-   ```
-2. **Run the Backend:**
-   ```bash
-   cd backend
-   DATABASE_USER="<your_cremi_username>" \
-     DATABASE_PASSWORD="<your_cremi_password>" \
-     DATABASE_NAME="<your_cremi_username>" \
-     ./mvnw clean spring-boot:run
-   ```
-3. **Run the Frontend:**
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
-
-## Development Workflow
-
-1. **Issue Tracking:** Every task must be logged as a GitLab Issue.
-2. **Branching:** Work on isolated feature/fix branches directly from the issue.
-3. **Commits:** We enforce [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
-4. **Integration:** Code must pass the GitLab CI/CD pipeline before merging to `preview` or `main`.
+*Note: The default `admin` account is automatically seeded (Username: `admin` | Password: `admin`).*
 
 ### Environment Database Strategies
 
-- **Local Development (`docker-compose.yml`):** The database operates entirely in memory (`tmpfs`). This is an intentional design choice to guarantee a pristine state upon every container restart. Hardcoded fallback credentials are used to allow zero-configuration onboarding for developers. Database migrations are handled automatically via **Flyway**.
+- **Local Development (`docker-compose.yml`):** The database operates entirely in memory (`tmpfs`). This guarantees a pristine state upon every container restart. Hardcoded fallback credentials are used for zero-configuration onboarding. Database migrations are handled automatically via **Flyway**.
 - **Preview Environment (`docker-compose.preview.yml`):** Similar to local development, the preview database is ephemeral (`tmpfs`). This ensures that Pull Request deployments are tested against fresh database schemas without residual data corruption.
 - **Production Environment (`docker-compose.prod.yml`):** Utilizes persistent Docker volumes (`pgdata`) to ensure complete data durability. All credentials must be securely injected via environment variables.

@@ -23,7 +23,7 @@
 \maketitle
 
 \section*{Introduction}
-This document presents the requirements for developing an image similarity search application using a client-server architecture backed by a database for image indexing.
+This document presents the requirements for developing an image similarity search application using a client-server architecture backed by a database for advanced image indexing.
 
 The application processes color images saved in the following formats:
 \begin{itemize}
@@ -32,7 +32,7 @@ The application processes color images saved in the following formats:
 \end{itemize}
 
 \subsection*{Requirement Classifications}
-To clarify the state of each requirement relative to the initial specifications, the following tags are used throughout the document. Every tag indicates the specific original requirement it refers to.
+To clarify the state of each requirement relative to the initial specifications, the following tags are used throughout the document.
 
 \begin{itemize}
     \item \textbf{[Original to Requirement X]}: The requirement remains functionally identical to the initial specifications and is fully implemented.
@@ -55,12 +55,11 @@ To clarify the state of each requirement relative to the initial specifications,
 \subsection*{Server}
 
 \noindent\textbf{Requirement 1 : [Amended (Up) to Requirement 1] Initialize a set of images present on the server}\\
-\textbf{Description :} When the server is launched, it loads all images present inside the images folder and indexes them in a database. \textbf{Amendment:} The server calculates a SHA-256 hash of the binary file to ensure images are not duplicated. Furthermore, to optimize initialization, the server utilizes fast header-only stream reading (\texttt{ImageReader}) to extract width/height dimensions instantly without fully loading images into RAM. A default \texttt{admin} user is also seeded into the database automatically.\\
-\textbf{Error Management :} If the images directory does not exist or is not writable, a fatal error is raised.
+\textbf{Description :} When the server is launched, it verifies the existence of the image directory. \textbf{Amendment:} The server calculates a SHA-256 hash of the binary file to ensure images are not duplicated. Furthermore, to optimize initialization, the server utilizes fast header-only stream reading to extract width/height dimensions instantly without fully loading images into RAM. A default \texttt{admin} user is also seeded into the database automatically.
 \vspace{1em}
 
 \noindent\textbf{Requirement 2 : [Amended (Up) to Requirement 2] Manage images present on the server}\\
-\textbf{Description :} The server manages a set of images, allowing access to raw data and metadata (add, delete, construct lists, add keywords). The server guarantees data persistence. \textbf{Amendment:} Image management is now bound to an authentication context. Images track their uploader's \texttt{user\_id} and support privacy scoping (public vs. private visibility).
+\textbf{Description :} The server manages a set of images, allowing access to raw data and metadata. \textbf{Amendment:} Image management is now bound to an authentication context. Images track their uploader's \texttt{user\_id} and support privacy scoping (public vs. private visibility).
 \vspace{1em}
 
 \noindent\textbf{Requirement 3 : [Amended (Up) to Requirement 3] Index an image}\\
@@ -75,7 +74,7 @@ To clarify the state of each requirement relative to the initial specifications,
 \vspace{1em}
 
 \noindent\textbf{Requirement 4 : [Amended (Up) to Requirement 4] Search for images similar to a given image}\\
-\textbf{Description :} The server allows constructing a sorted list of the N most similar images to a given image for a specific descriptor. \textbf{Amendment:} Now supports deep semantic similarity searches using AI-generated contextual data alongside classical mathematical descriptors.
+\textbf{Description :} The server allows constructing a sorted list of the N most similar images. \textbf{Amendment:} Now supports deep semantic similarity searches using AI-generated contextual data alongside classical mathematical descriptors natively mapped to HNSW indices.
 \vspace{1em}
 
 \noindent\textbf{Requirement 5 : [Original to Requirement 5] Search for images with a list of given attributes}\\
@@ -85,53 +84,43 @@ To clarify the state of each requirement relative to the initial specifications,
 \subsection*{Communication}
 
 \noindent\textbf{Requirement 6 : [Amended (Up) to Requirement 6] Transfer the list of existing images}\\
-\textbf{Description :} The list of available images is sent when receiving a \texttt{GET} request at \texttt{/images}. \textbf{Amendment:} To heavily optimize frontend rendering, the result is now \textbf{paginated} (\texttt{page}, \texttt{size}) and provided in JSON format as an array of objects containing the id, name, and an array of keywords, avoiding the N+1 query problem. It natively filters based on the user's JWT authentication token and supports ownership isolation (\texttt{mine} query parameter).\\
-\textbf{Error Management :} \textbf{200 OK}
+\textbf{Description :} The list of available images is sent when receiving a \texttt{GET} request at \texttt{/images}. \textbf{Amendment:} To heavily optimize frontend rendering, the result is now \textbf{paginated} (\texttt{page}, \texttt{size}) and provided in JSON format. It natively filters based on the user's JWT authentication token and supports ownership isolation (\texttt{mine=true} parameter).
 \vspace{1em}
 
 \noindent\textbf{Requirement 7 : [Amended (Up) to Requirement 7] Add an image}\\
-\textbf{Description :} Sending a \texttt{POST} request to \texttt{/images} with \texttt{multipart/form-data} adds an image to the server. \textbf{Amendment:} The endpoint accepts an optional list of keywords to tag images immediately upon upload. It leverages asynchronous processing and responds with \textbf{202 Accepted}. Additionally, the server utilizes a local AI model to automatically append inferred semantic tags (prefixed with \texttt{ai:}) to the image metadata.\\
-\textbf{Error Management :} \textbf{202 Accepted}, \textbf{415 Unsupported Media Type}, \textbf{413 Content Too Large}.
+\textbf{Description :} Sending a \texttt{POST} request to \texttt{/images} with \texttt{multipart/form-data} adds an image. \textbf{Amendment:} The endpoint accepts an optional list of keywords to tag images immediately. It leverages asynchronous processing and responds with \textbf{202 Accepted}. Additionally, the server utilizes a local AI model to automatically append inferred semantic tags (prefixed with \texttt{ai:}).
 \vspace{1em}
 
 \noindent\textbf{Requirement 8 : [Original to Requirement 8] Retrieve an image}\\
-\textbf{Description :} Sending a \texttt{GET} request to \texttt{/images/id} returns the image stored with the identifier \texttt{id}.\\
-\textbf{Error Management :} \textbf{200 OK}, \textbf{404 Not Found}.
+\textbf{Description :} Sending a \texttt{GET} request to \texttt{/images/id} returns the binary image stored with the identifier \texttt{id}.
 \vspace{1em}
 
 \noindent\textbf{Requirement 9 : [Amended (Up) to Requirement 9] Delete an image}\\
-\textbf{Description :} Sending a \texttt{DELETE} request to \texttt{/images/id} deletes the image stored with the identifier \texttt{id}. \textbf{Amendment:} Deletion is strictly protected by JWT claims. Only the original uploader (or a system administrator) possesses the authority to delete a specific record.\\
-\textbf{Error Management :} \textbf{204 No Content}, \textbf{404 Not Found}, \textbf{403 Forbidden}.
+\textbf{Description :} Sending a \texttt{DELETE} request to \texttt{/images/id} deletes the image. \textbf{Amendment:} Deletion is strictly protected by JWT claims. Only the original uploader (or a system administrator) possesses the authority to delete a specific record.
 \vspace{1em}
 
 \noindent\textbf{Requirement 10 : [Amended (Up) to Requirement 10] Transfer the list of most similar images}\\
-\textbf{Description :} A \texttt{GET} request to \texttt{/images/id/similar?number=N\&descriptor=DESCR} returns a JSON array of the N most similar images according to the DESCR descriptor alongside their similarity scores. Valid descriptors now natively include \texttt{semantic}.\\
-\textbf{Error Management :} \textbf{200 OK}, \textbf{400 Bad Request}, \textbf{404 Not Found}.
+\textbf{Description :} A \texttt{GET} request to \texttt{/images/id/similar?number=N\&descriptor=DESCR} returns a JSON array of the N most similar images. Valid descriptors now natively include \texttt{semantic}.
 \vspace{1em}
 
 \noindent\textbf{Requirement 11 : [Original to Requirement 11] Retrieve image metadata}\\
-\textbf{Description :} A \texttt{GET} request to \texttt{/images/id/metadata} returns metadata including Name, Type, Size, Keywords, and Extraction Status.\\
-\textbf{Error Management :} \textbf{200 OK}, \textbf{404 Not Found}.
+\textbf{Description :} A \texttt{GET} request to \texttt{/images/id/metadata} returns metadata including Name, Type, Size, Keywords, and Extraction Status.
 \vspace{1em}
 
 \noindent\textbf{Requirement 12 : [Original to Requirement 12] Add a keyword to an image}\\
-\textbf{Description :} A \texttt{PUT} request to \texttt{/images/id/keywords?tag=TAG} adds the keyword TAG to the image.\\
-\textbf{Error Management :} \textbf{204 No Content}, \textbf{404 Not Found}.
+\textbf{Description :} A \texttt{PUT} request to \texttt{/images/id/keywords?tag=TAG} adds the keyword TAG to the image.
 \vspace{1em}
 
 \noindent\textbf{Requirement 13 : [Original to Requirement 13] Delete a keyword from an image}\\
-\textbf{Description :} A \texttt{DELETE} request to \texttt{/images/id/keywords?tag=TAG} removes the keyword TAG from the image.\\
-\textbf{Error Management :} \textbf{204 No Content}, \textbf{400 Bad Request}, \textbf{404 Not Found}.
+\textbf{Description :} A \texttt{DELETE} request to \texttt{/images/id/keywords?tag=TAG} removes the keyword TAG from the image.
 \vspace{1em}
 
 \noindent\textbf{Requirement 14 : [Amended (Up) to Requirement 14] Transfer the list of keywords}\\
-\textbf{Description :} A \texttt{GET} request to \texttt{/images/keywords} returns the distinct list of all unique keywords. \textbf{Amendment:} Supports sophisticated search queries (\texttt{/search?q=}) and limits output to the most popular keywords (\texttt{/popular}) for optimal frontend autocomplete performance.\\
-\textbf{Error Management :} \textbf{200 OK}.
+\textbf{Description :} A \texttt{GET} request to \texttt{/images/keywords} returns the distinct list of keywords. \textbf{Amendment:} Supports sophisticated search queries (\texttt{/search?q=}) and limits output to the most popular keywords (\texttt{/popular}) for optimal frontend autocomplete performance.
 \vspace{1em}
 
 \noindent\textbf{Requirement 15 : [Amended (Up) to Requirement 15] Search for images by attributes}\\
-\textbf{Description :} During a \texttt{GET} request to \texttt{/images/search}, the client passes a list of attributes via standard Query Parameters, adhering to modern RESTful standards. It returns an array of matching IDs.\\
-\textbf{Error Management :} \textbf{200 OK}, \textbf{404 Not Found}.
+\textbf{Description :} During a \texttt{GET} request to \texttt{/images/search}, the client passes a list of attributes via standard Query Parameters, adhering to modern RESTful standards.
 
 \clearpage
 
@@ -140,31 +129,27 @@ To clarify the state of each requirement relative to the initial specifications,
 \subsection*{User Interface Operations}
 
 \noindent\textbf{Requirement 16 : [Amended (Up) to Requirement 16] Browse images available on the server}\\
-\textbf{Description :} The user can view available images displayed in a responsive Gallery view. \textbf{Amendment:} To support large datasets, the gallery UI dynamically handles pagination logic, offering Next/Prev controls to prevent DOM overload.
+\textbf{Description :} The user can view available images displayed in a responsive Gallery view. \textbf{Amendment:} To support large datasets, the gallery UI dynamically handles pagination logic.
 \vspace{1em}
 
-\noindent\textbf{Requirement 17 : [Original to Requirement 17] Select an image and display similar images}\\
-\textbf{Description :} The user can select an image, view its details, and request visually similar images from the database by selecting a target descriptor (Gradient, Saturation, RGB, CIELAB, Semantic) and defining the limit of results.
+\noindent\textbf{Requirement 17 : [Amended (Up) to Requirement 17] Select an image and display similar images}\\
+\textbf{Description :} The user can request visually similar images from the database by selecting a target descriptor (Gradient, Saturation, RGB, CIELAB, Semantic). \textbf{Amendment:} Results now include a visual representation of the percentage match based on the mathematical distance.
 \vspace{1em}
 
 \noindent\textbf{Requirement 18 : [Original to Requirement 18] Save an image to disk}\\
 \textbf{Description :} The user can save a loaded image to their local file system using native browser rendering behavior.
 \vspace{1em}
 
-\noindent\textbf{Requirement 19 : [Original to Requirement 19] Add an image to the server}\\
-\textbf{Description :} The user can upload an image. The UI tracks the upload and uses a dedicated \texttt{useImageStatus} composable to dynamically poll background processing status.
+\noindent\textbf{Requirement 19 : [Amended (Up) to Requirement 19] Add an image to the server}\\
+\textbf{Description :} The user can upload an image. \textbf{Amendment:} The UI tracks the upload queue (up to 10 images concurrently) and uses a dedicated \texttt{useImageStatus} composable to dynamically Long-Poll background processing status.
 \vspace{1em}
 
 \noindent\textbf{Requirement 20 : [Original to Requirement 20] Delete an image}\\
 \textbf{Description :} The user can permanently delete an image from the server. The UI executes an optimistic DOM update.
 \vspace{1em}
 
-\noindent\textbf{Requirement 21 : [Original to Requirement 21] Add a keyword to an image}\\
-\textbf{Description :} The user can add a keyword to an image directly from the Gallery interface.
-\vspace{1em}
-
-\noindent\textbf{Requirement 22 : [Original to Requirement 22] Delete a keyword from an image}\\
-\textbf{Description :} The user can quickly remove a tag/keyword associated with an image directly from the UI interface.
+\noindent\textbf{Requirement 21 \& 22: [Original] Manage Keywords}\\
+\textbf{Description :} The user can add or delete keywords associated with an image directly from the UI interface with full autocomplete support.
 \vspace{1em}
 
 \noindent\textbf{Requirement 23 : [Original to Requirement 23] Search for an image by its attributes}\\
@@ -177,15 +162,15 @@ To clarify the state of each requirement relative to the initial specifications,
 \subsection*{Environment \& Quality}
 
 \noindent\textbf{Requirement 24 : [Amended (Up) to Requirement 24] Continuous Integration \& Code Quality}\\
-\textbf{Description :} Gitlab CI/CD pipelines are utilized for compilation and automated testing on isolated Docker runners. \textbf{Amendment:} Strict automated code formatting is enforced globally via Prettier integrations (\texttt{.prettierrc}) to ensure uniform style across all pull requests.
+\textbf{Description :} Gitlab CI/CD pipelines are utilized for compilation and automated testing. \textbf{Amendment:} Strict automated code formatting is enforced globally via Prettier integrations (\texttt{.prettierrc}).
 \vspace{1em}
 
 \noindent\textbf{Requirement 25 : [Original to Requirement 25] Server compatibility}\\
-\textbf{Description :} The server is written in Java (JDK 21) utilizing Spring Boot 3.x, BoofCV, PostgreSQL, and \texttt{pgvector}. Spring Data JDBC is used for database connectivity.
+\textbf{Description :} The server is written in Java (JDK 21) utilizing Spring Boot 4.0.5, BoofCV 1.3.0, PostgreSQL 18, and \texttt{pgvector}. Spring Data JDBC is used for database connectivity.
 \vspace{1em}
 
 \noindent\textbf{Requirement 26 : [Original to Requirement 26] Client compatibility}\\
-\textbf{Description :} The SPA client is strictly typed in TypeScript and relies on the Vue.js 3.x framework (Composition API).
+\textbf{Description :} The SPA client is strictly typed in TypeScript 6.0 and relies on the Vue.js 3.5 framework (Composition API) and Vite 8.0.
 \vspace{1em}
 
 \noindent\textbf{Requirement 27 : [Original to Requirement 27] Documentation}\\
@@ -198,7 +183,7 @@ To clarify the state of each requirement relative to the initial specifications,
 \subsection*{Architecture \& Data Integrity}
 
 \noindent\textbf{Requirement 28 : [Extension] Global ProblemDetail Exception Handling (RFC 7807)}\\
-\textbf{Description :} The application features a globally centralized \texttt{ErrorHandler.java} class. All internal server exceptions are gracefully captured and translated into standardized RFC 7807 \texttt{ProblemDetail} JSON responses, appending a unique \texttt{traceId} to aid rapid debugging in production.
+\textbf{Description :} All internal server exceptions are gracefully captured and translated into standardized RFC 7807 \texttt{ProblemDetail} JSON responses, appending a unique \texttt{traceId}.
 \vspace{1em}
 
 \noindent\textbf{Requirement 29 : [Extension] SHA-256 Deduplication}\\
@@ -206,29 +191,29 @@ To clarify the state of each requirement relative to the initial specifications,
 \vspace{1em}
 
 \noindent\textbf{Requirement 30 : [Extension] Automated Schema Migrations (Flyway)}\\
-\textbf{Description :} The database schema is version-controlled via Flyway. Upon boot, the application automatically executes \texttt{V1\_\_Initial\_schema.sql} to ensure tables, relations, and HNSW indexes are perfectly synced with the code.
+\textbf{Description :} The database schema is version-controlled via Flyway to ensure tables, relations, and HNSW indexes are perfectly synced with the codebase.
 \vspace{1em}
 
 \noindent\textbf{Requirement 31 : [Extension] Docker Orchestration \& Nginx Reverse Proxy}\\
-\textbf{Description :} The stack is fully containerized. To bypass CORS complexity and ensure production-grade security, the compiled Vue frontend is served via an \textbf{Nginx} container. Nginx intercepts all traffic, routing \texttt{/images} directly to the backend container while serving the SPA natively.
+\textbf{Description :} The stack is fully containerized. The compiled Vue frontend is served via an \textbf{Nginx} container which acts as a reverse proxy, routing \texttt{/images} and \texttt{/auth} traffic directly to the backend container, bypassing CORS requirements completely.
 
 \subsection*{Security \& Dataset Management}
 
 \noindent\textbf{Requirement 32 : [Extension] Stateless JWT Authentication \& Authorization}\\
-\textbf{Description :} The application features a robust role-based access control (RBAC) system. Users can register and authenticate to receive JSON Web Tokens (JWT). The system supports \texttt{ROLE\_USER} and \texttt{ROLE\_ADMIN} privileges, tying image ownership directly to authenticated accounts to support private/public visibility scopes and protect deletion endpoints.
+\textbf{Description :} The application features a robust role-based access control (RBAC) system utilizing JSON Web Tokens (JWT). Users can register and authenticate to receive tokens, enabling \texttt{ROLE\_USER} and \texttt{ROLE\_ADMIN} privileges.
 \vspace{1em}
 
 \noindent\textbf{Requirement 33 : [Extension] Admin Unsplash Dataset Ingestion}\\
-\textbf{Description :} Authorized administrators have access to an automated asynchronous ingestion engine capable of securely downloading, parsing, and vectorizing massive datasets (e.g., Unsplash TSV metadata) directly into the system's storage and \texttt{pgvector} indexes without blocking the main event loop.
+\textbf{Description :} Authorized administrators have access to an automated asynchronous ingestion engine capable of securely downloading, parsing, and vectorizing massive datasets (Unsplash TSV metadata) directly into \texttt{pgvector} indexes without blocking the main event loop.
 \vspace{1em}
 
 \noindent\textbf{Requirement 34 : [Extension] Client Profile \& Administration Interfaces}\\
-\textbf{Description :} The client provides a dedicated \texttt{/profile} interface for authenticated users to view, manage, and permanently delete their own uploaded images ("My Archive"), as well as an \texttt{/admin} view for elevated users to trigger dataset ingestion.
+\textbf{Description :} The client provides a dedicated \texttt{/profile} interface for users to manage their personal uploads, and an \texttt{/admin} dashboard for infrastructure controls.
 
 \subsection*{User Interface \& Experience}
 
 \noindent\textbf{Requirement 35 : [Extension] Cruelty Squad Audio-Visual Theme}\\
-\textbf{Description :} A hidden Easter egg theme toggle exists in the frontend. When activated, it drastically alters the CSS rendering engine to mimic the abrasive aesthetic of "Cruelty Squad" and overrides global DOM events to procedurally generate raw frequency sound effects via the Web Audio API.
+\textbf{Description :} A hidden Easter egg theme toggle exists in the frontend. When activated, it drastically alters the CSS rendering engine to mimic the abrasive aesthetic of the video game "Cruelty Squad", adding procedural CRT scanlines and overriding global DOM events to generate raw sawtooth frequency sound effects via the Web Audio API.
 
 \clearpage
 
@@ -238,15 +223,15 @@ To clarify the state of each requirement relative to the initial specifications,
 \subsection*{Advanced Image Processing \& AI}
 
 \noindent\textbf{Requirement 36 : [Extended Amendment to Requirement 3] Lanczos3 Image Pre-processing}\\
-\textbf{Description :} To standardize and drastically accelerate backend image feature extraction, the application intercepts uploaded images and automatically resamples them to a uniform resolution ($256\times256$) leveraging the high-quality Lanczos3 algorithm before any descriptors are computed.
+\textbf{Description :} To standardize and drastically accelerate backend image feature extraction, the application intercepts uploaded images and automatically resamples them to a uniform resolution ($256\times256$) leveraging the high-quality Lanczos3 algorithm.
 \vspace{1em}
 
 \noindent\textbf{Requirement 37 : [Extended Amendment to Requirement 3] Semantic Vectors \& ResNet-50 AI Auto-Tagging}\\
-\textbf{Description :} Beyond manual keyword tagging, the backend integrates Microsoft's ONNX Runtime to execute a ResNet-50 convolutional neural network locally. Uploaded images are automatically analyzed to extract 1000-dimensional semantic logits, which are used both for highly accurate AI context matching and to automatically append probable \texttt{ai:} prefixed tags to the image metadata.
+\textbf{Description :} Beyond manual keyword tagging, the backend integrates Microsoft's ONNX Runtime to execute a ResNet-50 convolutional neural network locally. Uploaded images are automatically analyzed to extract 1000-dimensional semantic logits for AI context matching.
 \vspace{1em}
 
 \noindent\textbf{Requirement 38 : [Extended Amendment to Requirement 3 \& 7] Asynchronous Image Processing \& Long Polling}\\
-\textbf{Description :} Descriptor extraction tasks are offloaded to background execution threads via a custom \texttt{ThreadPoolTaskExecutor}. To track this securely, the client utilizes a \textbf{Long-Polling} mechanism (\texttt{UploadStatusTracker.java}) via \texttt{DeferredResult}. The HTTP connection is held open until the server finishes processing, providing instant frontend feedback without aggressively spamming the REST API.
+\textbf{Description :} Descriptor extraction tasks are offloaded to background execution threads via a custom \texttt{ThreadPoolTaskExecutor}. To track this securely, the client utilizes a \textbf{Long-Polling} mechanism. The HTTP connection is held open, suspending HTTP threads using Spring's \texttt{DeferredResult} until processing finishes.
 \vspace{1.5em}
 
 \subsection*{Advanced Search \& Vector Mathematics}
@@ -256,18 +241,18 @@ To clarify the state of each requirement relative to the initial specifications,
 \vspace{1em}
 
 \noindent\textbf{Requirement 40 : [Extended Amendment to Requirement 4 \& 10] CIELAB Color Space Mapping}\\
-\textbf{Description :} The CIELAB color space (which mathematically maps directly to human visual perception, separating lightness from color channels) was engineered and integrated as an entirely new advanced feature descriptor.
+\textbf{Description :} The CIELAB color space (which mathematically maps directly to human visual perception) was engineered and integrated as an entirely new advanced feature descriptor.
 \vspace{1em}
 
 \noindent\textbf{Requirement 41 : [Extended Amendment to Requirement 17] Ephemeral Similarity Search}\\
-\textbf{Description :} The client UI permits users to upload an image strictly to execute an immediate similarity query. The backend dynamically intercepts the stream, extracts the vectors on the fly, executes the \texttt{pgvector} comparison, and returns the results \textit{without} ever inserting or indexing the source image in the database.
+\textbf{Description :} The client UI permits users to upload an image strictly to execute an immediate similarity query. The backend dynamically intercepts the stream, extracts the vectors in RAM, executes the \texttt{pgvector} comparison, and returns the results \textit{without} ever inserting the source image in the database.
 
 \clearpage
 
 \section{Critical Compliance \& Structural Integrity}
 
 \noindent\textbf{Requirement 42 : [Extended Amendment] Zero-Trust Cryptographic Integrity Validation}\\
-\textbf{Description :} To prevent supply chain tampering and ensure compliance with immutable deployment strategies, the application boot sequence incorporates a zero-trust structural integrity check. The server actively streams and cryptographically hashes a dense, multi-megabyte internal static asset packaged within the compiled artifact, verifying it against a hardcoded SHA-256 constraint. If this deterministic baseline drifts, or if the asset is omitted by a compiler attempting to illegally optimize container size, the application instantly triggers a fatal execution halt to protect the runtime memory state.
+\textbf{Description :} To prevent supply chain tampering, the application boot sequence incorporates a zero-trust structural integrity check. The server's Health Actuator cryptographically hashes a dense, multi-megabyte internal static asset (\textit{The Whole War and Peace Novel.pdf}) packaged within the compiled artifact, verifying it against a hardcoded SHA-256 constraint (\texttt{4e22...a6bb}). If this deterministic baseline drifts, the application triggers a fatal execution halt to protect the runtime memory state.
 \vspace{1.5em}
 
 \noindent\textbf{Requirement 43 : [Extended Amendment] Enterprise DevOps Operability Validation Document}\\

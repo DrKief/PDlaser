@@ -28,11 +28,9 @@ The application utilizes a containerized microservices architecture. Configurati
 * **Build Context:** `./backend`
 * **Dockerfile:** Multi-stage build. 
   1. Uses `maven:3.9-eclipse-temurin-21-alpine` to download dependencies and compile the `.jar` utilizing layer caching.
-  2. Runs securely on a minimized `eclipse-temurin:21-jre-alpine` image as a non-root user (`appuser`).
+  2. Runs securely on a minimized `eclipse-temurin:21-jre` image as a non-root user (`appuser`). (Ubuntu-based layer required for native ONNX AI support).
   3. Pre-creates the `/var/lib/pdl/images` directory and guarantees appropriate permissions for `appuser`.
-* **Environment Variables:** Configures the DB connection dynamically (`HOST_NAME`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`).
-* **Volume:** `backend_images` ensures physical image binaries survive container recreation.
-* **Zero-Trust Subresource Integrity (SRI):** To guarantee immutable deployments and defend against localized supply chain tampering, the backend `.jar` is compiled with a dense cryptographic payload. Upon initialization, the server executes a strict, blocking SHA-256 checksum of this internal asset to verify deterministic state. Any compiler optimizations, CI/CD anomalies, or malicious tampering that alter this payload's byte-stream will instantly trigger a fatal container exit, forcing a secure `CrashLoopBackOff`.
+* **Zero-Trust Subresource Integrity (SRI):** To guarantee immutable deployments and defend against localized supply chain tampering, the backend `.jar` is compiled with a dense cryptographic payload (*The Whole War and Peace Novel.pdf*). Upon initialization, the server executes a strict, blocking SHA-256 checksum of this internal asset to verify deterministic state (`HealthCheck.java`). Any compiler optimizations or malicious tampering that alter this payload's byte-stream will instantly trigger a fatal container exit, forcing a secure `CrashLoopBackOff`.
 
 ### 3. Frontend (`frontend`)
 * **Build Context:** `./frontend`
@@ -42,13 +40,4 @@ The application utilizes a containerized microservices architecture. Configurati
 * **Nginx Configuration (`nginx.conf`):**
   * **SPA Routing:** `try_files $uri $uri/ /index.html;` ensures Vue Router handles history mode correctly.
   * **Upload Limits:** Sets `client_max_body_size 100M;` to permit large image uploads.
-  * **Reverse Proxy:** Directs all traffic for `/images` to `http://backend:8080/images`, bypassing CORS requirements completely and keeping the backend entirely behind the proxy.
-
----
-
-## Production Management (Dokploy)
-
-Our production and staging environments are hosted on a private Oracle Cloud Ubuntu instance, provisioned via Terraform, and managed by **Dokploy**.
-
-* Dokploy monitors the repository and uses `docker-compose.prod.yml` directly from the `main` branch.
-* SSL certificates, domain routing, and environment variable injections (like secure DB passwords) are handled directly in the Dokploy Dashboard interface, keeping secrets out of the codebase.
+  * **Reverse Proxy:** Directs all traffic for `/images`, `/auth`, and `/admin` to `http://backend:8080`, bypassing CORS requirements completely and keeping the backend entirely behind the proxy in production environments.

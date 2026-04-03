@@ -1,88 +1,37 @@
-# Frontend Views Documentation
+# Frontend Views & Routing
 
-This document outlines the available views (pages) in the frontend application, their corresponding routes, and their expected behavior.
+This document outlines the Vue Router configuration and the expected behavioral flow of the client-side pages.
 
-## Overview
+### 1. Gallery View (`/` or `/gallery`)
+The main browsing interface.
+* **Component:** `src/views/GalleryView.vue`
+* **Functionality:** Renders a masonry grid of image cards fetched via pagination. Displays tags and extraction statuses. 
+* **Interaction:** Clicking an image navigates to its detail view. Authenticated users can permanently delete their own uploads directly from this grid. Features an integrated off-canvas sidebar (`AdvancedSearchSidebar.vue`) for triggering Similarity searches.
 
-The application is built with **Vue.js 3** and uses **Vue Router** for navigation. It interacts with the backend API to manage images.
+### 2. Upload View (`/upload`)
+Interface for adding new images to the server. Protected by Vue Router guards (Requires Authentication).
+* **Component:** `src/views/UploadView.vue`
+* **Functionality:** Tracks a queue of up to 10 incoming files. Generates temporary `URL.createObjectURL()` previews. Handles the batch POST requests and visually tracks the Long-Polling completion status of the backend's AI extraction pipeline.
 
----
+### 3. Image Detail View (`/image/:id`)
+Deep-dive inspection for a single artifact.
+* **Component:** `src/views/ImageDetailView.vue`
+* **Functionality:** Displays the high-resolution image, exact metadata dimensions, and allows the rapid inline addition or removal of keywords/tags. Includes a "Find Visually Similar" trigger button.
 
-## Views
+### 4. Authentication Views (`/login` & `/register`)
+* **Components:** `LoginView.vue`, `RegisterView.vue`
+* **Functionality:** Standardized forms that POST to the backend `/auth` endpoints. On successful login, the JWT is stored in `localStorage` and the user is redirected to their intended route (or Home).
 
-### 1. Home View
+### 5. My Archive (`/profile`)
+Personal management dashboard.
+* **Component:** `src/views/ProfileView.vue`
+* **Functionality:** Automatically calls the `/images?mine=true` endpoint to filter the gallery exclusively to images owned by the currently authenticated JWT subject.
 
-The landing page of the application, focused on inspecting individual images.
+### 6. Admin Dashboard (`/admin`)
+Infrastructure management interface. Restricted to accounts possessing the `ROLE_ADMIN` JWT claim.
+* **Component:** `src/views/AdminView.vue`
+* **Functionality:** Exposes inputs to trigger the backend's background Unsplash Dataset Ingestion engine (`/admin/unsplash/import`). Polls the active status of the worker threads.
 
-- **Route:** `/`
-- **Component:** `src/components/Home.vue`
-
-#### Functionality
-- **Initialization:** On load, it fetches the list of available images from the backend (`GET /images`).
-- **Image Selection:** Displays a dropdown menu containing the names of all available images.
-- **Image Display:**
-  - When a user selects an image from the dropdown, the component constructs the image URL (`/images/{id}`).
-  - The selected image is displayed below the dropdown.
-
-#### Interaction Flow
-1. User navigates to Home.
-2. User clicks the dropdown and chooses a file.
-3. The browser requests the image binary from the server.
-4. The image renders on the screen.
-
----
-
-### 2. Upload View
-
-A dedicated page for adding new images to the system.
-
-- **Route:** `/upload`
-- **Component:** `src/components/Upload.vue`
-
-#### Functionality
-- **File Selection:** Provides a standard file input to allow users to choose an image from their local device.
-- **Upload Action:**
-  - Validates that a file has been selected.
-  - Sends a `POST` request to `/images` with the file as `multipart/form-data`.
-- **Async Processing Feedback:**
-  - Because feature extraction happens in the background, the server responds with a `202 Accepted`.
-  - The frontend then polls the `/images/{id}/status` endpoint (via `useImageStatus`).
-  - Displays processing badges until the status reaches `COMPLETED` or `FAILED`.
-
----
-
-### 3. Gallery View
-
-A browsing interface to view and manage the entire collection of images.
-
-- **Route:** `/gallery`
-- **Component:** `src/components/Gallery.vue`
-
-#### Functionality
-- **Grid Display:** Fetches all images (`GET /images`) and renders them as a grid of cards.
-- **Image Cards:** Each card contains:
-  - A thumbnail preview of the image.
-  - The image name.
-  - Associated tags (with interactive buttons to instantly delete tags).
-  - A **Delete** button for the image itself.
-- **Deletion:**
-  - Clicking "Delete" triggers a confirmation dialog.
-  - If confirmed, sends a `DELETE` request to `/images/{id}`.
-  - Upon success, the image is immediately removed from the grid without requiring a page reload.
-
----
-
-### 4. Search View
-
-An advanced querying interface to find specific images based on text attributes or content similarity.
-
-- **Route:** `/search`
-- **Component:** `src/components/Search.vue`
-
-#### Functionality
-- **By Attributes:** Form to search by Name, Format, Size, or Keywords.
-- **By Similarity:**
-  - Allows selecting a source image.
-  - User chooses a specific feature descriptor (Gradient/HOG, Saturation/HSV, RGB Distribution, CIELAB Distribution).
-  - Specifies the number of results to retrieve.
-  - Relies on the database's `hnsw` indexes for rapid visual matching.
+### 7. About / System Architecture (`/about`)
+* **Component:** `src/views/AboutView.vue`
+* **Functionality:** A technical summary page explaining the pgvector indexing, HNSW algorithms, ResNet-50 implementations, and providing live mathematical estimations of the current Database Tensor Memory Size based on active indexing dimensions.

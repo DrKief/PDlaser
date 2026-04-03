@@ -1,80 +1,85 @@
-#### 3. `API-Reference.md`
 # API Reference
 
 All backend endpoints are relative to the application's base URL (e.g., `http://localhost:8080`).
 
 **Note on Error Handling:** The API uses RFC 7807 Problem Details for standardizing error responses. All errors return a `traceId` for debugging purposes.
 
-## 1. Core Image Operations
+## 1. Authentication & Users
 
-### List All Images
-Retrieves a list of all available images stored in the system (metadata only).
+### Register User
+Creates a new account with `ROLE_USER` privileges.
+* **URL:** `/auth/register`
+* **Method:** `POST`
+* **Body:** `{ "username": "alice", "password": "secure" }`
+* **Response:** `200 OK` (Success), `400 Bad Request` (Username taken)
+
+### Login
+Authenticates a user and issues a stateless JSON Web Token (JWT).
+* **URL:** `/auth/login`
+* **Method:** `POST`
+* **Body:** `{ "username": "alice", "password": "secure" }`
+* **Response:** `200 OK` with `{ "token": "ey..." }`
+
+---
+
+## 2. Core Image Operations
+
+### List All Images (Paginated)
+Retrieves a paginated list of all images. Supports filtering by the authenticated user's ownership.
 * **URL:** `/images`
 * **Method:** `GET`
+* **Query Params:** `page` (default: 0), `size` (default: 30), `mine` (boolean, default: false)
 * **Response:** `200 OK`
   ```json
-  [
-    { "id": 1, "name": "vacation.jpg", "keywords": ["summer"] },
-    { "id": 2, "name": "profile.png", "keywords": [] }
-  ]
+  {
+    "content": [
+      { "id": 1, "uploader": "alice", "keywords": ["summer"], "extraction_status": "COMPLETED" }
+    ],
+    "totalElements": 1,
+    "hasNext": false
+  }
   ```
 
 ### Get Image Content
 Retrieves the actual binary content of a specific image.
 * **URL:** `/images/{id}`
 * **Method:** `GET`
-* **Response:** 
-  * `200 OK` (Returns binary image data with appropriate `image/*` Content-Type).
-  * `404 Not Found`
+* **Response:** `200 OK` (Binary image data), `404 Not Found`
 
 ### Upload Image (Asynchronous)
-Uploads a new image file to the server. The backend automatically calculates SHA-256 hashes (to prevent duplicates). Image feature vectors (HOG, HSV, RGB, CIELAB) are extracted **asynchronously** in the background.
+Uploads a new image file. Calculates SHA-256 hashes to prevent duplicates. Vectors (HOG, HSV, RGB, CIELAB, Semantic) are extracted asynchronously via virtual threads.
 * **URL:** `/images`
 * **Method:** `POST`
 * **Content-Type:** `multipart/form-data`
-* **Body Form-Data:** `file` (The image file to upload), `keywords` (Optional, list of tags)
-* **Response:** 
-  * `202 Accepted`
-    ```json
-    {
-      "message": "Image accepted for background processing.",
-      "id": 1,
-      "status_url": "/images/1/status"
-    }
-    ```
-  * `415 Unsupported Media Type`
-  * `400 Bad Request` (If file is empty)
-  * `413 Content Too Large`
+* **Headers:** `Authorization: Bearer <JWT>`
+* **Body:** `file` (Image binary), `keywords` (Optional, list of tags)
+* **Response:** `202 Accepted` with `{ "id": 1 }`, `415 Unsupported Media Type`, `409 Conflict` (Duplicate)
 
-### Check Image Processing Status
-Retrieves the background processing status for vector extraction via Long-Polling.
+### Check Image Processing Status (Long-Polling)
+Retrieves the background processing status. Uses `DeferredResult` to hang the connection securely until the status changes or a timeout occurs.
 * **URL:** `/images/{id}/status`
 * **Method:** `GET`
-* **Response:**
-  * `200 OK`
-    ```json
-    {
-      "id": 1,
-      "extraction_status": "COMPLETED" // Values: PENDING, PROCESSING, COMPLETED, FAILED
-    }
-    ```
-  * `202 Accepted` (If request times out before process completes, used to keep the connection alive gracefully).
-  * `404 Not Found`
+* **Response:** `200 OK` or `202 Accepted` (Timeout)
+  ```json
+  {
+    "id": 1,
+    "extraction_status": "COMPLETED" // PENDING, PROCESSING, COMPLETED, FAILED
+  }
+  ```
 
 ### Delete Image
-Deletes a specific image and its associated metadata/vectors from the system. Architecture ensures the physical file is deleted before the DB record.
+Permanently deletes an image. Protected by JWT claims (must be original uploader or Admin).
 * **URL:** `/images/{id}`
 * **Method:** `DELETE`
-* **Response:** 
-  * `204 No Content`
-  * `404 Not Found`
+* **Headers:** `Authorization: Bearer <JWT>`
+* **Response:** `204 No Content`, `403 Forbidden`, `404 Not Found`
 
 ---
 
-## 2. Metadata & Keywords
+## 3. Metadata & Keywords
 
 ### Get Image Metadata
-Retrieves file metadata, processing status, and associated keywords.
+Retrieves file metadata, dimensions, processing status, and associated keywords.
 * **URL:** `/images/{id}/metadata`
 * **Method:** `GET`
 * **Response:** `200 OK`
@@ -83,57 +88,58 @@ Retrieves file metadata, processing status, and associated keywords.
     "Name": "vacation.jpg",
     "Type": "image/jpeg",
     "Size": "800*600",
-    "Keywords": ["nature", "summer"],
+    "Keywords": ["nature", "ai:outdoor"],
     "Extraction_Status": "COMPLETED"
   }
   ```
 
-### Get All Keywords
-Retrieves a distinct, alphabetical list of all tags currently used in the database.
-* **URL:** `/images/keywords`
+### Get/Search Keywords
+* **URL:** `/images/keywords` (GET all unique keywords available to user)
+* **URL:** `/images/keywords/search?q=xyz` (Search for autocomplete)
+* **URL:** `/images/keywords/popular?limit=15` (Top tags)
 * **Method:** `GET`
 * **Response:** `200 OK` (Array of strings)
 
-### Add Keyword
-Tags an image with a specific keyword. Tags are normalized automatically (lowercase, spaces replaced by underscores).
-* **URL:** `/images/{id}/keywords`
-* **Method:** `PUT`
-* **Query Params:** `tag` (string)
+### Add / Delete Keyword
+* **URL:** `/images/{id}/keywords?tag=xyz`
+* **Method:** `PUT` (Add) / `DELETE` (Remove)
 * **Response:** `204 No Content`, `404 Not Found`
-
-### Delete Keyword
-Removes a keyword from an image.
-* **URL:** `/images/{id}/keywords`
-* **Method:** `DELETE`
-* **Query Params:** `tag` (string)
-* **Response:** `204 No Content`, `404 Not Found`, `400 Bad Request` (If tag doesn't exist on image)
 
 ---
 
-## 3. Search & Similarity
+## 4. Search & Similarity
 
-### Search by Attributes
-Finds images matching specific metadata criteria.
+### Search by Attributes (Paginated)
+Finds images matching specific keyword tags.
 * **URL:** `/images/search`
 * **Method:** `GET`
-* **Query Params (Optional):**
-  * `name` (string): Substring of the filename.
-  * `format` (string): File extension (e.g., `jpeg`).
-  * `size` (string): Formatted as `width,height` (e.g., `800,600`).
-  * `keywords` (list of strings): comma-separated tags.
-* **Response:** `200 OK` (Array of IDs), `404 Not Found`
+* **Query Params:** `keywords` (List), `page`, `size`, `mine`
+* **Response:** `200 OK` (Paginated Object)
 
-### Find Similar Images
-Uses vector-based math (`pgvector` HNSW index operators) to find visually similar images. Requires `extraction_status` to be `COMPLETED`.
+### Find Similar Images (Database Source)
+Uses `pgvector` HNSW indexes to find visually similar images.
 * **URL:** `/images/{id}/similar`
 * **Method:** `GET`
-* **Query Params:**
-  * `number` (int, default: 10): Limit of results returned.
-  * `descriptor` (string, default: `gradient`): Valid values are `gradient` (HOG), `saturation` (HSV), `rgb` (RGB), and `cielab` (CIELAB).
+* **Query Params:** `number` (Limit), `descriptor` (`semantic`, `cielab`, `weighted`, `gradient`, `saturation`, `rgb`)
 * **Response:** `200 OK`
   ```json
-  [
-    { "id": 5, "filename": "beach.jpg", "score": 0.9842 },
-    { "id": 12, "filename": "ocean.png", "score": 0.8510 }
-  ]
+  [ { "id": 5, "filename": "beach.jpg", "score": 0.9842 } ]
   ```
+
+### Ephemeral Similarity Search (Upload Source)
+Upload an image purely to search the database. Vectors are extracted in RAM and searched without persisting the image to disk or the DB.
+* **URL:** `/images/search/ephemeral`
+* **Method:** `POST`
+* **Content-Type:** `multipart/form-data`
+* **Body:** `file` (Binary), `number` (Limit), `descriptor` (Algorithm)
+* **Response:** `200 OK` (Array of similar images)
+
+---
+
+## 5. Administrative Controls
+
+*Requires `ROLE_ADMIN` JWT claim.*
+
+* **Start Bulk Import:** `POST /admin/unsplash/import` (Body: `{ "limit": 50, "offset": 0 }`)
+* **Start Keyword Import:** `POST /admin/unsplash/import/keyword` (Body: `{ "keyword": "mountain", "limit": 25 }`)
+* **Check Admin Status:** `GET /admin/unsplash/status`
