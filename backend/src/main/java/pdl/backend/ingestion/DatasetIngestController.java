@@ -4,12 +4,8 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/admin")
@@ -22,30 +18,20 @@ public class DatasetIngestController {
     this.unsplashService = unsplashService;
   }
 
-  @PostMapping("/unsplash/download")
-  public ResponseEntity<?> downloadDataset() {
-    if (!unsplashService.getStatus().equals("IDLE") && !unsplashService.getStatus().startsWith("ERROR") && !unsplashService.getStatus().startsWith("COMPLETED")) {
-      return ResponseEntity.badRequest().body(Map.of("message", "Job already in progress."));
-    }
-    unsplashService.downloadAndExtractDataset();
-    return ResponseEntity.ok(Map.of("message", "Download initiated."));
-  }
-
-  @PostMapping("/unsplash/sync")
-  public ResponseEntity<?> syncMetadata(@RequestBody Map<String, Integer> request) {
-    if (!unsplashService.getStatus().equals("IDLE") && !unsplashService.getStatus().startsWith("ERROR") && !unsplashService.getStatus().startsWith("COMPLETED")) {
-      return ResponseEntity.badRequest().body(Map.of("message", "Job already in progress."));
-    }
-    int limit = request.getOrDefault("limit", 1000);
-    int offset = request.getOrDefault("offset", 0);
-    unsplashService.syncMetadata(limit, offset);
-    return ResponseEntity.ok(Map.of("message", "Metadata sync initiated."));
+  @PostMapping("/unsplash/upload")
+  public ResponseEntity<?> uploadCatalog(
+      @RequestPart("file") MultipartFile file,
+      @RequestParam(defaultValue = "1000") int limit
+  ) {
+    if (file.isEmpty()) return ResponseEntity.badRequest().body("File is empty");
+    unsplashService.processTsvUpload(file, limit);
+    return ResponseEntity.ok(Map.of("message", "Catalog upload started."));
   }
 
   @GetMapping("/unsplash/catalog")
   public ResponseEntity<?> getCatalog(
     @RequestParam(defaultValue = "0") int page,
-    @RequestParam(defaultValue = "30") int size,
+    @RequestParam(defaultValue = "24") int size,
     @RequestParam(required = false) String query
   ) {
     return ResponseEntity.ok(unsplashService.getCatalog(page, size, query));
@@ -53,11 +39,8 @@ public class DatasetIngestController {
 
   @PostMapping("/unsplash/import")
   public ResponseEntity<?> importSelected(@RequestBody List<Long> imageIds) {
-    if (!unsplashService.getStatus().equals("IDLE") && !unsplashService.getStatus().startsWith("ERROR") && !unsplashService.getStatus().startsWith("COMPLETED")) {
-      return ResponseEntity.badRequest().body(Map.of("message", "Job already in progress."));
-    }
     unsplashService.importSelectedImages(imageIds);
-    return ResponseEntity.ok(Map.of("message", "Batch import initiated."));
+    return ResponseEntity.ok(Map.of("message", "Import initiated."));
   }
 
   @GetMapping("/unsplash/status")
