@@ -86,10 +86,10 @@ public class UnsplashService {
               .connectTimeout(Duration.ofSeconds(20))
               .build();
 
-      HttpRequest request = HttpRequest.newBuilder()
-              .uri(URI.create("https://unsplash.com/data/lite/latest"))
-              .GET()
-              .build();
+        HttpRequest request = HttpRequest.newBuilder()
+        .uri(URI.create("https://unsplash-datasets.s3.amazonaws.com/lite/latest/unsplash-research-dataset-lite-latest.zip"))
+        .GET()
+        .build();
 
       status = "DOWNLOADING_ZIP (Streaming ~700MB archive to disk...)";
       
