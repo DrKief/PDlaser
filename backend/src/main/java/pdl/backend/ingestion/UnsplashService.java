@@ -3,15 +3,16 @@ package pdl.backend.ingestion;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.FileReader;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -73,36 +74,41 @@ public class UnsplashService {
 
   @Async("taskExecutor")
   public void downloadAndExtractDataset() {
-    status = "DOWNLOADING_ZIP (Starting...)";
+    status = "DOWNLOADING_ZIP (Resolving redirects...)";
     Path zipPath = Paths.get(datasetDir, "unsplash-lite.zip");
     
     try {
       Files.createDirectories(Paths.get(datasetDir));
       
-      // 1. Download with Redirect Support (Updated with URI -> URL to fix Java 20 deprecation)
-      URL url = java.net.URI.create("https://unsplash.com/data/lite/latest").toURL();
-      HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-      conn.setInstanceFollowRedirects(true);
+      // 1. Use Java 21 Native HttpClient with strict auto-redirect across servers
+      HttpClient client = HttpClient.newBuilder()
+              .followRedirects(HttpClient.Redirect.ALWAYS)
+              .connectTimeout(Duration.ofSeconds(20))
+              .build();
+
+      HttpRequest request = HttpRequest.newBuilder()
+              .uri(URI.create("https://unsplash.com/data/lite/latest"))
+              .GET()
+              .build();
+
+      status = "DOWNLOADING_ZIP (Streaming ~700MB archive to disk...)";
       
-      // Handle manual redirect if auto-follow fails (common with some CDNs like AWS S3)
-      int statusCode = conn.getResponseCode();
-      if (statusCode == HttpURLConnection.HTTP_MOVED_TEMP || statusCode == HttpURLConnection.HTTP_MOVED_PERM || statusCode == HttpURLConnection.HTTP_SEE_OTHER) {
-          String newUrl = conn.getHeaderField("Location");
-          conn = (HttpURLConnection) java.net.URI.create(newUrl).toURL().openConnection();
+      // Stream directly to the file to avoid out-of-memory errors
+      HttpResponse<Path> response = client.send(request, HttpResponse.BodyHandlers.ofFile(zipPath));
+
+      if (response.statusCode() >= 400) {
+          throw new RuntimeException("Server returned HTTP " + response.statusCode());
       }
 
-      status = "DOWNLOADING_ZIP (Streaming ~700MB to disk...)";
-      try (InputStream in = conn.getInputStream(); 
-           FileOutputStream out = new FileOutputStream(zipPath.toFile())) {
-          byte[] buffer = new byte[8192];
-          int bytesRead;
-          while ((bytesRead = in.read(buffer)) != -1) {
-              out.write(buffer, 0, bytesRead);
-          }
+      // Safety check: Make sure we didn't just download a tiny HTML error page
+      long fileSize = Files.size(zipPath);
+      if (fileSize < 1024 * 1024) { // If it's less than 1MB, it's definitely fake
+          throw new RuntimeException("Downloaded file is suspiciously small (" + fileSize + " bytes). Download failed.");
       }
 
       // 2. Unzip and Flatten
       status = "EXTRACTING_TSV_FILES";
+      int filesExtracted = 0;
       try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipPath.toFile()))) {
         ZipEntry zipEntry = zis.getNextEntry();
         while (zipEntry != null) {
@@ -113,9 +119,14 @@ public class UnsplashService {
           if (fileName.endsWith(".tsv")) {
             Path targetPath = Paths.get(datasetDir, fileName);
             Files.copy(zis, targetPath, StandardCopyOption.REPLACE_EXISTING);
+            filesExtracted++;
           }
           zipEntry = zis.getNextEntry();
         }
+      }
+
+      if (filesExtracted == 0) {
+          throw new RuntimeException("No .tsv files were found inside the zip archive.");
       }
 
       // 3. Cleanup the 700MB zip file to save space
@@ -126,6 +137,8 @@ public class UnsplashService {
     } catch (Exception e) {
       log.error("Failed to download or extract Unsplash dataset", e);
       status = "ERROR: " + e.getMessage();
+      // Try to clean up the corrupt zip if it exists
+      try { Files.deleteIfExists(zipPath); } catch (Exception ignored) {}
     }
   }
 
