@@ -3,8 +3,13 @@ package pdl.backend.ingestion;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -113,6 +118,76 @@ public class UnsplashService {
             }
         } catch (Exception e) {
             status = "ERROR_KEYWORDS: " + e.getMessage();
+            return;
+        }
+
+        status = "COMPLETED";
+    }
+
+    @Async("taskExecutor")
+    public void importByKeyword(String keyword, int limit) {
+        Path photosPath = new File(datasetDir, "photos.tsv").toPath();
+        Path keywordsPath = new File(datasetDir, "keywords.tsv").toPath();
+
+        if (!Files.exists(photosPath) || !Files.exists(keywordsPath)) {
+            status = "ERROR: TSV datasets missing at " + datasetDir;
+            return;
+        }
+
+        UserAccount admin = userRepository.findByUsername("admin").orElseThrow();
+        RestTemplate restTemplate = new RestTemplate();
+
+        status = "FINDING_PHOTO_IDS_FOR_KEYWORD: " + keyword;
+
+        List<String> photoIds;
+        try (Stream<String> lines = Files.lines(keywordsPath)) {
+            photoIds = lines.skip(1)
+                .map(line -> line.split("\t"))
+                .filter(cols -> cols.length >= 2 && cols[1].equalsIgnoreCase(keyword))
+                .map(cols -> cols[0])
+                .limit(limit)
+                .collect(Collectors.toList());
+        } catch (Exception e) {
+            status = "ERROR_KEYWORDS_SCAN: " + e.getMessage();
+            log.error("Failed to scan keywords", e);
+            return;
+        }
+
+        if (photoIds.isEmpty()) {
+            status = "COMPLETED: No photos found for keyword " + keyword;
+            return;
+        }
+
+        status = "FINDING_URLS_AND_IMPORTING (Target: " + photoIds.size() + ")";
+
+        try (Stream<String> lines = Files.lines(photosPath)) {
+            lines.skip(1)
+                .map(line -> line.split("\t"))
+                .filter(cols -> cols.length >= 3 && photoIds.contains(cols[0]))
+                .limit(photoIds.size())
+                .forEach(cols -> {
+                    String photoId = cols[0];
+                    String url = cols[2] + "?w=1080";
+                    
+                    try {
+                        byte[] imageBytes = restTemplate.getForObject(url, byte[].class);
+                        if (imageBytes != null) {
+                            MediaRecord img = new MediaRecord("unsplash_" + photoId + ".jpg", imageBytes);
+                            img.setUserId(admin.getId());
+                            img.setPrivate(false);
+                            storageService.processAndSaveImage(img, true);
+                            queryRepoLayer.addKeyword(img.getId(), keyword);
+                            Thread.sleep(2500); 
+                        }
+                    } catch (org.springframework.web.server.ResponseStatusException e) {
+                        log.info("Unsplash image {} already exists.", photoId);
+                    } catch (Exception e) {
+                        log.error("Failed to download {}", url, e);
+                    }
+                });
+        } catch (Exception e) {
+            status = "ERROR_PHOTOS_SCAN: " + e.getMessage();
+            log.error("Failed to scan photos", e);
             return;
         }
 

@@ -32,6 +32,32 @@ public class DatasetIngestController {
         return ResponseEntity.ok(Map.of("message", "Dataset import initiated. Limit: " + limit + ", Offset: " + offset));
     }
 
+    @PostMapping("/unsplash/import/keyword")
+    public ResponseEntity<?> startUnsplashKeywordImport(@RequestBody Map<String, Object> request) {
+        if (unsplashImporter.getStatus().startsWith("IMPORTING") || unsplashImporter.getStatus().startsWith("FINDING")) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Import already in progress."));
+        }
+        String keyword = (String) request.get("keyword");
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Keyword is required."));
+        }
+        int limit = 50;
+        if (request.containsKey("limit")) {
+            Object limitObj = request.get("limit");
+            if (limitObj instanceof Number) {
+                limit = ((Number) limitObj).intValue();
+            } else if (limitObj instanceof String) {
+                try {
+                    limit = Integer.parseInt((String) limitObj);
+                } catch (NumberFormatException e) {
+                    return ResponseEntity.badRequest().body(Map.of("message", "Limit must be a valid number."));
+                }
+            }
+        }
+        unsplashImporter.importByKeyword(keyword, limit);
+        return ResponseEntity.ok(Map.of("message", "Dataset import initiated for keyword: " + keyword + ", Limit: " + limit));
+    }
+
     @GetMapping("/unsplash/status")
     public ResponseEntity<?> getImportStatus() {
         return ResponseEntity.ok(Map.of("status", unsplashImporter.getStatus()));
