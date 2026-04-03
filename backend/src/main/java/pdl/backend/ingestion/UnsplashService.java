@@ -13,6 +13,7 @@ import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -22,29 +23,24 @@ import pdl.backend.auth.UserRepository;
 import pdl.backend.gallery.core.FileStorageService;
 import pdl.backend.gallery.core.MediaRecord;
 import pdl.backend.gallery.search.TagRepository;
+import pdl.backend.gallery.core.FileStorageService;
 
 @Service
 public class UnsplashService {
-
-  private static final Logger log = LoggerFactory.getLogger(UnsplashService.class);
-  private final FileStorageService storageService;
-  private final TagRepository queryRepoLayer;
-  private final UserRepository userRepository;
-
-  @Value("${app.unsplash.dataset-dir}")
-  private String datasetDir;
-
-  private String status = "IDLE";
-
-  public UnsplashService(
-    FileStorageService storageService,
-    TagRepository queryRepoLayer,
-    UserRepository userRepository
-  ) {
-    this.storageService = storageService;
-    this.queryRepoLayer = queryRepoLayer;
-    this.userRepository = userRepository;
-  }
+    private static final Logger log = LoggerFactory.getLogger(UnsplashService.class);
+    private final FileStorageService storageService;
+    private final TagRepository queryRepoLayer;
+    private final UserRepository userRepository;
+    
+    @Value("${app.unsplash.dataset-dir}")
+    private String datasetDir;
+    private String status = "IDLE";
+    
+    public UnsplashService(FileStorageService storageService, TagRepository queryRepoLayer, UserRepository userRepository) {
+        this.storageService = storageService;
+        this.queryRepoLayer = queryRepoLayer;
+        this.userRepository = userRepository;
+    }
 
   public String getStatus() {
     return status;
@@ -79,12 +75,12 @@ public class UnsplashService {
         if (++currentLine <= offset) continue;
         if (processed >= limit) break;
 
-        String[] cols = line.split("\t");
-        if (cols.length < 3) continue;
-
-        String photoId = cols[0];
-        String url = cols[2] + "?w=1080";
-        status = "IMPORTING_PHOTOS (Progress: " + (processed + 1) + " / " + limit + ")";
+                String[] cols = line.split("\t");
+                if (cols.length < 3) continue;
+                
+                String photoId = cols[0];
+                String url = cols[2] + "?w=1080"; 
+                status = "IMPORTING_PHOTOS (Progress: " + (processed + 1) + " / " + limit + ")";
 
         try {
           byte[] imageBytes = restTemplate.getForObject(url, byte[].class);
@@ -173,38 +169,37 @@ public class UnsplashService {
 
     status = "FINDING_URLS_AND_IMPORTING (Target: " + photoIds.size() + ")";
 
-    try (Stream<String> lines = Files.lines(photosPath)) {
-      lines
-        .skip(1)
-        .map(line -> line.split("\t"))
-        .filter(cols -> cols.length >= 3 && photoIds.contains(cols[0]))
-        .limit(photoIds.size())
-        .forEach(cols -> {
-          String photoId = cols[0];
-          String url = cols[2] + "?w=1080";
+        try (Stream<String> lines = Files.lines(photosPath)) {
+            lines.skip(1)
+                .map(line -> line.split("\t"))
+                .filter(cols -> cols.length >= 3 && photoIds.contains(cols[0]))
+                .limit(photoIds.size())
+                .forEach(cols -> {
+                    String photoId = cols[0];
+                    String url = cols[2] + "?w=1080";
+                    
+                    try {
+                        byte[] imageBytes = restTemplate.getForObject(url, byte[].class);
+                        if (imageBytes != null) {
+                            MediaRecord img = new MediaRecord("unsplash_" + photoId + ".jpg", imageBytes);
+                            img.setUserId(admin.getId());
+                            img.setPrivate(false);
+                            storageService.processAndSaveImage(img, true);
+                            queryRepoLayer.addKeyword(img.getId(), keyword);
+                            Thread.sleep(2500); 
+                        }
+                    } catch (org.springframework.web.server.ResponseStatusException e) {
+                        log.info("Unsplash image {} already exists.", photoId);
+                    } catch (Exception e) {
+                        log.error("Failed to download {}", url, e);
+                    }
+                });
+        } catch (Exception e) {
+            status = "ERROR_PHOTOS_SCAN: " + e.getMessage();
+            log.error("Failed to scan photos", e);
+            return;
+        }
 
-          try {
-            byte[] imageBytes = restTemplate.getForObject(url, byte[].class);
-            if (imageBytes != null) {
-              MediaRecord img = new MediaRecord("unsplash_" + photoId + ".jpg", imageBytes);
-              img.setUserId(admin.getId());
-              img.setPrivate(false);
-              storageService.processAndSaveImage(img, true);
-              queryRepoLayer.addKeyword(img.getId(), keyword);
-              Thread.sleep(2500);
-            }
-          } catch (org.springframework.web.server.ResponseStatusException e) {
-            log.info("Unsplash image {} already exists.", photoId);
-          } catch (Exception e) {
-            log.error("Failed to download {}", url, e);
-          }
-        });
-    } catch (Exception e) {
-      status = "ERROR_PHOTOS_SCAN: " + e.getMessage();
-      log.error("Failed to scan photos", e);
-      return;
+        status = "COMPLETED";
     }
-
-    status = "COMPLETED";
-  }
 }

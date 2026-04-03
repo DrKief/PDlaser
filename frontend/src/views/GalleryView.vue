@@ -485,13 +485,14 @@ const goToImage = (id: number | string) => {
   padding: 0.5rem 1rem;
   min-width: 40px;
 }
+.page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .page-btn:hover:not(:disabled) {
   background: var(--bg-element);
   border-color: var(--text-primary);
 }
 .page-btn.active {
   background: var(--color-accent);
-  color: #fff;
+  color: var(--text-on-accent);
   border-color: var(--color-accent);
 }
 </style>

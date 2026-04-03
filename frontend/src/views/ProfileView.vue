@@ -182,7 +182,7 @@ const deleteImage = async (id: number, event: Event) => {
 }
 .delete-btn:hover {
   background: var(--color-danger);
-  color: #fff;
+  color: var(--text-on-danger);
   border-color: var(--color-danger);
 }
 </style>
