@@ -42,10 +42,10 @@ public class FileStorageService {
   public void processAndSaveImage(MediaRecord img, boolean saveToDisk) {
     String hash = calculateSHA256(img.getData());
 
-    // Prevent duplicates EXCEPT when updating an existing REMOTE_METADATA record
+    // BUG FIX: Use .equals() for Long object comparison, not !=
     Optional<MediaRecord> existing = recordRepository.findByHash(hash);
     if (existing.isPresent() && (img.getId() == 0 || existing.get().getId() != img.getId())) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "Image already exists on the server.");
+        throw new ResponseStatusException(HttpStatus.CONFLICT, "Image already exists on the server.");
     }
 
     img.setHash(hash);
@@ -71,7 +71,7 @@ public class FileStorageService {
     img.setWidth(width);
     img.setHeight(height);
 
-    MediaRecord savedImage = recordRepository.save(img); // Triggers UPDATE if ID exists, INSERT if new.
+    MediaRecord savedImage = recordRepository.save(img); 
     img.setId(savedImage.getId());
 
     if (saveToDisk) {

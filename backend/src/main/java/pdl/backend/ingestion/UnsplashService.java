@@ -51,6 +51,15 @@ public class UnsplashService {
     return status;
   }
 
+  // Safe TSV Column Extractor
+  private String getCol(String[] cols, Map<String, Integer> map, String key, String defaultVal) {
+    Integer idx = map.get(key);
+    if (idx != null && idx < cols.length && cols[idx] != null && !cols[idx].trim().isEmpty()) {
+      return cols[idx].trim();
+    }
+    return defaultVal;
+  }
+
   @Async("taskExecutor")
   public void syncMetadata(int limit, int offset) {
     status = "SYNCING_METADATA";
@@ -64,34 +73,42 @@ public class UnsplashService {
     UserAccount admin = userRepository.findByUsername("admin").orElseThrow();
 
     try (BufferedReader br = new BufferedReader(new FileReader(photosFile))) {
-      String line;
-      br.readLine(); // Skip TSV Header
+      // Dynamic Header Mapping
+      String headerLine = br.readLine();
+      if (headerLine == null) throw new IllegalStateException("TSV file is empty");
+      
+      String[] headers = headerLine.split("\t");
+      Map<String, Integer> colMap = new HashMap<>();
+      for (int i = 0; i < headers.length; i++) colMap.put(headers[i].trim(), i);
 
       int currentLine = 0;
       int processed = 0;
+      String line;
 
       while ((line = br.readLine()) != null) {
         if (++currentLine <= offset) continue;
         if (processed >= limit) break;
 
         String[] cols = line.split("\t", -1);
-        if (cols.length < 3) continue;
+        
+        String pId = getCol(cols, colMap, "photo_id", null);
+        String rawUrl = getCol(cols, colMap, "photo_image_url", getCol(cols, colMap, "photo_url", null));
+        
+        if (pId == null || rawUrl == null) continue;
 
-        String pId = cols[0];
-        String rawUrl = cols[2];
-        String description = (cols.length > 8) ? cols[8] : "";
-        String photographerName = (cols.length > 11)
-          ? (cols[10] + " " + cols[11]).trim()
-          : "Unknown";
-        String cameraMake = (cols.length > 12) ? cols[12] : "";
-        String country = (cols.length > 21) ? cols[21] : "";
-
+        String description = getCol(cols, colMap, "photo_description", "");
+        String firstName = getCol(cols, colMap, "photographer_first_name", "");
+        String lastName = getCol(cols, colMap, "photographer_last_name", "");
+        String photographerName = (firstName + " " + lastName).trim();
+        if (photographerName.isEmpty()) photographerName = "Unknown";
+        
+        String cameraMake = getCol(cols, colMap, "exif_camera_make", "");
+        String country = getCol(cols, colMap, "photo_location_country", "");
+        
         long downloads = 0;
-        if (cols.length > 24 && !cols[24].isEmpty()) {
-          try {
-            downloads = Long.parseLong(cols[24]);
-          } catch (Exception ignored) {}
-        }
+        try {
+          downloads = Long.parseLong(getCol(cols, colMap, "stats_downloads", "0"));
+        } catch (NumberFormatException ignored) {}
 
         // Avoid inserting duplicates
         Integer existing = jdbcTemplate.queryForObject(
@@ -104,18 +121,8 @@ public class UnsplashService {
           jdbcTemplate.update(
             "INSERT INTO images (filename, format, provider, provider_id, remote_url, extraction_status, description, photographer_name, camera_make, location_country, stats_downloads, user_id) " +
               "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            "unsplash_" + pId + ".jpg",
-            "jpeg",
-            "UNSPLASH",
-            pId,
-            rawUrl,
-            "REMOTE_METADATA",
-            description,
-            photographerName,
-            cameraMake,
-            country,
-            downloads,
-            admin.getId()
+            "unsplash_" + pId + ".jpg", "jpeg", "UNSPLASH", pId, rawUrl, "REMOTE_METADATA",
+            description, photographerName, cameraMake, country, downloads, admin.getId()
           );
         }
         processed++;
@@ -132,22 +139,16 @@ public class UnsplashService {
     List<Object> params = new ArrayList<>();
 
     if (query != null && !query.trim().isEmpty()) {
-      baseSql +=
-        " AND (camera_make ILIKE ? OR location_country ILIKE ? OR description ILIKE ? OR photographer_name ILIKE ?)";
+      baseSql += " AND (camera_make ILIKE ? OR location_country ILIKE ? OR description ILIKE ? OR photographer_name ILIKE ?)";
       String likeQuery = "%" + query.trim() + "%";
-      params.add(likeQuery);
-      params.add(likeQuery);
-      params.add(likeQuery);
-      params.add(likeQuery);
+      params.add(likeQuery); params.add(likeQuery); params.add(likeQuery); params.add(likeQuery);
     }
 
     String countSql = "SELECT COUNT(*) " + baseSql;
     Long totalElements = jdbcTemplate.queryForObject(countSql, Long.class, params.toArray());
 
-    String dataSql =
-      "SELECT id, remote_url, photographer_name, camera_make, location_country, stats_downloads " +
-      baseSql +
-      " ORDER BY stats_downloads DESC LIMIT ? OFFSET ?";
+    String dataSql = "SELECT id, remote_url, photographer_name, camera_make, location_country, stats_downloads " +
+      baseSql + " ORDER BY stats_downloads DESC LIMIT ? OFFSET ?";
     params.add(size);
     params.add(page * size);
 
@@ -156,27 +157,18 @@ public class UnsplashService {
     Map<String, Object> result = new HashMap<>();
     result.put("content", content);
     result.put("totalElements", totalElements != null ? totalElements : 0);
-    result.put(
-      "totalPages",
-      (int) Math.ceil((double) (totalElements != null ? totalElements : 0) / size)
-    );
+    result.put("totalPages", (int) Math.ceil((double) (totalElements != null ? totalElements : 0) / size));
     return result;
   }
 
   @Async("taskExecutor")
   public void importSelectedImages(List<Long> imageIds) {
-    status = "IMPORTING_BATCH (0 / " + imageIds.size() + ")";
     int count = 0;
     RestTemplate restTemplate = new RestTemplate();
 
     for (Long id : imageIds) {
       try {
-        // Confirm it's still waiting to be downloaded
-        String currentStatus = jdbcTemplate.queryForObject(
-          "SELECT extraction_status FROM images WHERE id = ?",
-          String.class,
-          id
-        );
+        String currentStatus = jdbcTemplate.queryForObject("SELECT extraction_status FROM images WHERE id = ?", String.class, id);
         if (!"REMOTE_METADATA".equals(currentStatus)) continue;
 
         Optional<MediaRecord> opt = recordRepository.findById(id);
@@ -185,14 +177,11 @@ public class UnsplashService {
         MediaRecord record = opt.get();
         status = "DOWNLOADING (" + (count + 1) + " / " + imageIds.size() + "): " + record.getName();
 
-        // Download the binary from the Unsplash CDN
-        byte[] bytes = restTemplate.getForObject(record.getRemoteUrl() + "?w=1080", byte[].class);
+        byte[] bytes = restTemplate.getForObject(record.getRemoteUrl() + "&w=1080&q=85&fm=jpg", byte[].class);
         if (bytes != null) {
           record.setData(bytes);
-          // processAndSaveImage will do an UPDATE because record.getId() is populated,
-          // perfectly preserving our EXIF metadata while extracting vectors!
           storageService.processAndSaveImage(record, true);
-          Thread.sleep(1500); // Respect API limits
+          Thread.sleep(1000); // Politeness delay to prevent Unsplash CDN ban
         }
       } catch (Exception e) {
         log.error("Failed to import remote image ID: " + id, e);

@@ -42,13 +42,16 @@ public class SimilarityRepository {
 
       if (vectors == null) return null;
 
+      // BUG FIX: Added JOIN images i ON d.imageid = i.id WHERE i.extraction_status != 'REMOTE_METADATA'
       String sql =
         "WITH vector_matches AS (" +
-        "  SELECT imageid, " +
-        "    (? * (hogvector <=> ?) + " +
-        "     ? * (labvector <=> ?) + " +
-        "     ? * (hsvvector <=> ?)) as distance " +
-        "  FROM imagedescriptors WHERE imageid != ? " +
+        "  SELECT d.imageid, " +
+        "    (? * (d.hogvector <=> ?) + " +
+        "     ? * (d.labvector <=> ?) + " +
+        "     ? * (d.hsvvector <=> ?)) as distance " +
+        "  FROM imagedescriptors d " +
+        "  JOIN images i ON d.imageid = i.id " +
+        "  WHERE d.imageid != ? AND i.extraction_status != 'REMOTE_METADATA' " +
         "  ORDER BY distance ASC LIMIT ?" +
         ") " +
         "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
@@ -56,15 +59,7 @@ public class SimilarityRepository {
         "ORDER BY v.distance ASC";
 
       return jdbcTemplate.queryForList(
-        sql,
-        WEIGHT_HOG,
-        vectors[0],
-        WEIGHT_LAB,
-        vectors[2],
-        WEIGHT_HSV,
-        vectors[1],
-        targetId,
-        limit
+        sql, WEIGHT_HOG, vectors[0], WEIGHT_LAB, vectors[2], WEIGHT_HSV, vectors[1], targetId, limit
       );
     }
 
@@ -88,28 +83,23 @@ public class SimilarityRepository {
       return null;
     }
 
+    // BUG FIX: Added JOIN images i ON d.imageid = i.id WHERE i.extraction_status != 'REMOTE_METADATA'
     String sql =
       "WITH vector_matches AS (" +
-      "  SELECT imageid, " +
-      vectorColumn +
-      " <=> ? as distance " +
-      "  FROM imagedescriptors WHERE imageid != ? " +
-      "  ORDER BY " +
-      vectorColumn +
-      " <=> ? ASC LIMIT ?" +
+      "  SELECT d.imageid, " + vectorColumn + " <=> ? as distance " +
+      "  FROM imagedescriptors d " +
+      "  JOIN images i ON d.imageid = i.id " +
+      "  WHERE d.imageid != ? AND i.extraction_status != 'REMOTE_METADATA' " +
+      "  ORDER BY distance ASC LIMIT ?" +
       ") " +
       "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
       "FROM vector_matches v JOIN images i ON v.imageid = i.id " +
       "ORDER BY v.distance ASC";
 
-    return jdbcTemplate.queryForList(sql, targetVector, targetId, targetVector, limit);
+    return jdbcTemplate.queryForList(sql, targetVector, targetId, limit);
   }
 
-  public List<Map<String, Object>> findSimilarByVector(
-    PGvector targetVector,
-    String type,
-    int limit
-  ) {
+  public List<Map<String, Object>> findSimilarByVector(PGvector targetVector, String type, int limit) {
     String vectorColumn = switch (type.toLowerCase()) {
       case "gradient" -> "hogvector";
       case "saturation" -> "hsvvector";
@@ -119,20 +109,19 @@ public class SimilarityRepository {
       default -> "hogvector";
     };
 
+    // BUG FIX: Added JOIN images i ON d.imageid = i.id WHERE i.extraction_status != 'REMOTE_METADATA'
     String sql =
       "WITH vector_matches AS (" +
-      "  SELECT imageid, " +
-      vectorColumn +
-      " <=> ? as distance " +
-      "  FROM imagedescriptors " +
-      "  ORDER BY " +
-      vectorColumn +
-      " <=> ? ASC LIMIT ?" +
+      "  SELECT d.imageid, " + vectorColumn + " <=> ? as distance " +
+      "  FROM imagedescriptors d " +
+      "  JOIN images i ON d.imageid = i.id " +
+      "  WHERE i.extraction_status != 'REMOTE_METADATA' " +
+      "  ORDER BY distance ASC LIMIT ?" +
       ") " +
       "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
       "FROM vector_matches v JOIN images i ON v.imageid = i.id " +
       "ORDER BY v.distance ASC";
 
-    return jdbcTemplate.queryForList(sql, targetVector, targetVector, limit);
+    return jdbcTemplate.queryForList(sql, targetVector, limit);
   }
 }
