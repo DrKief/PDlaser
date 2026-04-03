@@ -2,12 +2,23 @@ package pdl.backend.ingestion;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,7 +62,7 @@ public class UnsplashService {
     return status;
   }
 
-  // Safe TSV Column Extractor
+  // Safely extracts a column value, defaulting if the column doesn't exist in the TSV
   private String getCol(String[] cols, Map<String, Integer> map, String key, String defaultVal) {
     Integer idx = map.get(key);
     if (idx != null && idx < cols.length && cols[idx] != null && !cols[idx].trim().isEmpty()) {
@@ -61,22 +72,80 @@ public class UnsplashService {
   }
 
   @Async("taskExecutor")
+  public void downloadAndExtractDataset() {
+    status = "DOWNLOADING_ZIP (Starting...)";
+    Path zipPath = Paths.get(datasetDir, "unsplash-lite.zip");
+    
+    try {
+      Files.createDirectories(Paths.get(datasetDir));
+      
+      // 1. Download with Redirect Support (Updated with URI -> URL to fix Java 20 deprecation)
+      URL url = java.net.URI.create("https://unsplash.com/data/lite/latest").toURL();
+      HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+      conn.setInstanceFollowRedirects(true);
+      
+      // Handle manual redirect if auto-follow fails (common with some CDNs like AWS S3)
+      int statusCode = conn.getResponseCode();
+      if (statusCode == HttpURLConnection.HTTP_MOVED_TEMP || statusCode == HttpURLConnection.HTTP_MOVED_PERM || statusCode == HttpURLConnection.HTTP_SEE_OTHER) {
+          String newUrl = conn.getHeaderField("Location");
+          conn = (HttpURLConnection) java.net.URI.create(newUrl).toURL().openConnection();
+      }
+
+      status = "DOWNLOADING_ZIP (Streaming ~700MB to disk...)";
+      try (InputStream in = conn.getInputStream(); 
+           FileOutputStream out = new FileOutputStream(zipPath.toFile())) {
+          byte[] buffer = new byte[8192];
+          int bytesRead;
+          while ((bytesRead = in.read(buffer)) != -1) {
+              out.write(buffer, 0, bytesRead);
+          }
+      }
+
+      // 2. Unzip and Flatten
+      status = "EXTRACTING_TSV_FILES";
+      try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipPath.toFile()))) {
+        ZipEntry zipEntry = zis.getNextEntry();
+        while (zipEntry != null) {
+          String entryName = zipEntry.getName();
+          // Extract only the filename from potential folder structure in ZIP (Prevents ZipSlip vulnerability)
+          String fileName = new File(entryName).getName();
+          
+          if (fileName.endsWith(".tsv")) {
+            Path targetPath = Paths.get(datasetDir, fileName);
+            Files.copy(zis, targetPath, StandardCopyOption.REPLACE_EXISTING);
+          }
+          zipEntry = zis.getNextEntry();
+        }
+      }
+
+      // 3. Cleanup the 700MB zip file to save space
+      Files.deleteIfExists(zipPath);
+      status = "IDLE";
+      log.info("Unsplash dataset downloaded and extracted successfully to {}", datasetDir);
+
+    } catch (Exception e) {
+      log.error("Failed to download or extract Unsplash dataset", e);
+      status = "ERROR: " + e.getMessage();
+    }
+  }
+
+  @Async("taskExecutor")
   public void syncMetadata(int limit, int offset) {
     status = "SYNCING_METADATA";
     File photosFile = new File(datasetDir, "photos.tsv");
 
     if (!photosFile.exists()) {
-      status = "ERROR: photos.tsv missing at " + datasetDir;
+      status = "ERROR: photos.tsv missing. Please click 'Download Archive' first.";
       return;
     }
 
     UserAccount admin = userRepository.findByUsername("admin").orElseThrow();
 
     try (BufferedReader br = new BufferedReader(new FileReader(photosFile))) {
-      // Dynamic Header Mapping
       String headerLine = br.readLine();
       if (headerLine == null) throw new IllegalStateException("TSV file is empty");
-      
+
+      // Dynamically map columns so it works on both Lite, Full, and Sample datasets
       String[] headers = headerLine.split("\t");
       Map<String, Integer> colMap = new HashMap<>();
       for (int i = 0; i < headers.length; i++) colMap.put(headers[i].trim(), i);
@@ -90,32 +159,26 @@ public class UnsplashService {
         if (processed >= limit) break;
 
         String[] cols = line.split("\t", -1);
-        
         String pId = getCol(cols, colMap, "photo_id", null);
         String rawUrl = getCol(cols, colMap, "photo_image_url", getCol(cols, colMap, "photo_url", null));
-        
+
         if (pId == null || rawUrl == null) continue;
 
-        String description = getCol(cols, colMap, "photo_description", "");
+        String description = getCol(cols, colMap, "photo_description", "No description");
         String firstName = getCol(cols, colMap, "photographer_first_name", "");
         String lastName = getCol(cols, colMap, "photographer_last_name", "");
         String photographerName = (firstName + " " + lastName).trim();
         if (photographerName.isEmpty()) photographerName = "Unknown";
-        
-        String cameraMake = getCol(cols, colMap, "exif_camera_make", "");
-        String country = getCol(cols, colMap, "photo_location_country", "");
-        
+        String cameraMake = getCol(cols, colMap, "exif_camera_make", "Unknown");
+        String country = getCol(cols, colMap, "photo_location_country", "Unknown");
+
         long downloads = 0;
         try {
           downloads = Long.parseLong(getCol(cols, colMap, "stats_downloads", "0"));
-        } catch (NumberFormatException ignored) {}
+        } catch (Exception ignored) {}
 
         // Avoid inserting duplicates
-        Integer existing = jdbcTemplate.queryForObject(
-          "SELECT COUNT(*) FROM images WHERE provider_id = ?",
-          Integer.class,
-          pId
-        );
+        Integer existing = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM images WHERE provider_id = ?", Integer.class, pId);
 
         if (existing != null && existing == 0) {
           jdbcTemplate.update(
@@ -124,10 +187,10 @@ public class UnsplashService {
             "unsplash_" + pId + ".jpg", "jpeg", "UNSPLASH", pId, rawUrl, "REMOTE_METADATA",
             description, photographerName, cameraMake, country, downloads, admin.getId()
           );
+          processed++;
         }
-        processed++;
       }
-      status = "COMPLETED: Synced " + processed + " metadata records into Catalog.";
+      status = "COMPLETED: Synced " + processed + " new metadata records.";
     } catch (Exception e) {
       log.error("Metadata sync failed", e);
       status = "ERROR: " + e.getMessage();
@@ -168,26 +231,28 @@ public class UnsplashService {
 
     for (Long id : imageIds) {
       try {
-        String currentStatus = jdbcTemplate.queryForObject("SELECT extraction_status FROM images WHERE id = ?", String.class, id);
-        if (!"REMOTE_METADATA".equals(currentStatus)) continue;
-
         Optional<MediaRecord> opt = recordRepository.findById(id);
         if (opt.isEmpty()) continue;
-
         MediaRecord record = opt.get();
-        status = "DOWNLOADING (" + (count + 1) + " / " + imageIds.size() + "): " + record.getName();
+        if (!"REMOTE_METADATA".equals(record.getExtractionStatus())) continue;
 
-        byte[] bytes = restTemplate.getForObject(record.getRemoteUrl() + "&w=1080&q=85&fm=jpg", byte[].class);
+        status = "IMPORTING (" + (count + 1) + " / " + imageIds.size() + "): " + record.getName();
+
+        // Safely append query parameters regardless of whether the URL already has a '?'
+        String remoteUrl = record.getRemoteUrl();
+        String fetchUrl = remoteUrl + (remoteUrl.contains("?") ? "&" : "?") + "w=1080&q=85&fm=jpg";
+
+        byte[] bytes = restTemplate.getForObject(fetchUrl, byte[].class);
         if (bytes != null) {
           record.setData(bytes);
           storageService.processAndSaveImage(record, true);
           Thread.sleep(1000); // Politeness delay to prevent Unsplash CDN ban
         }
       } catch (Exception e) {
-        log.error("Failed to import remote image ID: " + id, e);
+        log.error("Failed to import image ID: " + id, e);
       }
       count++;
     }
-    status = "COMPLETED: Imported " + count + " images.";
+    status = "IDLE";
   }
 }

@@ -22,12 +22,18 @@ public class DatasetIngestController {
     this.unsplashService = unsplashService;
   }
 
+  @PostMapping("/unsplash/download")
+  public ResponseEntity<?> downloadDataset() {
+    if (!unsplashService.getStatus().equals("IDLE") && !unsplashService.getStatus().startsWith("ERROR") && !unsplashService.getStatus().startsWith("COMPLETED")) {
+      return ResponseEntity.badRequest().body(Map.of("message", "Job already in progress."));
+    }
+    unsplashService.downloadAndExtractDataset();
+    return ResponseEntity.ok(Map.of("message", "Download initiated."));
+  }
+
   @PostMapping("/unsplash/sync")
   public ResponseEntity<?> syncMetadata(@RequestBody Map<String, Integer> request) {
-    if (
-      unsplashService.getStatus().startsWith("SYNCING") ||
-      unsplashService.getStatus().startsWith("DOWNLOADING")
-    ) {
+    if (!unsplashService.getStatus().equals("IDLE") && !unsplashService.getStatus().startsWith("ERROR") && !unsplashService.getStatus().startsWith("COMPLETED")) {
       return ResponseEntity.badRequest().body(Map.of("message", "Job already in progress."));
     }
     int limit = request.getOrDefault("limit", 1000);
@@ -47,10 +53,7 @@ public class DatasetIngestController {
 
   @PostMapping("/unsplash/import")
   public ResponseEntity<?> importSelected(@RequestBody List<Long> imageIds) {
-    if (
-      unsplashService.getStatus().startsWith("SYNCING") ||
-      unsplashService.getStatus().startsWith("DOWNLOADING")
-    ) {
+    if (!unsplashService.getStatus().equals("IDLE") && !unsplashService.getStatus().startsWith("ERROR") && !unsplashService.getStatus().startsWith("COMPLETED")) {
       return ResponseEntity.badRequest().body(Map.of("message", "Job already in progress."));
     }
     unsplashService.importSelectedImages(imageIds);

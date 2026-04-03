@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from "vue";
+import { ref, onMounted, onUnmounted, computed } from "vue";
 import http from "../api/http-client";
 
 const activeTab = ref("sync");
 const status = ref("Loading...");
-const limit = ref(1000);
+const limit = ref(5000);
 const offset = ref(0);
 let pollingInterval: any = null;
 
@@ -15,12 +15,29 @@ const currentPage = ref(0);
 const totalPages = ref(1);
 const selectedIds = ref<Set<number>>(new Set());
 
+const isBusy = computed(() => {
+  return (
+    status.value.startsWith("DOWNLOADING") ||
+    status.value.startsWith("EXTRACTING") ||
+    status.value.startsWith("SYNCING")
+  );
+});
+
 const checkStatus = async () => {
   try {
     const res = await http.get("/admin/unsplash/status");
     status.value = res.data.status;
   } catch (e) {
     status.value = "Access Denied / Error";
+  }
+};
+
+const startDownload = async () => {
+  try {
+    await http.post("/admin/unsplash/download");
+    checkStatus();
+  } catch (e: any) {
+    alert(e.response?.data?.message || "Failed to start download");
   }
 };
 
@@ -94,45 +111,61 @@ onUnmounted(() => {
     <header class="page-header text-center">
       <h1 class="page-title">Dataset Orchestrator</h1>
       <p class="page-subtitle">
-        Map remote metadata, search, and selectively import High-Res assets.
+        Download the official archive, map remote metadata, and selectively import High-Res assets.
       </p>
     </header>
 
-    <div class="system-status-bar" :class="{ active: status !== 'IDLE' }">
-      <span class="material-symbols-outlined icon">sync</span>
+    <div class="system-status-bar" :class="{ active: isBusy, error: status.startsWith('ERROR') }">
+      <span class="material-symbols-outlined icon" v-if="!status.startsWith('ERROR')">sync</span>
+      <span class="material-symbols-outlined" v-else>error</span>
       <span class="status-text">{{ status }}</span>
     </div>
 
     <div class="tabs">
       <button :class="{ active: activeTab === 'sync' }" @click="activeTab = 'sync'">
-        1. Sync Metadata
+        1. Download & Sync
       </button>
       <button :class="{ active: activeTab === 'catalog' }" @click="activeTab = 'catalog'">
         2. Remote Catalog
       </button>
     </div>
 
-    <!-- TAB 1: METADATA SYNC -->
-    <div v-if="activeTab === 'sync'" class="card meta-card max-w-lg" style="margin: 0 auto">
-      <h3 class="meta-title">Map Unsplash TSV Database</h3>
-      <p class="help-text">
-        Reads <code>photos.tsv</code> and populates the database with EXIF and location data.
-        <strong>Does NOT download images yet.</strong> Fast and lightweight.
-      </p>
-
-      <div style="display: flex; gap: 1rem; margin: 1.5rem 0">
-        <div class="form-group" style="flex: 1">
-          <label class="label-text">Rows to Process (Limit)</label>
-          <input type="number" v-model="limit" min="1" max="100000" />
-        </div>
-        <div class="form-group" style="flex: 1">
-          <label class="label-text">Skip Rows (Offset)</label>
-          <input type="number" v-model="offset" min="0" />
-        </div>
+    <!-- TAB 1: DOWNLOAD & SYNC -->
+    <div v-if="activeTab === 'sync'" class="sync-layout max-w-lg" style="margin: 0 auto">
+      
+      <div class="card meta-card">
+        <h3 class="meta-title">Step 1: Download Official Archive</h3>
+        <p class="help-text">
+          Streams the ~700MB Unsplash Lite <code>.zip</code> directly from the Unsplash CDN and extracts the TSV databases.
+        </p>
+        <button class="btn btn-outline w-full" style="margin-top: 1rem" @click="startDownload" :disabled="isBusy">
+          <span class="material-symbols-outlined" style="margin-right: 0.5rem">cloud_download</span>
+          Download 700MB Archive
+        </button>
       </div>
-      <button class="btn w-full" @click="startSync" :disabled="status !== 'IDLE'">
-        Start Metadata Sync
-      </button>
+
+      <div class="card meta-card" style="margin-top: 2rem;">
+        <h3 class="meta-title">Step 2: Map TSV Database</h3>
+        <p class="help-text">
+          Reads the extracted <code>photos.tsv</code> and populates your local database with EXIF and location data. 
+          <strong>Does NOT download actual images yet.</strong>
+        </p>
+
+        <div style="display: flex; gap: 1rem; margin: 1.5rem 0">
+          <div class="form-group" style="flex: 1">
+            <label class="label-text">Rows to Process (Limit)</label>
+            <input type="number" v-model="limit" min="1" max="100000" />
+          </div>
+          <div class="form-group" style="flex: 1">
+            <label class="label-text">Skip Rows (Offset)</label>
+            <input type="number" v-model="offset" min="0" />
+          </div>
+        </div>
+        <button class="btn w-full" @click="startSync" :disabled="isBusy">
+          Start Metadata Sync
+        </button>
+      </div>
+
     </div>
 
     <!-- TAB 2: REMOTE CATALOG -->
@@ -142,7 +175,7 @@ onUnmounted(() => {
           type="text"
           v-model="searchQuery"
           @keydown.enter="handleSearch"
-          placeholder="Search by Camera, Location, or Photographer..."
+          placeholder="Search by Camera (e.g. Sony), Location (e.g. Japan), or Photographer..."
           class="search-bar"
         />
         <button class="btn" @click="handleSearch">Search</button>
@@ -162,7 +195,6 @@ onUnmounted(() => {
               >check_circle</span
             >
           </div>
-          <!-- Request a 400px wide thumbnail from Unsplash CDN for fast previewing -->
           <img :src="img.remote_url + '?w=400'" class="thumb" loading="lazy" />
           <div class="info">
             <span class="photog">📸 {{ img.photographer_name || "Unknown" }}</span>
@@ -174,7 +206,7 @@ onUnmounted(() => {
       </div>
 
       <div v-if="catalogImages.length === 0" class="empty-catalog">
-        No remote metadata found. Please run the Metadata Sync first or clear your search.
+        No remote metadata found. Please run the Download & Sync steps first.
       </div>
 
       <div class="pagination" v-if="totalPages > 1">
@@ -199,7 +231,7 @@ onUnmounted(() => {
         <span
           ><strong>{{ selectedIds.size }}</strong> images selected for import.</span
         >
-        <button class="btn" @click="importSelected" :disabled="status !== 'IDLE'">
+        <button class="btn" @click="importSelected" :disabled="isBusy">
           Download & Vectorize
         </button>
       </div>
@@ -232,6 +264,10 @@ onUnmounted(() => {
   background: var(--bg-element);
   border-color: var(--color-accent);
   color: var(--color-accent);
+}
+.system-status-bar.error {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
 }
 .system-status-bar.active .icon {
   animation: spin 2s linear infinite;

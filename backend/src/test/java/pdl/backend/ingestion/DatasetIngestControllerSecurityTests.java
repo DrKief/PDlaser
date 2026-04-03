@@ -55,6 +55,30 @@ class DatasetIngestControllerSecurityTests {
 
     verify(unsplashService).syncMetadata(50, 0);
   }
+  
+  @Test
+  void adminCanStartDownload() throws Exception {
+    when(unsplashService.getStatus()).thenReturn("IDLE");
+
+    mockMvc
+      .perform(
+        post("/admin/unsplash/download")
+          .contentType(MediaType.APPLICATION_JSON)
+          .with(
+            SecurityMockMvcRequestPostProcessors.jwt()
+              .authorities(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN")
+              )
+              .jwt(jwt -> {
+                jwt.claim("role", "ROLE_ADMIN");
+                jwt.claim("userId", 1L);
+              })
+          )
+      )
+      .andExpect(status().isOk());
+
+    verify(unsplashService).downloadAndExtractDataset();
+  }
 
   @Test
   void nonAdminGetsForbidden() throws Exception {

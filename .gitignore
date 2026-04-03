@@ -21,3 +21,7 @@ node_modules/
 .env
 .env.*
 !.env.example
+/datasets/keywords.tsv
+/datasets/keywords.tsv
+/datasets/photos.tsv
+/datasets/unsplash-lite.zip
