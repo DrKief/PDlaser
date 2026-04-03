@@ -15,6 +15,10 @@ RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 
 # Pre-create BOTH images and datasets directories
 RUN mkdir -p /var/lib/pdl/images /var/lib/pdl/datasets \
+
+
+# Pre-create BOTH images and datasets directories
+RUN mkdir -p /var/lib/pdl/images /var/lib/pdl/datasets \
   && chown -R appuser:appgroup /var/lib/pdl
 
 USER appuser
