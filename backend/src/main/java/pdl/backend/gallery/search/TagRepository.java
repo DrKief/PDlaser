@@ -101,7 +101,7 @@ public class TagRepository {
     return jdbcTemplate.queryForList(
       "SELECT DISTINCT k.keyword FROM imagekeywords k " +
         "JOIN images i ON k.imageid = i.id " +
-        "WHERE i.is_private = false OR i.user_id = ? " +
+        "WHERE (i.is_private = false OR i.user_id = ?) AND i.extraction_status != 'REMOTE_METADATA' " +
         "ORDER BY k.keyword ASC",
       String.class,
       currentUserId
@@ -113,7 +113,7 @@ public class TagRepository {
     return jdbcTemplate.queryForList(
       "SELECT DISTINCT k.keyword FROM imagekeywords k " +
         "JOIN images i ON k.imageid = i.id " +
-        "WHERE (i.is_private = false OR i.user_id = ?) AND k.keyword LIKE ? " +
+        "WHERE (i.is_private = false OR i.user_id = ?) AND i.extraction_status != 'REMOTE_METADATA' AND k.keyword LIKE ? " +
         "ORDER BY k.keyword ASC LIMIT 8",
       String.class,
       currentUserId,
@@ -138,7 +138,8 @@ public class TagRepository {
     String sql =
       "SELECT i.id, i.extraction_status, u.username as uploader " +
       "FROM images i LEFT JOIN users u ON i.user_id = u.id " +
-      "WHERE (i.user_id = ?) OR (? = false AND i.is_private = false) " +
+      "WHERE ((i.user_id = ?) OR (? = false AND i.is_private = false)) " +
+      "AND i.extraction_status != 'REMOTE_METADATA' " +
       "ORDER BY i.id DESC LIMIT ? OFFSET ?";
 
     return jdbcTemplate.query(
@@ -168,7 +169,8 @@ public class TagRepository {
     StringBuilder sql = new StringBuilder(
       "SELECT i.id, i.extraction_status, u.username as uploader " +
         "FROM images i LEFT JOIN users u ON i.user_id = u.id " +
-        "WHERE (i.user_id = :currentUserId OR (:onlyUser = false AND i.is_private = false)) "
+        "WHERE ((i.user_id = :currentUserId) OR (:onlyUser = false AND i.is_private = false)) " +
+        "AND i.extraction_status != 'REMOTE_METADATA' "
     );
     MapSqlParameterSource params = new MapSqlParameterSource();
     params.addValue("currentUserId", currentUserId);
@@ -206,7 +208,7 @@ public class TagRepository {
 
   public long getGalleryTotalCount(Long currentUserId, boolean onlyUser) {
     String sql =
-      "SELECT COUNT(*) FROM images i WHERE (i.user_id = ?) OR (? = false AND i.is_private = false)";
+      "SELECT COUNT(*) FROM images i WHERE ((i.user_id = ?) OR (? = false AND i.is_private = false)) AND i.extraction_status != 'REMOTE_METADATA'";
     Long count = jdbcTemplate.queryForObject(sql, Long.class, currentUserId, onlyUser);
     return count != null ? count : 0L;
   }
@@ -221,7 +223,7 @@ public class TagRepository {
     }
 
     StringBuilder sql = new StringBuilder(
-      "SELECT COUNT(*) FROM images i WHERE (i.user_id = :currentUserId OR (:onlyUser = false AND i.is_private = false)) "
+      "SELECT COUNT(*) FROM images i WHERE ((i.user_id = :currentUserId) OR (:onlyUser = false AND i.is_private = false)) AND i.extraction_status != 'REMOTE_METADATA' "
     );
     MapSqlParameterSource params = new MapSqlParameterSource();
     params.addValue("currentUserId", currentUserId);

@@ -27,7 +27,6 @@ import pdl.backend.vision.VisionProcessor;
 public class FileStorageService {
 
   private static final Logger log = LoggerFactory.getLogger(FileStorageService.class);
-
   private final MediaRepository recordRepository;
   private final VisionProcessor backgroundWorker;
 
@@ -43,10 +42,11 @@ public class FileStorageService {
   public void processAndSaveImage(MediaRecord img, boolean saveToDisk) {
     String hash = calculateSHA256(img.getData());
 
-    Optional<MediaRecord> existing = recordRepository.findByHash(hash);
-    if (existing.isPresent()) {
+    // Prevent duplicates EXCEPT when updating an existing REMOTE_METADATA record
+  Optional<MediaRecord> existing = recordRepository.findByHash(hash);
+  if (existing.isPresent() && (img.getId() == 0 || existing.get().getId() != img.getId())) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "Image already exists on the server.");
-    }
+  }
 
     img.setHash(hash);
     img.setFormat(getFileExtension(img.getName()));
@@ -54,9 +54,7 @@ public class FileStorageService {
 
     int width = 0;
     int height = 0;
-    try (
-      ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(img.getData()))
-    ) {
+    try (ImageInputStream in = ImageIO.createImageInputStream(new ByteArrayInputStream(img.getData()))) {
       Iterator<ImageReader> readers = ImageIO.getImageReaders(in);
       if (readers.hasNext()) {
         ImageReader reader = readers.next();
@@ -68,19 +66,16 @@ public class FileStorageService {
     } catch (Exception e) {
       log.warn("Could not fast-read dimensions for image hash {}", hash);
     }
-
     img.setWidth(width);
     img.setHeight(height);
 
-    MediaRecord savedImage = recordRepository.save(img);
+    MediaRecord savedImage = recordRepository.save(img); // Triggers UPDATE if ID exists, INSERT if new.
     img.setId(savedImage.getId());
 
     if (saveToDisk) {
       try {
         Path dirPath = Paths.get(imageDirectoryPath);
-        // Add this line to create the folder if it's missing
         Files.createDirectories(dirPath);
-
         Path filePath = dirPath.resolve(img.getName());
         Files.write(filePath, img.getData());
       } catch (IOException e) {
