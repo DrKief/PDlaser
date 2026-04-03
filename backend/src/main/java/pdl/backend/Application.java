@@ -13,7 +13,6 @@ import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.security.crypto.password.PasswordEncoder;
-
 import pdl.backend.auth.UserAccount;
 import pdl.backend.auth.UserRepository;
 
@@ -28,15 +27,18 @@ public class Application implements AsyncConfigurer {
   }
 
   @Bean
-  public CommandLineRunner dataSeeder(UserRepository userRepository, PasswordEncoder passwordEncoder) {
-      return args -> {
-          if (userRepository.findByUsername("admin").isEmpty()) {
-              log.info("Seeding default ADMIN account...");
-              UserAccount admin = new UserAccount("admin", passwordEncoder.encode("admin"), "ROLE_ADMIN");
-              userRepository.save(admin);
-              log.info("Default ADMIN account successfully seeded. Username: admin | Password: admin");
-          }
-      };
+  public CommandLineRunner dataSeeder(
+    UserRepository userRepository,
+    PasswordEncoder passwordEncoder
+  ) {
+    return args -> {
+      if (userRepository.findByUsername("admin").isEmpty()) {
+        log.info("Seeding default ADMIN account...");
+        UserAccount admin = new UserAccount("admin", passwordEncoder.encode("admin"), "ROLE_ADMIN");
+        userRepository.save(admin);
+        log.info("Default ADMIN account successfully seeded. Username: admin | Password: admin");
+      }
+    };
   }
 
   @Bean(name = "taskExecutor")
@@ -54,11 +56,12 @@ public class Application implements AsyncConfigurer {
 
   @Override
   public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
-    return (throwable, method, params) -> log.error(
+    return (throwable, method, params) ->
+      log.error(
         "CRITICAL: Unhandled async exception in method: {} with parameters: {}",
         method.getName(),
         params,
         throwable
-    );
+      );
   }
 }

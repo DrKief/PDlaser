@@ -1,23 +1,23 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import http from '../api/http-client';
+import { ref } from "vue";
+import http from "../api/http-client";
 
-const username = ref('');
-const password = ref('');
-const errorMessage = ref('');
+const username = ref("");
+const password = ref("");
+const errorMessage = ref("");
 
 const handleLogin = async () => {
   try {
-    const res = await http.post('/auth/login', {
+    const res = await http.post("/auth/login", {
       username: username.value,
-      password: password.value
+      password: password.value,
     });
-    localStorage.setItem('token', res.data.token);
-    
+    localStorage.setItem("token", res.data.token);
+
     // Retrieve and clear the intended route
-    const redirectUrl = localStorage.getItem('intendedRoute') || '/';
-    localStorage.removeItem('intendedRoute');
-    
+    const redirectUrl = localStorage.getItem("intendedRoute") || "/";
+    localStorage.removeItem("intendedRoute");
+
     window.location.href = redirectUrl;
   } catch (e) {
     errorMessage.value = "Invalid credentials.";
@@ -40,8 +40,10 @@ const handleLogin = async () => {
         </div>
         <p v-if="errorMessage" class="error-text">{{ errorMessage }}</p>
         <button type="submit" class="btn w-full mt-4">Login</button>
-        <div style="text-align: center; margin-top: 1rem;">
-          <router-link to="/register" class="text-link">Need an account? Register here.</router-link>
+        <div style="text-align: center; margin-top: 1rem">
+          <router-link to="/register" class="text-link"
+            >Need an account? Register here.</router-link
+          >
         </div>
       </form>
     </div>

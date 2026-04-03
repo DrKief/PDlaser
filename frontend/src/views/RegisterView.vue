@@ -1,23 +1,23 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
-import http from '../api/http-client';
-const username = ref('');
-const password = ref('');
-const errorMessage = ref('');
-const successMessage = ref('');
+import { ref } from "vue";
+import { useRouter } from "vue-router";
+import http from "../api/http-client";
+const username = ref("");
+const password = ref("");
+const errorMessage = ref("");
+const successMessage = ref("");
 const router = useRouter();
 const handleRegister = async () => {
   errorMessage.value = "";
   successMessage.value = "";
   try {
-    await http.post('/auth/register', {
+    await http.post("/auth/register", {
       username: username.value,
-      password: password.value
+      password: password.value,
     });
     successMessage.value = "Registration successful! Redirecting to login...";
     setTimeout(() => {
-      router.push('/login');
+      router.push("/login");
     }, 1500);
   } catch (e: any) {
     errorMessage.value = e.response?.data?.error || "Registration failed. Username might be taken.";
@@ -40,8 +40,10 @@ const handleRegister = async () => {
         <p v-if="errorMessage" class="error-text">{{ errorMessage }}</p>
         <p v-if="successMessage" class="success-text">{{ successMessage }}</p>
         <button type="submit" class="btn w-full mt-4">Register</button>
-        <div style="text-align: center; margin-top: 1rem;">
-          <router-link to="/login" class="text-link">Already have an account? Login here.</router-link>
+        <div style="text-align: center; margin-top: 1rem">
+          <router-link to="/login" class="text-link"
+            >Already have an account? Login here.</router-link
+          >
         </div>
       </form>
     </div>

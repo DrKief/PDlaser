@@ -16,11 +16,15 @@ public class UploadStatusTracker {
     Long imageId,
     Long timeoutInMilliseconds
   ) {
-    DeferredResult<ResponseEntity<Map<String, Object>>> result = new DeferredResult<>(timeoutInMilliseconds);
+    DeferredResult<ResponseEntity<Map<String, Object>>> result = new DeferredResult<>(
+      timeoutInMilliseconds
+    );
 
     result.onTimeout(() -> {
       requests.remove(imageId);
-      result.setResult(ResponseEntity.accepted().body(Map.of("id", imageId, "extraction_status", "PENDING")));
+      result.setResult(
+        ResponseEntity.accepted().body(Map.of("id", imageId, "extraction_status", "PENDING"))
+      );
     });
 
     result.onCompletion(() -> requests.remove(imageId));

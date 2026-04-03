@@ -23,7 +23,7 @@ const deleteImage = async (id: number, event: Event) => {
   if (!confirm("Are you sure you want to permanently delete this image?")) return;
   try {
     await http.delete(`/images/${id}`);
-    displayedImages.value = displayedImages.value.filter(img => img.id !== id);
+    displayedImages.value = displayedImages.value.filter((img) => img.id !== id);
   } catch (e) {
     alert("Failed to delete image.");
   }
@@ -40,29 +40,33 @@ const deleteImage = async (id: number, event: Event) => {
     <div v-if="isLoading" class="label-text">Loading your images...</div>
     <div v-else-if="displayedImages.length === 0" class="empty-state">
       <h2>You haven't uploaded anything yet.</h2>
-      <router-link to="/upload" class="btn" style="margin-top: 1rem;">Upload an Image</router-link>
+      <router-link to="/upload" class="btn" style="margin-top: 1rem">Upload an Image</router-link>
     </div>
 
     <div class="masonry-grid" v-else>
-      <article 
-        v-for="image in displayedImages" 
-        :key="image.id" 
-        class="artifact-card" 
+      <article
+        v-for="image in displayedImages"
+        :key="image.id"
+        class="artifact-card"
         @click="router.push(`/image/${image.id}`)"
       >
         <img :src="'/images/' + image.id" class="artifact-img" loading="lazy" />
-        
+
         <div class="hover-actions">
-          <button @click.stop="deleteImage(image.id, $event)" title="Delete Permanently" class="btn-icon delete-btn">
-            <span class="material-symbols-outlined" style="font-size: 1.2rem;">delete</span>
+          <button
+            @click.stop="deleteImage(image.id, $event)"
+            title="Delete Permanently"
+            class="btn-icon delete-btn"
+          >
+            <span class="material-symbols-outlined" style="font-size: 1.2rem">delete</span>
           </button>
         </div>
 
         <div class="card-overlay">
           <div class="overlay-content">
-            <h3 class="artifact-name">@{{ image.uploader || 'System' }}</h3>
+            <h3 class="artifact-name">@{{ image.uploader || "System" }}</h3>
             <div class="tags" v-if="image.keywords && image.keywords.length">
-              <span class="tag-text">#{{ image.keywords.join(', #') }}</span>
+              <span class="tag-text">#{{ image.keywords.join(", #") }}</span>
             </div>
           </div>
         </div>
@@ -82,9 +86,21 @@ const deleteImage = async (id: number, event: Event) => {
   columns: 1;
   column-gap: 1.5rem;
 }
-@media (min-width: 640px) { .masonry-grid { columns: 2; } }
-@media (min-width: 1024px) { .masonry-grid { columns: 3; } }
-@media (min-width: 1536px) { .masonry-grid { columns: 4; } }
+@media (min-width: 640px) {
+  .masonry-grid {
+    columns: 2;
+  }
+}
+@media (min-width: 1024px) {
+  .masonry-grid {
+    columns: 3;
+  }
+}
+@media (min-width: 1536px) {
+  .masonry-grid {
+    columns: 4;
+  }
+}
 
 .artifact-card {
   break-inside: avoid;
@@ -117,7 +133,9 @@ const deleteImage = async (id: number, event: Event) => {
   color: #fff;
   pointer-events: none;
 }
-.artifact-card:hover .card-overlay { opacity: 1; }
+.artifact-card:hover .card-overlay {
+  opacity: 1;
+}
 
 .artifact-name {
   font-family: var(--font-sans);
@@ -145,7 +163,9 @@ const deleteImage = async (id: number, event: Event) => {
   transition: opacity 0.2s;
   z-index: 10;
 }
-.artifact-card:hover .hover-actions { opacity: 1; }
+.artifact-card:hover .hover-actions {
+  opacity: 1;
+}
 
 .delete-btn {
   background: var(--bg-surface);

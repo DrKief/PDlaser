@@ -12,7 +12,6 @@ import java.util.Optional;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,7 +21,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
-
 import pdl.backend.vision.VisionProcessor;
 
 @Service
@@ -36,10 +34,7 @@ public class FileStorageService {
   @Value("${app.image.directory:images}")
   private String imageDirectoryPath;
 
-  public FileStorageService(
-    MediaRepository recordRepository,
-    VisionProcessor backgroundWorker
-  ) {
+  public FileStorageService(MediaRepository recordRepository, VisionProcessor backgroundWorker) {
     this.recordRepository = recordRepository;
     this.backgroundWorker = backgroundWorker;
   }
@@ -47,7 +42,7 @@ public class FileStorageService {
   @Transactional
   public void processAndSaveImage(MediaRecord img, boolean saveToDisk) {
     String hash = calculateSHA256(img.getData());
-    
+
     Optional<MediaRecord> existing = recordRepository.findByHash(hash);
     if (existing.isPresent()) {
       throw new ResponseStatusException(HttpStatus.CONFLICT, "Image already exists on the server.");
@@ -84,7 +79,7 @@ public class FileStorageService {
       try {
         Path dirPath = Paths.get(imageDirectoryPath);
         // Add this line to create the folder if it's missing
-        Files.createDirectories(dirPath); 
+        Files.createDirectories(dirPath);
 
         Path filePath = dirPath.resolve(img.getName());
         Files.write(filePath, img.getData());
@@ -138,11 +133,11 @@ public class FileStorageService {
 
   private String calculateSHA256(byte[] data) {
     try {
-        MessageDigest digest = MessageDigest.getInstance("SHA-256");
-        byte[] hashBytes = digest.digest(data);
-        return HexFormat.of().formatHex(hashBytes);
+      MessageDigest digest = MessageDigest.getInstance("SHA-256");
+      byte[] hashBytes = digest.digest(data);
+      return HexFormat.of().formatHex(hashBytes);
     } catch (Exception e) {
-        throw new RuntimeException("Failed to calculate SHA-256 hash", e);
+      throw new RuntimeException("Failed to calculate SHA-256 hash", e);
     }
   }
 

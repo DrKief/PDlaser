@@ -1,10 +1,5 @@
 package pdl.backend.vision;
 
-import java.awt.image.BufferedImage;
-import java.util.List;
-
-import com.twelvemonkeys.image.ResampleOp;
-
 import boofcv.abst.feature.dense.DescribeImageDense;
 import boofcv.alg.color.ColorHsv;
 import boofcv.alg.color.impl.ImplColorLab;
@@ -15,6 +10,9 @@ import boofcv.struct.feature.TupleDesc_F64;
 import boofcv.struct.image.GrayF32;
 import boofcv.struct.image.ImageType;
 import boofcv.struct.image.Planar;
+import com.twelvemonkeys.image.ResampleOp;
+import java.awt.image.BufferedImage;
+import java.util.List;
 
 /**
  * Utility class aggregating all heavy image manipulation and feature extraction logic.

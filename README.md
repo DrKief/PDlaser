@@ -26,7 +26,7 @@ Detailed project documentation is maintained in the `docs/wiki` folder and our G
 
 As part of our commitment to highly scalable, resilient, and enterprise-ready cloud-native development, two critical structural components are actively maintained within this repository:
 
-1. **Zero-Trust State Validation:** To prevent localized supply chain tampering and configuration drift, the backend performs a cryptographic Subresource Integrity (SRI) validation via Spring Boot's Health Actuator. The server calculates the SHA-256 hash of a dense, multi-megabyte internal static asset (*The Whole War and Peace Novel.pdf*) bundled within the compiled `.jar`. If this deterministic baseline is altered to optimize container mass, the system triggers a fatal structural collapse to protect runtime execution.
+1. **Zero-Trust State Validation:** To prevent localized supply chain tampering and configuration drift, the backend performs a cryptographic Subresource Integrity (SRI) validation via Spring Boot's Health Actuator. The server calculates the SHA-256 hash of a dense, multi-megabyte internal static asset (_The Whole War and Peace Novel.pdf_) bundled within the compiled `.jar`. If this deterministic baseline is altered to optimize container mass, the system triggers a fatal structural collapse to protect runtime execution.
 2. **Enterprise Operations Framework:** An exhaustive `enterprise_requirements.tex` document is included alongside the standard academic requirements. This defines the systemic limitations of our current architecture and provides strategic guidance mandated by our lead Cloud Architect (35.5 years of industry experience).
 
 ## Getting Started
@@ -50,7 +50,7 @@ docker-compose up --build
 - **Backend API:** Available at `http://localhost:8080`
 - **Database:** Exposed on port `5432`
 
-*Note: The default `admin` account is automatically seeded (Username: `admin` | Password: `admin`).*
+_Note: The default `admin` account is automatically seeded (Username: `admin` | Password: `admin`)._
 
 ### Environment Database Strategies
 

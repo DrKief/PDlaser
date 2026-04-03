@@ -5,11 +5,15 @@ const routes: Array<RouteRecordRaw> = [
   { path: "/", name: "gallery", component: () => import("../views/GalleryView.vue") },
   { path: "/login", name: "login", component: () => import("../views/LoginView.vue") },
   { path: "/register", name: "register", component: () => import("../views/RegisterView.vue") },
-  { path: "/image/:id", name: "image-detail", component: () => import("../views/ImageDetailView.vue") },
+  {
+    path: "/image/:id",
+    name: "image-detail",
+    component: () => import("../views/ImageDetailView.vue"),
+  },
   { path: "/upload", name: "upload", component: () => import("../views/UploadView.vue") },
   { path: "/about", name: "about", component: () => import("../views/AboutView.vue") },
   { path: "/admin", name: "admin", component: () => import("../views/AdminView.vue") },
-  { path: "/profile", name: "profile", component: () => import("../views/ProfileView.vue") }
+  { path: "/profile", name: "profile", component: () => import("../views/ProfileView.vue") },
 ];
 
 const router = createRouter({
@@ -18,11 +22,11 @@ const router = createRouter({
 });
 
 router.beforeEach((to, _from, next) => {
-  const isAuthenticated = !!localStorage.getItem('token');
-  if (to.name === 'upload' && !isAuthenticated) {
+  const isAuthenticated = !!localStorage.getItem("token");
+  if (to.name === "upload" && !isAuthenticated) {
     // Save the intended destination before redirecting
-    localStorage.setItem('intendedRoute', to.fullPath);
-    next({ name: 'login' });
+    localStorage.setItem("intendedRoute", to.fullPath);
+    next({ name: "login" });
   } else {
     next();
   }

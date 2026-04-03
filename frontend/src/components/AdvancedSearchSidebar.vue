@@ -3,7 +3,7 @@ import { ref, watch, computed } from "vue";
 import http from "../api/http-client";
 
 const props = defineProps<{ initialSourceId?: number | null }>();
-const emit = defineEmits(['close', 'executeSimilarity']);
+const emit = defineEmits(["close", "executeSimilarity"]);
 
 // Similarity State
 const uploadMode = ref<"db" | "ephemeral">("db");
@@ -13,15 +13,18 @@ const similarityAlgorithm = ref("semantic");
 const similarityCount = ref(10);
 const errorMsg = ref("");
 
-watch(() => props.initialSourceId, (newId) => {
-  if (newId) {
-    selectedDbId.value = newId;
-    uploadMode.value = "db";
-  }
-});
+watch(
+  () => props.initialSourceId,
+  (newId) => {
+    if (newId) {
+      selectedDbId.value = newId;
+      uploadMode.value = "db";
+    }
+  },
+);
 
 const isSourceSelected = computed(() => {
-  if (uploadMode.value === 'db') return !!selectedDbId.value;
+  if (uploadMode.value === "db") return !!selectedDbId.value;
   return !!uploadTarget.value;
 });
 
@@ -34,13 +37,13 @@ const onFileSelect = (e: Event) => {
 
 const triggerSimilaritySearch = async () => {
   errorMsg.value = "";
-  
+
   try {
     let results = [];
     if (uploadMode.value === "db") {
       if (!selectedDbId.value) return (errorMsg.value = "Please enter a database Image ID.");
       const res = await http.get(`/images/${selectedDbId.value}/similar`, {
-        params: { number: similarityCount.value, descriptor: similarityAlgorithm.value }
+        params: { number: similarityCount.value, descriptor: similarityAlgorithm.value },
       });
       results = res.data;
     } else {
@@ -49,22 +52,22 @@ const triggerSimilaritySearch = async () => {
       formData.append("file", uploadTarget.value);
       formData.append("number", similarityCount.value.toString());
       formData.append("descriptor", similarityAlgorithm.value);
-      
+
       const res = await http.post("/images/search/ephemeral", formData, {
-        headers: { "Content-Type": "multipart/form-data" }
+        headers: { "Content-Type": "multipart/form-data" },
       });
       results = res.data;
     }
-    
+
     // NEW: Emit the complete payload including the source context
-    emit('executeSimilarity', {
+    emit("executeSimilarity", {
       results: results,
-      sourceId: uploadMode.value === 'db' ? selectedDbId.value : null,
-      isEphemeral: uploadMode.value === 'ephemeral',
-      fileUrl: uploadTarget.value ? URL.createObjectURL(uploadTarget.value) : null
+      sourceId: uploadMode.value === "db" ? selectedDbId.value : null,
+      isEphemeral: uploadMode.value === "ephemeral",
+      fileUrl: uploadTarget.value ? URL.createObjectURL(uploadTarget.value) : null,
     });
 
-    emit('close');
+    emit("close");
   } catch (e) {
     errorMsg.value = "Similarity scan failed.";
   }
@@ -75,18 +78,24 @@ const triggerSimilaritySearch = async () => {
   <aside class="search-sidebar">
     <div class="sidebar-header">
       <h3>Visual Match</h3>
-      <button @click="$emit('close')" class="btn-icon material-symbols-outlined" title="Close Filters">close</button>
+      <button
+        @click="$emit('close')"
+        class="btn-icon material-symbols-outlined"
+        title="Close Filters"
+      >
+        close
+      </button>
     </div>
 
     <div class="sidebar-content">
       <p v-if="!isSourceSelected" class="help-text warning-text">
-        <span class="material-symbols-outlined" style="font-size: 1.2rem;">info</span>
+        <span class="material-symbols-outlined" style="font-size: 1.2rem">info</span>
         Select a gallery image or upload a target file to enable similarity settings.
       </p>
 
       <div class="form-group mb-4">
         <label class="label-text">Source Target</label>
-        <select v-model="uploadMode" style="margin-top: 0.5rem;">
+        <select v-model="uploadMode" style="margin-top: 0.5rem">
           <option value="db">From Database (ID)</option>
           <option value="ephemeral">Upload Temporary Image</option>
         </select>
@@ -99,13 +108,18 @@ const triggerSimilaritySearch = async () => {
 
       <div class="form-group" v-if="uploadMode === 'ephemeral'">
         <label class="label-text">Upload Image</label>
-        <input type="file" @change="onFileSelect" accept="image/*" style="margin-top: 0.5rem; padding-bottom: 0;" />
+        <input
+          type="file"
+          @change="onFileSelect"
+          accept="image/*"
+          style="margin-top: 0.5rem; padding-bottom: 0"
+        />
       </div>
 
-      <fieldset :disabled="!isSourceSelected" style="border: none; padding: 0; margin: 0;">
+      <fieldset :disabled="!isSourceSelected" style="border: none; padding: 0; margin: 0">
         <div class="form-group mt-4" :class="{ 'disabled-group': !isSourceSelected }">
           <label class="label-text">Algorithm</label>
-          <select v-model="similarityAlgorithm" style="margin-top: 0.5rem;">
+          <select v-model="similarityAlgorithm" style="margin-top: 0.5rem">
             <option value="semantic">Semantic (AI)</option>
             <option value="cielab">CIELAB (Human Vision)</option>
             <option value="gradient">HOG (Shape/Edges)</option>
@@ -117,7 +131,13 @@ const triggerSimilaritySearch = async () => {
           <input type="number" v-model.number="similarityCount" min="1" max="50" />
         </div>
 
-        <button class="btn w-full mt-4" @click="triggerSimilaritySearch" :disabled="!isSourceSelected">Find Matches</button>
+        <button
+          class="btn w-full mt-4"
+          @click="triggerSimilaritySearch"
+          :disabled="!isSourceSelected"
+        >
+          Find Matches
+        </button>
       </fieldset>
 
       <p v-if="errorMsg" class="error-text">{{ errorMsg }}</p>
@@ -138,21 +158,57 @@ const triggerSimilaritySearch = async () => {
   overflow-y: auto;
   box-shadow: var(--shadow-subtle);
 }
-.sidebar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-subtle); padding-bottom: 1rem;}
-.sidebar-header h3 { margin: 0; font-size: 1.25rem; font-family: var(--font-headline); }
-.mb-4 { margin-bottom: 1rem; }
-.mt-4 { margin-top: 1rem; }
-.w-full { width: 100%; }
-
-.btn-icon { background: none; border: none; cursor: pointer; color: var(--text-secondary); padding: 0;}
-.btn-icon:hover { color: var(--color-danger); }
-
-.disabled-group { opacity: 0.5; pointer-events: none; transition: opacity 0.2s; }
-.help-text { 
-  display: flex; align-items: center; gap: 0.5rem; 
-  font-size: 0.85rem; padding: 0.75rem; 
-  border-radius: 4px; background: var(--bg-element); 
-  color: var(--text-secondary); margin-bottom: 1rem; 
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 1rem;
 }
-.warning-text { border-left: 3px solid var(--color-accent); }
+.sidebar-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-family: var(--font-headline);
+}
+.mb-4 {
+  margin-bottom: 1rem;
+}
+.mt-4 {
+  margin-top: 1rem;
+}
+.w-full {
+  width: 100%;
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 0;
+}
+.btn-icon:hover {
+  color: var(--color-danger);
+}
+
+.disabled-group {
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.help-text {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  padding: 0.75rem;
+  border-radius: 4px;
+  background: var(--bg-element);
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+.warning-text {
+  border-left: 3px solid var(--color-accent);
+}
 </style>

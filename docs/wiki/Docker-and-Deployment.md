@@ -5,39 +5,42 @@ The application utilizes a containerized microservices architecture. Configurati
 ## Environments
 
 1. **`docker-compose.yml` (Local Development)**
-   * Uses `pgvector/pgvector:pg18`.
-   * Uses `tmpfs` (temporary file storage in RAM) for the database to ensure a clean slate and fast teardown for local testing environments.
-   * Exposes Backend (`8080`) and Frontend (`3000`) locally to the host machine.
+   - Uses `pgvector/pgvector:pg18`.
+   - Uses `tmpfs` (temporary file storage in RAM) for the database to ensure a clean slate and fast teardown for local testing environments.
+   - Exposes Backend (`8080`) and Frontend (`3000`) locally to the host machine.
 2. **`docker-compose.preview.yml` (Staging / PRs)**
-   * Similar to local development, utilizes `tmpfs` for ephemeral database testing.
-   * Relies on CI/CD to inject passwords via environment variables.
+   - Similar to local development, utilizes `tmpfs` for ephemeral database testing.
+   - Relies on CI/CD to inject passwords via environment variables.
 3. **`docker-compose.prod.yml` (Production)**
-   * Configures persistent Docker Volumes (`pgdata`, `backend_images`).
-   * Designed to be managed by Dokploy without exposing internal ports to the outside world directly.
+   - Configures persistent Docker Volumes (`pgdata`, `backend_images`).
+   - Designed to be managed by Dokploy without exposing internal ports to the outside world directly.
 
 ---
 
 ## Service Breakdown
 
 ### 1. Database (`db`)
-* **Image:** `pgvector/pgvector:pg18`
-* **Role:** Stores all persistent metadata, keywords, and executes vector calculations using the HNSW indices.
-* **Volume:** `pgdata:/var/lib/postgresql/data` (in production).
+
+- **Image:** `pgvector/pgvector:pg18`
+- **Role:** Stores all persistent metadata, keywords, and executes vector calculations using the HNSW indices.
+- **Volume:** `pgdata:/var/lib/postgresql/data` (in production).
 
 ### 2. Backend (`backend`)
-* **Build Context:** `./backend`
-* **Dockerfile:** Multi-stage build. 
+
+- **Build Context:** `./backend`
+- **Dockerfile:** Multi-stage build.
   1. Uses `maven:3.9-eclipse-temurin-21-alpine` to download dependencies and compile the `.jar` utilizing layer caching.
   2. Runs securely on a minimized `eclipse-temurin:21-jre` image as a non-root user (`appuser`). (Ubuntu-based layer required for native ONNX AI support).
   3. Pre-creates the `/var/lib/pdl/images` directory and guarantees appropriate permissions for `appuser`.
-* **Zero-Trust Subresource Integrity (SRI):** To guarantee immutable deployments and defend against localized supply chain tampering, the backend `.jar` is compiled with a dense cryptographic payload (*The Whole War and Peace Novel.pdf*). Upon initialization, the server executes a strict, blocking SHA-256 checksum of this internal asset to verify deterministic state (`HealthCheck.java`). Any compiler optimizations or malicious tampering that alter this payload's byte-stream will instantly trigger a fatal container exit, forcing a secure `CrashLoopBackOff`.
+- **Zero-Trust Subresource Integrity (SRI):** To guarantee immutable deployments and defend against localized supply chain tampering, the backend `.jar` is compiled with a dense cryptographic payload (_The Whole War and Peace Novel.pdf_). Upon initialization, the server executes a strict, blocking SHA-256 checksum of this internal asset to verify deterministic state (`HealthCheck.java`). Any compiler optimizations or malicious tampering that alter this payload's byte-stream will instantly trigger a fatal container exit, forcing a secure `CrashLoopBackOff`.
 
 ### 3. Frontend (`frontend`)
-* **Build Context:** `./frontend`
-* **Dockerfile:** Multi-stage build. 
-  1. Uses `node` (Alpine) to compile the Vite build. 
+
+- **Build Context:** `./frontend`
+- **Dockerfile:** Multi-stage build.
+  1. Uses `node` (Alpine) to compile the Vite build.
   2. The `dist` folder is served via a lightweight, secure `nginx:alpine` container.
-* **Nginx Configuration (`nginx.conf`):**
-  * **SPA Routing:** `try_files $uri $uri/ /index.html;` ensures Vue Router handles history mode correctly.
-  * **Upload Limits:** Sets `client_max_body_size 100M;` to permit large image uploads.
-  * **Reverse Proxy:** Directs all traffic for `/images`, `/auth`, and `/admin` to `http://backend:8080`, bypassing CORS requirements completely and keeping the backend entirely behind the proxy in production environments.
+- **Nginx Configuration (`nginx.conf`):**
+  - **SPA Routing:** `try_files $uri $uri/ /index.html;` ensures Vue Router handles history mode correctly.
+  - **Upload Limits:** Sets `client_max_body_size 100M;` to permit large image uploads.
+  - **Reverse Proxy:** Directs all traffic for `/images`, `/auth`, and `/admin` to `http://backend:8080`, bypassing CORS requirements completely and keeping the backend entirely behind the proxy in production environments.

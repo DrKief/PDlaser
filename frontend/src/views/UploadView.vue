@@ -3,11 +3,21 @@ import { ref } from "vue";
 import { useUploadQueue } from "../composables/useUploadQueue";
 
 const tagsInput = ref("");
-const { tasks, tagsList, isUploading, globalMessage, statusCache, executeUpload, onFileChange, removeTaskById, clearAll } = useUploadQueue();
+const {
+  tasks,
+  tagsList,
+  isUploading,
+  globalMessage,
+  statusCache,
+  executeUpload,
+  onFileChange,
+  removeTaskById,
+  clearAll,
+} = useUploadQueue();
 
 const addTag = (event: KeyboardEvent | FocusEvent) => {
   event.preventDefault();
-  const t = tagsInput.value.trim().toLowerCase().replace(/\s+/g, '_');
+  const t = tagsInput.value.trim().toLowerCase().replace(/\s+/g, "_");
   if (t && !tagsList.value.includes(t)) {
     tagsList.value.push(t);
   }
@@ -15,7 +25,7 @@ const addTag = (event: KeyboardEvent | FocusEvent) => {
 };
 
 const removeTag = (tag: string) => {
-  tagsList.value = tagsList.value.filter(t => t !== tag);
+  tagsList.value = tagsList.value.filter((t) => t !== tag);
 };
 </script>
 
@@ -23,7 +33,9 @@ const removeTag = (tag: string) => {
   <div class="view-wrapper">
     <header class="page-header">
       <h1 class="page-title">Upload Images</h1>
-      <p class="page-subtitle">Add up to 10 images. They will be mathematically analyzed for similarity search.</p>
+      <p class="page-subtitle">
+        Add up to 10 images. They will be mathematically analyzed for similarity search.
+      </p>
     </header>
     <div class="upload-grid">
       <section class="queue-col">
@@ -32,7 +44,14 @@ const removeTag = (tag: string) => {
             <span class="material-symbols-outlined icon">add_photo_alternate</span>
             <span class="label-text">Select Files (Max 10)</span>
           </div>
-          <input type="file" @change="onFileChange" accept="image/*" multiple class="file-input" title=" " />
+          <input
+            type="file"
+            @change="onFileChange"
+            accept="image/*"
+            multiple
+            class="file-input"
+            title=" "
+          />
         </div>
         <div class="task-list" v-if="tasks.length > 0">
           <div v-for="task in tasks" :key="task.internalId" class="task-item">
@@ -40,11 +59,18 @@ const removeTag = (tag: string) => {
             <div class="task-info">
               <span class="task-name" :title="task.file.name">{{ task.file.name }}</span>
               <span class="status-badge" :class="task.status.toLowerCase()">
-                {{ task.status === 'EXTRACTING' && statusCache[task.id!] ? statusCache[task.id!] : task.status }}
+                {{
+                  task.status === "EXTRACTING" && statusCache[task.id!]
+                    ? statusCache[task.id!]
+                    : task.status
+                }}
               </span>
             </div>
-            <button class="btn-icon" @click="removeTaskById(task.internalId)"
-              v-if="!isUploading && task.status === 'PENDING'">
+            <button
+              class="btn-icon"
+              @click="removeTaskById(task.internalId)"
+              v-if="!isUploading && task.status === 'PENDING'"
+            >
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
@@ -58,20 +84,35 @@ const removeTag = (tag: string) => {
             <div class="tags-container">
               <span v-for="tag in tagsList" :key="tag" class="tag-pill">
                 {{ tag }}
-                <button @click="removeTag(tag)" class="tag-remove"><span
-                    class="material-symbols-outlined">close</span></button>
+                <button @click="removeTag(tag)" class="tag-remove">
+                  <span class="material-symbols-outlined">close</span>
+                </button>
               </span>
-              <input type="text" v-model="tagsInput" @keydown.enter="addTag" class="tag-input"
-                placeholder="Type tag and press enter..." :disabled="isUploading" />
+              <input
+                type="text"
+                v-model="tagsInput"
+                @keydown.enter="addTag"
+                class="tag-input"
+                placeholder="Type tag and press enter..."
+                :disabled="isUploading"
+              />
             </div>
           </div>
         </div>
         <p class="global-msg" v-if="globalMessage">{{ globalMessage }}</p>
         <div class="actions">
-          <button class="btn w-full" @click="executeUpload" :disabled="tasks.length === 0 || isUploading">
-            {{ isUploading ? 'Processing...' : 'Upload & Analyze' }}
+          <button
+            class="btn w-full"
+            @click="executeUpload"
+            :disabled="tasks.length === 0 || isUploading"
+          >
+            {{ isUploading ? "Processing..." : "Upload & Analyze" }}
           </button>
-          <button class="btn btn-outline w-full" @click="clearAll" v-if="tasks.length > 0 && !isUploading">
+          <button
+            class="btn btn-outline w-full"
+            @click="clearAll"
+            v-if="tasks.length > 0 && !isUploading"
+          >
             Clear Queue
           </button>
         </div>

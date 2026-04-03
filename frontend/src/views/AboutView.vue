@@ -16,11 +16,11 @@ onMounted(async () => {
   try {
     const [imgRes, tagRes] = await Promise.all([
       http.get("/images?size=1"),
-      http.get("/images/keywords")
+      http.get("/images/keywords"),
     ]);
     stats.value.total = imgRes.data.totalElements ?? 0;
     stats.value.tags = tagRes.data.length || 0;
-  } catch(e) {
+  } catch (e) {
     console.error("Could not fetch stats", e);
   } finally {
     isLoaded.value = true;
@@ -33,9 +33,9 @@ onMounted(async () => {
     <div class="about-header text-center">
       <h1 class="page-title">System Architecture</h1>
       <p class="about-desc">
-        PDLaser v3a is a high-performance, vector-based visual archiving system. 
-        It integrates advanced machine learning and pure mathematical matrices to execute 
-        deep similarity searches based on object semantics, structure, color, and intensity.
+        PDLaser v3a is a high-performance, vector-based visual archiving system. It integrates
+        advanced machine learning and pure mathematical matrices to execute deep similarity searches
+        based on object semantics, structure, color, and intensity.
       </p>
     </div>
 
@@ -56,7 +56,9 @@ onMounted(async () => {
       </div>
       <div class="divider-vertical"></div>
       <div class="stat-box">
-        <span class="stat-val">{{ indexMemorySize }} <span style="font-size: 1.5rem">MB</span></span>
+        <span class="stat-val"
+          >{{ indexMemorySize }} <span style="font-size: 1.5rem">MB</span></span
+        >
         <span class="label-text">Estimated Tensor Size</span>
       </div>
       <div class="divider-vertical"></div>
@@ -103,13 +105,12 @@ onMounted(async () => {
 
     <h3 class="section-heading label-text">Engine Specifications</h3>
     <div class="tech-grid">
-      
       <div class="tech-card">
         <div class="card-icon material-symbols-outlined">hub</div>
         <h2>pgvector & HNSW</h2>
         <p>
-          Utilizes PostgreSQL's <code>pgvector</code> extension for high-dimensional tensor storage. 
-          Queries are accelerated via Hierarchical Navigable Small World (HNSW) graphs, executing 
+          Utilizes PostgreSQL's <code>pgvector</code> extension for high-dimensional tensor storage.
+          Queries are accelerated via Hierarchical Navigable Small World (HNSW) graphs, executing
           Cosine and L2 Distances natively.
         </p>
       </div>
@@ -118,8 +119,9 @@ onMounted(async () => {
         <div class="card-icon material-symbols-outlined">psychology</div>
         <h2>ResNet-50 AI Processing</h2>
         <p>
-          Integrates Microsoft's ONNX Runtime to execute a localized ResNet-50 convolutional neural network. 
-          Extracts 1000-dimensional semantic logits entirely in-memory for contextual matching.
+          Integrates Microsoft's ONNX Runtime to execute a localized ResNet-50 convolutional neural
+          network. Extracts 1000-dimensional semantic logits entirely in-memory for contextual
+          matching.
         </p>
       </div>
 
@@ -127,8 +129,9 @@ onMounted(async () => {
         <div class="card-icon material-symbols-outlined">grid_on</div>
         <h2>BoofCV Interpolation</h2>
         <p>
-          Images are mathematically resampled using the precise 
-          <strong>Lanczos3</strong> algorithm before deep mathematical histograms (HOG, HSV, CIELAB) are extracted.
+          Images are mathematically resampled using the precise
+          <strong>Lanczos3</strong> algorithm before deep mathematical histograms (HOG, HSV, CIELAB)
+          are extracted.
         </p>
       </div>
 
@@ -136,8 +139,9 @@ onMounted(async () => {
         <div class="card-icon material-symbols-outlined">speed</div>
         <h2>Virtual Threads (Java 21)</h2>
         <p>
-          Built on Spring Boot 4. Heavy vector calculus and asynchronous I/O operations are delegated 
-          to non-blocking virtual thread pools, allowing massive concurrent extraction queues.
+          Built on Spring Boot 4. Heavy vector calculus and asynchronous I/O operations are
+          delegated to non-blocking virtual thread pools, allowing massive concurrent extraction
+          queues.
         </p>
       </div>
 
@@ -145,8 +149,9 @@ onMounted(async () => {
         <div class="card-icon material-symbols-outlined">layers</div>
         <h2>Vue 3 Reactive UI</h2>
         <p>
-          The frontend architecture utilizes Vite, the Composition API, and strict TypeScript. State is managed 
-          ephemerally, with asynchronous polling maintaining UI consistency during background tasks.
+          The frontend architecture utilizes Vite, the Composition API, and strict TypeScript. State
+          is managed ephemerally, with asynchronous polling maintaining UI consistency during
+          background tasks.
         </p>
       </div>
 
@@ -154,11 +159,10 @@ onMounted(async () => {
         <div class="card-icon material-symbols-outlined">dns</div>
         <h2>Containerized Micro-topology</h2>
         <p>
-          Deployed via multi-stage Docker builds. The database, Java backend, and NGINX-served frontend 
-          operate in isolated alpine containers connected over a private bridge network.
+          Deployed via multi-stage Docker builds. The database, Java backend, and NGINX-served
+          frontend operate in isolated alpine containers connected over a private bridge network.
         </p>
       </div>
-
     </div>
   </div>
 </template>
@@ -227,7 +231,9 @@ onMounted(async () => {
   display: none;
 }
 @media (min-width: 1024px) {
-  .divider-vertical { display: block; }
+  .divider-vertical {
+    display: block;
+  }
 }
 
 .section-heading {
@@ -272,7 +278,9 @@ onMounted(async () => {
   font-size: 2rem;
   color: var(--text-primary);
   margin-bottom: 1rem;
-  transition: transform 0.3s ease, background 0.3s ease;
+  transition:
+    transform 0.3s ease,
+    background 0.3s ease;
 }
 .pipeline-step:hover .step-circle {
   transform: scale(1.1);
@@ -297,7 +305,7 @@ onMounted(async () => {
   position: relative;
 }
 .pipeline-line::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -316,15 +324,26 @@ onMounted(async () => {
   grid-template-columns: 1fr;
   gap: 1.5rem;
 }
-@media (min-width: 768px) { .tech-grid { grid-template-columns: 1fr 1fr; } }
-@media (min-width: 1024px) { .tech-grid { grid-template-columns: 1fr 1fr 1fr; } }
+@media (min-width: 768px) {
+  .tech-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (min-width: 1024px) {
+  .tech-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+}
 
 .tech-card {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   border-radius: 8px;
   padding: 2rem;
-  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 .tech-card:hover {
   transform: translateY(-4px);

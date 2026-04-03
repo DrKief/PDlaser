@@ -21,7 +21,7 @@
     <java.version>21</java.version>
     <spring-boot.version>4.0.5</spring-boot.version>
     <mockito.version>5.16.0</mockito.version>
-    <argLine></argLine>
+    <argLine />
   </properties>
 
   <dependencies>
@@ -116,7 +116,6 @@
       <artifactId>spring-security-test</artifactId>
       <scope>test</scope>
     </dependency>
-    
   </dependencies>
 
   <build>

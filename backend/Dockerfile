@@ -17,7 +17,7 @@ RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 
 # Pre-create image directory with correct ownership
 RUN mkdir -p /var/lib/pdl/images \
-    && chown -R appuser:appgroup /var/lib/pdl
+  && chown -R appuser:appgroup /var/lib/pdl
 
 # Switch to non-privileged user for security
 USER appuser

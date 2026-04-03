@@ -21,7 +21,7 @@ const addTag = async () => {
     if (!metadata.value.Keywords.includes(tag)) {
       metadata.value.Keywords.push(tag);
     }
-    newTag.value = '';
+    newTag.value = "";
   } catch (error) {
     console.error("Failed to add tag", error);
     alert("Failed to add tag. It may already exist or you might not have permission.");
@@ -54,7 +54,7 @@ const deleteImage = async () => {
 
 // Optional: Open advanced similarity search in gallery (as Sidebar triggers similarity from GalleryView)
 const findSimilar = () => {
-  router.push({ path: '/', query: { sourceId: imageId } });
+  router.push({ path: "/", query: { sourceId: imageId } });
 };
 </script>
 
@@ -98,30 +98,41 @@ const findSimilar = () => {
           <div class="tags-list" v-if="metadata.Keywords && metadata.Keywords.length > 0">
             <span v-for="tag in metadata.Keywords" :key="tag" class="tag-pill">{{ tag }}</span>
           </div>
-          <div class="tag-input-container" style="position: relative; display: flex; align-items: center; margin-top: 0.75rem;">
-            <input 
-              v-model="newTag" 
-              type="text" 
-              class="input-tag" 
-              placeholder="Type a tag and press enter..." 
+          <div
+            class="tag-input-container"
+            style="position: relative; display: flex; align-items: center; margin-top: 0.75rem"
+          >
+            <input
+              v-model="newTag"
+              type="text"
+              class="input-tag"
+              placeholder="Type a tag and press enter..."
               @keyup.enter="addTag"
-              :disabled="isAddingTag" 
-              style="width: 100%; padding-right: 2.5rem;"
+              :disabled="isAddingTag"
+              style="width: 100%; padding-right: 2.5rem"
             />
-            <span 
-              v-if="isAddingTag" 
-              class="material-symbols-outlined" 
-              style="position: absolute; right: 10px; color: var(--text-secondary); animation: spin 1s linear infinite;"
-            >sync</span>
+            <span
+              v-if="isAddingTag"
+              class="material-symbols-outlined"
+              style="
+                position: absolute;
+                right: 10px;
+                color: var(--text-secondary);
+                animation: spin 1s linear infinite;
+              "
+              >sync</span
+            >
           </div>
         </div>
         <div class="actions">
-          <button class="btn w-full" @click="findSimilar" :disabled="metadata.Extraction_Status !== 'COMPLETED'">
+          <button
+            class="btn w-full"
+            @click="findSimilar"
+            :disabled="metadata.Extraction_Status !== 'COMPLETED'"
+          >
             Find Visually Similar
           </button>
-          <button class="btn btn-outline danger w-full" @click="deleteImage">
-            Delete Image
-          </button>
+          <button class="btn btn-outline danger w-full" @click="deleteImage">Delete Image</button>
         </div>
       </aside>
     </div>
@@ -130,7 +141,9 @@ const findSimilar = () => {
 
 <style scoped>
 @keyframes spin {
-  100% { transform: rotate(360deg); }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes fadeIn {

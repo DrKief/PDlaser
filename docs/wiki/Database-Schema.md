@@ -1,12 +1,13 @@
 # Database Schema
 
-The application persists data using **PostgreSQL 18**. It leverages the `pgvector` extension to store mathematical vector embeddings for content-based image retrieval (similarity search). 
+The application persists data using **PostgreSQL 18**. It leverages the `pgvector` extension to store mathematical vector embeddings for content-based image retrieval (similarity search).
 
-*Note: The database schema is version-controlled and automatically migrated on startup using **Flyway** (`src/main/resources/db/migration`).*
+_Note: The database schema is version-controlled and automatically migrated on startup using **Flyway** (`src/main/resources/db/migration`)._
 
 ## Tables
 
 ### 1. `users` (Added V2)
+
 Handles authentication and role-based access control.
 | Column | Type | Constraints | Description |
 |---|---|---|---|
@@ -16,6 +17,7 @@ Handles authentication and role-based access control.
 | `role` | VARCHAR(50) | DEFAULT 'ROLE_USER' | JWT Authority claim (e.g., `ROLE_ADMIN`). |
 
 ### 2. `images`
+
 Stores core metadata. The actual binary content is stored on the filesystem (e.g., `/var/lib/pdl/images`), while this table maintains references.
 | Column | Type | Constraints | Description |
 |---|---|---|---|
@@ -30,6 +32,7 @@ Stores core metadata. The actual binary content is stored on the filesystem (e.g
 | `is_private` | BOOLEAN | DEFAULT false | Controls public visibility scoping. |
 
 ### 3. `imagedescriptors`
+
 Stores the mathematically extracted feature vectors (calculated asynchronously via BoofCV and ONNX in Java) used for visual similarity scoring.
 | Column | Type | Constraints | Description |
 |---|---|---|---|
@@ -41,6 +44,7 @@ Stores the mathematically extracted feature vectors (calculated asynchronously v
 | `semanticvector`| vector(1000)| | Semantic Logits extracted from ResNet-50 AI model. |
 
 **HNSW Indexes:** This table utilizes `hnsw` (Hierarchical Navigable Small World) indexes on all vector columns to accelerate database-level querying:
+
 - HOG (31D): `vector_l2_ops`, `m=4, ef_construction=32`
 - HSV (256D): `vector_l2_ops`, `m=16, ef_construction=128`
 - RGB (512D): `vector_l2_ops`, `m=32, ef_construction=256`
@@ -48,6 +52,7 @@ Stores the mathematically extracted feature vectors (calculated asynchronously v
 - Semantic (1000D): `vector_cosine_ops`, `m=32, ef_construction=256`
 
 ### 4. `imagekeywords`
+
 Handles many-to-many tag relationships. Tags are automatically normalized (converted to lowercase, spaces replaced by underscores) before insertion.
 | Column | Type | Constraints | Description |
 |---|---|---|---|
