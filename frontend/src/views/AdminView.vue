@@ -18,6 +18,7 @@ const searchCountry = ref("");
 const currentPage = ref(0);
 const totalPages = ref(1);
 const selectedIds = ref<Set<number>>(new Set());
+const batchLimit = ref(1000);
 
 const isBusy = computed(() => {
   return (
@@ -113,6 +114,24 @@ const importSelected = async () => {
     checkStatus();
   } catch (e: any) {
     alert(e.response?.data?.message || "Failed to start import");
+  }
+};
+
+const importBatch = async () => {
+  if (!confirm(`Are you sure you want to queue the top ${batchLimit.value} matches?`)) return;
+  try {
+    await http.post("/admin/unsplash/import/batch", null, {
+      params: {
+        limit: batchLimit.value,
+        query: searchQuery.value,
+        camera: searchCamera.value,
+        country: searchCountry.value,
+      },
+    });
+    fetchCatalog(currentPage.value);
+    checkStatus();
+  } catch (e: any) {
+    alert(e.response?.data?.message || "Failed to start batch import");
   }
 };
 
@@ -240,6 +259,24 @@ onUnmounted(() => {
         />
         <button class="btn" @click="handleSearch">Search</button>
         <button class="btn btn-outline" @click="selectAll">Select All Visible</button>
+      </div>
+
+      <div
+        class="batch-toolbar"
+        style="margin-bottom: 1.5rem; display: flex; gap: 1rem; align-items: center"
+      >
+        <label class="label-text">Batch Import Count:</label>
+        <input
+          type="number"
+          v-model="batchLimit"
+          min="1"
+          max="50000"
+          class="search-bar"
+          style="max-width: 150px"
+        />
+        <button class="btn btn-outline" @click="importBatch" :disabled="isBusy">
+          Import Top {{ batchLimit }} Matches
+        </button>
       </div>
 
       <div class="catalog-grid">

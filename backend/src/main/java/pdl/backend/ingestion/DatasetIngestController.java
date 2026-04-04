@@ -85,6 +85,24 @@ public class DatasetIngestController {
     return ResponseEntity.ok(Map.of("message", "Batch import initiated."));
   }
 
+  @PostMapping("/unsplash/import/batch")
+  public ResponseEntity<?> importBatch(
+    @RequestParam(defaultValue = "1000") int limit,
+    @RequestParam(required = false) String query,
+    @RequestParam(required = false) String camera,
+    @RequestParam(required = false) String country
+  ) {
+    if (
+      !unsplashService.getStatus().equals("IDLE") &&
+      !unsplashService.getStatus().startsWith("ERROR") &&
+      !unsplashService.getStatus().startsWith("COMPLETED")
+    ) {
+      return ResponseEntity.badRequest().body(Map.of("message", "A job is already in progress."));
+    }
+    unsplashService.importBatchImages(limit, query, camera, country);
+    return ResponseEntity.ok(Map.of("message", "Batch import initiated."));
+  }
+
   @GetMapping("/unsplash/status")
   public ResponseEntity<?> getStatus() {
     return ResponseEntity.ok(Map.of("status", unsplashService.getStatus()));

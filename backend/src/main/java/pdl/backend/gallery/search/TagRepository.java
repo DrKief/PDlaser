@@ -127,7 +127,10 @@ public class TagRepository {
 
   public List<String> getPopularKeywords(int limit) {
     return jdbcTemplate.queryForList(
-      "SELECT keyword FROM imagekeywords GROUP BY keyword ORDER BY COUNT(imageid) DESC LIMIT ?",
+      "SELECT k.keyword FROM imagekeywords k " +
+      "JOIN images i ON k.imageid = i.id " +
+      "WHERE i.extraction_status = 'COMPLETED' AND i.is_private = false " +
+      "GROUP BY k.keyword ORDER BY COUNT(k.imageid) DESC LIMIT ?",
       String.class,
       limit
     );

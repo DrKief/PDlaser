@@ -271,6 +271,20 @@ public class UnsplashService {
 
   @Async("taskExecutor")
   public void importSelectedImages(List<Long> imageIds) {
+    if (imageIds == null || imageIds.isEmpty()) return;
+
+    // 1. Synchronously mark all selected images as DOWNLOADING immediately
+    // This instantly hides them from the frontend catalog
+    List<Object[]> batchArgs = new ArrayList<>();
+    for (Long id : imageIds) {
+      batchArgs.add(new Object[]{ id });
+    }
+    jdbcTemplate.batchUpdate(
+      "UPDATE images SET extraction_status = 'DOWNLOADING' WHERE id = ? AND extraction_status = 'REMOTE_METADATA'",
+      batchArgs
+    );
+
+    // 2. Start the slow, polite download process
     int count = 0;
     RestTemplate restTemplate = new RestTemplate();
 
@@ -279,7 +293,8 @@ public class UnsplashService {
         Optional<MediaRecord> opt = recordRepository.findById(id);
         if (opt.isEmpty()) continue;
         MediaRecord record = opt.get();
-        if (!"REMOTE_METADATA".equals(record.getExtractionStatus())) continue;
+        // Check for DOWNLOADING since we just updated it
+        if (!"DOWNLOADING".equals(record.getExtractionStatus())) continue;
 
         status = "IMPORTING (" + (count + 1) + " / " + imageIds.size() + "): " + record.getName();
 
@@ -289,14 +304,54 @@ public class UnsplashService {
         byte[] bytes = restTemplate.getForObject(URI.create(fetchUrl), byte[].class);
         if (bytes != null) {
           record.setData(bytes);
-          storageService.processAndSaveImage(record, true);
+          // storageService sets it to PENDING and our ML queue takes over
+          storageService.processAndSaveImage(record, true); 
           Thread.sleep(1000); // Politeness delay
+        } else {
+          // If bytes are null, it failed to fetch. Revert to REMOTE_METADATA so it shows up again.
+          jdbcTemplate.update("UPDATE images SET extraction_status = 'REMOTE_METADATA' WHERE id = ?", id);
         }
       } catch (Exception e) {
         log.error("Failed to import image ID: " + id, e);
+        // On any HTTP or network error, revert the status so it isn't permanently stuck as DOWNLOADING
+        jdbcTemplate.update("UPDATE images SET extraction_status = 'REMOTE_METADATA' WHERE id = ?", id);
       }
       count++;
     }
     status = "IDLE";
+  }
+
+  public void importBatchImages(int limit, String query, String camera, String country) {
+    String baseSql = "FROM images WHERE extraction_status = 'REMOTE_METADATA'";
+    List<Object> params = new ArrayList<>();
+
+    if (query != null && !query.trim().isEmpty()) {
+      baseSql +=
+        " AND (camera_make ILIKE ? OR location_country ILIKE ? OR description ILIKE ? OR photographer_name ILIKE ?)";
+      String likeQuery = "%" + query.trim() + "%";
+      params.add(likeQuery);
+      params.add(likeQuery);
+      params.add(likeQuery);
+      params.add(likeQuery);
+    }
+
+    if (camera != null && !camera.trim().isEmpty()) {
+      baseSql += " AND camera_make ILIKE ?";
+      params.add("%" + camera.trim() + "%");
+    }
+
+    if (country != null && !country.trim().isEmpty()) {
+      baseSql += " AND location_country ILIKE ?";
+      params.add("%" + country.trim() + "%");
+    }
+
+    String dataSql = "SELECT id " + baseSql + " ORDER BY stats_downloads DESC LIMIT ?";
+    params.add(limit);
+
+    List<Long> idsToImport = jdbcTemplate.queryForList(dataSql, params.toArray(), Long.class);
+    
+    if (!idsToImport.isEmpty()) {
+      importSelectedImages(idsToImport);
+    }
   }
 }
