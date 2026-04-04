@@ -235,15 +235,12 @@ onMounted(() => {
 
 /* Slimmer Top Nav */
 .top-nav {
-  position: sticky;
-  top: 0;
   z-index: 51;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0.75rem 2rem;
-  background: color-mixin(in oklch, var(--bg-surface) 95%, transparent);
-  backdrop-filter: blur(12px);
+  background: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
 }
 

@@ -123,18 +123,28 @@ const deleteImage = async (id: number, event: Event) => {
 .card-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0) 40%);
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.8) 0%,
+    rgba(0, 0, 0, 0) 40%,
+    rgba(0, 0, 0, 0) 70%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
   opacity: 0;
   transition: opacity 0.3s ease;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: space-between;
   padding: 1.5rem;
   color: #fff;
   pointer-events: none;
 }
 .artifact-card:hover .card-overlay {
   opacity: 1;
+}
+
+.overlay-content {
+  margin-top: auto;
 }
 
 .artifact-name {

@@ -401,7 +401,13 @@ const goToImage = (id: number | string) => {
 .card-overlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0) 60%);
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.8) 0%,
+    rgba(0, 0, 0, 0) 40%,
+    rgba(0, 0, 0, 0) 70%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
   opacity: 0;
   transition: opacity 0.3s ease;
   display: flex;
@@ -413,6 +419,10 @@ const goToImage = (id: number | string) => {
 }
 .artifact-card:hover .card-overlay {
   opacity: 1;
+}
+
+.overlay-content {
+  margin-top: auto;
 }
 
 /* Metadata Chips CSS */
