@@ -413,6 +413,38 @@ textarea:focus {
   text-align: center;
 }
 
+.ai-tag {
+  background: linear-gradient(90deg, #ff8a00, #e52e71, #f000ff, #00d4ff, #00ff00);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+  font-weight: 700;
+  animation: rainbow-text 3s linear infinite;
+  background-size: 200% 200%;
+}
+
+.ai-tag-pill {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 138, 0, 0.1),
+    rgba(229, 46, 113, 0.1),
+    rgba(240, 0, 255, 0.1)
+  );
+  border: 1px solid rgba(240, 0, 255, 0.3);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+@keyframes rainbow-text {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
 /* --- CRUELTY OVERRIDES (Global) --- */
 :root.cruelty .page-title {
   font-family: "Impact";

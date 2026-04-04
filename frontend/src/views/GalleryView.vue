@@ -8,7 +8,7 @@ import AdvancedSearchSidebar from "../components/AdvancedSearchSidebar.vue";
 interface Image {
   id: number | string;
   uploader?: string;
-  keywords: string[];
+  keywords: { keyword: string; isAi: boolean }[];
   extraction_status?: string;
   url?: string;
 }
@@ -43,14 +43,14 @@ const handleSimilarityResults = (payload: any) => {
       id: "Ephemeral",
       url: fileUrl,
       uploader: "Uploaded Target",
-      keywords: ["Source Image"],
+      keywords: [{ keyword: "Source Image", isAi: false }],
     };
   } else if (sourceId) {
     similaritySourceOverride.value = {
       id: sourceId,
       url: `/images/${sourceId}`,
       uploader: "Database Target",
-      keywords: ["Source Image"],
+      keywords: [{ keyword: "Source Image", isAi: false }],
     };
   }
 
@@ -60,7 +60,7 @@ const handleSimilarityResults = (payload: any) => {
     url: `/images/${res.id}`,
     uploader: "Matched Result",
     extraction_status: "COMPLETED",
-    keywords: [`${((1 - res.score) * 100).toFixed(2)}% Match`],
+    keywords: [{ keyword: `${((1 - res.score) * 100).toFixed(2)}% Match`, isAi: false }],
   }));
 };
 
@@ -228,7 +228,16 @@ const goToImage = (id: number | string) => {
                 <h3 class="artifact-name">@{{ image.uploader || "System" }}</h3>
                 <div class="tags" v-if="image.keywords && image.keywords.length">
                   <span class="tag-text">
-                    #{{ image.keywords.slice(0, 5).join(", #") }}
+                    <span
+                      v-for="(kw, index) in image.keywords.slice(0, 5)"
+                      :key="kw.keyword"
+                      :class="{ 'ai-tag': kw.isAi }"
+                    >
+                      #{{ kw.keyword
+                      }}<span v-if="Number(index) < Math.min(image.keywords.length, 5) - 1"
+                        >,
+                      </span>
+                    </span>
                     <span v-if="image.keywords.length > 5">, ...</span>
                   </span>
                 </div>

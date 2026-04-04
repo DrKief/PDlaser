@@ -60,7 +60,7 @@ public class VisionProcessor {
       // Auto-Tagging logic
       List<String> aiTags = SemanticExtractor.getAutoTags(rawSemanticData);
       for (String tag : aiTags) {
-        queryRepoLayer.addKeyword(id, "ai:" + tag);
+        queryRepoLayer.addKeyword(id, tag, true);
       }
 
       // 3. Normalize vector for the similarity search database

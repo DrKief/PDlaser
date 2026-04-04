@@ -67,7 +67,14 @@ const deleteImage = async (id: number, event: Event) => {
             <h3 class="artifact-name">@{{ image.uploader || "System" }}</h3>
             <div class="tags" v-if="image.keywords && image.keywords.length">
               <span class="tag-text">
-                #{{ image.keywords.slice(0, 5).join(", #") }}
+                <span
+                  v-for="(kw, index) in image.keywords.slice(0, 5)"
+                  :key="kw.keyword"
+                  :class="{ 'ai-tag': kw.isAi }"
+                >
+                  #{{ kw.keyword
+                  }}<span v-if="Number(index) < Math.min(image.keywords.length, 5) - 1">, </span>
+                </span>
                 <span v-if="image.keywords.length > 5">, ...</span>
               </span>
             </div>

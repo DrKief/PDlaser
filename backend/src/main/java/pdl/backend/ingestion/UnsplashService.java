@@ -165,17 +165,17 @@ public class UnsplashService {
 
         String normalizedKeyword = keyword.trim().toLowerCase().replaceAll("\\s+", "_");
 
-        batchArgs.add(new Object[]{localId, normalizedKeyword});
+        batchArgs.add(new Object[]{localId, normalizedKeyword, false});
         processed++;
 
         if (batchArgs.size() >= 1000) {
-            jdbcTemplate.batchUpdate("INSERT INTO imagekeywords (imageid, keyword) VALUES (?, ?) ON CONFLICT DO NOTHING", batchArgs);
+            jdbcTemplate.batchUpdate("INSERT INTO imagekeywords (imageid, keyword, is_ai_generated) VALUES (?, ?, ?) ON CONFLICT DO NOTHING", batchArgs);
             batchArgs.clear();
         }
       }
 
       if (!batchArgs.isEmpty()) {
-        jdbcTemplate.batchUpdate("INSERT INTO imagekeywords (imageid, keyword) VALUES (?, ?) ON CONFLICT DO NOTHING", batchArgs);
+        jdbcTemplate.batchUpdate("INSERT INTO imagekeywords (imageid, keyword, is_ai_generated) VALUES (?, ?, ?) ON CONFLICT DO NOTHING", batchArgs);
       }
 
       status = "COMPLETED: Linked " + processed + " tags to photos.";

@@ -18,8 +18,8 @@ const addTag = async () => {
   try {
     await http.put(`/images/${imageId}/keywords?tag=${encodeURIComponent(tag)}`);
     if (!metadata.value.Keywords) metadata.value.Keywords = [];
-    if (!metadata.value.Keywords.includes(tag)) {
-      metadata.value.Keywords.push(tag);
+    if (!metadata.value.Keywords.find((k: any) => k.keyword === tag)) {
+      metadata.value.Keywords.push({ keyword: tag, isAi: false });
     }
     newTag.value = "";
   } catch (error) {
@@ -126,7 +126,14 @@ const findSimilar = () => {
         <div class="meta-section">
           <span class="label-text">Tags</span>
           <div class="tags-list" v-if="metadata.Keywords && metadata.Keywords.length > 0">
-            <span v-for="tag in metadata.Keywords" :key="tag" class="tag-pill">{{ tag }}</span>
+            <span
+              v-for="tag in metadata.Keywords"
+              :key="tag.keyword"
+              class="tag-pill"
+              :class="{ 'ai-tag': tag.isAi }"
+            >
+              {{ tag.keyword }}
+            </span>
           </div>
           <div
             class="tag-input-container"

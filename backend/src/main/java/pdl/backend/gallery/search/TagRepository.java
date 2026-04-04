@@ -54,29 +54,33 @@ public class TagRepository {
     return meta;
   }
 
-  public List<String> getKeywords(long id) {
+  public List<Map<String, Object>> getKeywords(long id) {
     return jdbcTemplate.queryForList(
-      "SELECT keyword FROM imagekeywords WHERE imageid = ?",
-      String.class,
+      "SELECT keyword, is_ai_generated as \"isAi\" FROM imagekeywords WHERE imageid = ?",
       id
     );
   }
 
-  public boolean addKeyword(long id, String keyword) {
+  public boolean addKeyword(long id, String keyword, boolean isAiGenerated) {
     String normalizedTag = normalizeTag(keyword);
     if (normalizedTag == null || normalizedTag.isEmpty()) return false;
     try {
       jdbcTemplate.queryForObject("SELECT id FROM images WHERE id = ?", Long.class, id);
       jdbcTemplate.update(
-        "INSERT INTO imagekeywords (imageid, keyword) VALUES (?, ?) ON CONFLICT DO NOTHING",
+        "INSERT INTO imagekeywords (imageid, keyword, is_ai_generated) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
         id,
-        normalizedTag
+        normalizedTag,
+        isAiGenerated
       );
       return true;
     } catch (Exception e) {
       log.error("Failed to add keyword", e);
       return false;
     }
+  }
+
+  public boolean addKeyword(long id, String keyword) {
+    return addKeyword(id, keyword, false);
   }
 
   public boolean hasKeyword(long id, String keyword) {
