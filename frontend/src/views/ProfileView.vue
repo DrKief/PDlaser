@@ -66,7 +66,10 @@ const deleteImage = async (id: number, event: Event) => {
           <div class="overlay-content">
             <h3 class="artifact-name">@{{ image.uploader || "System" }}</h3>
             <div class="tags" v-if="image.keywords && image.keywords.length">
-              <span class="tag-text">#{{ image.keywords.join(", #") }}</span>
+              <span class="tag-text">
+                #{{ image.keywords.slice(0, 5).join(", #") }}
+                <span v-if="image.keywords.length > 5">, ...</span>
+              </span>
             </div>
           </div>
         </div>

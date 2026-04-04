@@ -266,7 +266,7 @@ onMounted(() => {
 /* Sub Navigation */
 .sub-nav {
   position: sticky;
-  top: 66px; /* Sits directly beneath top-nav */
+  top: 0; /* Sits at the top since top-nav scrolls away */
   z-index: 50;
   display: flex;
   justify-content: space-between;
