@@ -122,6 +122,83 @@ public class UnsplashService {
     }
   }
 
+  @Async("taskExecutor")
+  public void syncKeywordsFromFile(Path tempFilePath, int limit, int offset) {
+    status = "SYNCING_KEYWORDS";
+
+    try (BufferedReader br = new BufferedReader(new FileReader(tempFilePath.toFile()))) {
+      String headerLine = br.readLine();
+      if (headerLine == null) throw new IllegalStateException("Uploaded file is empty");
+
+      String separator = headerLine.contains("\t") ? "\t" : ",";
+      String[] headers = headerLine.split(separator);
+      Map<String, Integer> colMap = new HashMap<>();
+      for (int i = 0; i < headers.length; i++) colMap.put(headers[i].trim(), i);
+
+      // Load all known Unsplash photo IDs to local DB IDs
+      Map<String, Long> localPhotoIds = new HashMap<>();
+      jdbcTemplate.query("SELECT provider_id, id FROM images WHERE provider = 'UNSPLASH'", rs -> {
+        localPhotoIds.put(rs.getString("provider_id"), rs.getLong("id"));
+      });
+
+      int currentLine = 0;
+      int processed = 0;
+      int skippedLowConfidence = 0;
+      String line;
+
+      List<Object[]> batchArgs = new ArrayList<>();
+
+      while ((line = br.readLine()) != null) {
+        if (++currentLine <= offset) continue;
+        if (processed >= limit) break;
+
+        String[] cols = line.split(separator, -1);
+        String pId = getCol(cols, colMap, "photo_id", null);
+        String keyword = getCol(cols, colMap, "keyword", null);
+
+        if (pId == null || keyword == null || keyword.trim().isEmpty()) continue;
+
+        // Skip if we don't have the photo in our database
+        Long localId = localPhotoIds.get(pId);
+        if (localId == null) continue;
+
+        // Check confidence
+        String confStr = getCol(cols, colMap, "ai_service_1_confidence", null);
+        if (confStr != null && !confStr.trim().isEmpty()) {
+            try {
+                double conf = Double.parseDouble(confStr);
+                if (conf < 70.0) {
+                    skippedLowConfidence++;
+                    continue;
+                }
+            } catch (NumberFormatException ignored) {}
+        }
+
+        String normalizedKeyword = keyword.trim().toLowerCase().replaceAll("\\s+", "_");
+
+        batchArgs.add(new Object[]{localId, normalizedKeyword});
+        processed++;
+
+        if (batchArgs.size() >= 1000) {
+            jdbcTemplate.batchUpdate("INSERT INTO imagekeywords (imageid, keyword) VALUES (?, ?) ON CONFLICT DO NOTHING", batchArgs);
+            batchArgs.clear();
+        }
+      }
+
+      if (!batchArgs.isEmpty()) {
+        jdbcTemplate.batchUpdate("INSERT INTO imagekeywords (imageid, keyword) VALUES (?, ?) ON CONFLICT DO NOTHING", batchArgs);
+      }
+
+      status = "COMPLETED: Linked " + processed + " tags to photos (skipped " + skippedLowConfidence + " low-confidence tags).";
+    } catch (Exception e) {
+      log.error("Keywords sync failed", e);
+      status = "ERROR: " + e.getMessage();
+    } finally {
+      // Always clean up the temporary file from the container's disk
+      try { Files.deleteIfExists(tempFilePath); } catch (Exception ignored) {}
+    }
+  }
+
   public Map<String, Object> getCatalog(int page, int size, String query) {
     String baseSql = "FROM images WHERE extraction_status = 'REMOTE_METADATA'";
     List<Object> params = new ArrayList<>();

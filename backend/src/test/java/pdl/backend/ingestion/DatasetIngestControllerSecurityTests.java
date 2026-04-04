@@ -49,6 +49,7 @@ class DatasetIngestControllerSecurityTests {
           .file(mockFile)
           .param("limit", "50")
           .param("offset", "0")
+          .param("fileType", "PHOTOS")
           .with(
             SecurityMockMvcRequestPostProcessors.jwt()
               .authorities(
@@ -63,6 +64,40 @@ class DatasetIngestControllerSecurityTests {
       .andExpect(status().isOk());
 
     verify(unsplashService).syncMetadataFromFile(any(Path.class), eq(50), eq(0));
+  }
+
+  @Test
+  void adminCanStartKeywordSync() throws Exception {
+    when(unsplashService.getStatus()).thenReturn("IDLE");
+
+    MockMultipartFile mockFile = new MockMultipartFile(
+        "file",
+        "keywords.tsv",
+        "text/plain",
+        "header\ndata".getBytes()
+    );
+
+    mockMvc
+      .perform(
+        multipart("/admin/unsplash/upload")
+          .file(mockFile)
+          .param("limit", "100")
+          .param("offset", "0")
+          .param("fileType", "KEYWORDS")
+          .with(
+            SecurityMockMvcRequestPostProcessors.jwt()
+              .authorities(
+                new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN")
+              )
+              .jwt(jwt -> {
+                jwt.claim("role", "ROLE_ADMIN");
+                jwt.claim("userId", 1L);
+              })
+          )
+      )
+      .andExpect(status().isOk());
+
+    verify(unsplashService).syncKeywordsFromFile(any(Path.class), eq(100), eq(0));
   }
 
   @Test

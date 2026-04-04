@@ -31,7 +31,8 @@ public class DatasetIngestController {
   public ResponseEntity<?> uploadAndSyncMetadata(
       @RequestPart("file") MultipartFile file,
       @RequestParam(defaultValue = "1000") int limit,
-      @RequestParam(defaultValue = "0") int offset
+      @RequestParam(defaultValue = "0") int offset,
+      @RequestParam(defaultValue = "PHOTOS") String fileType
   ) {
     if (
       !unsplashService.getStatus().equals("IDLE") &&
@@ -46,8 +47,13 @@ public class DatasetIngestController {
       Path tempFile = Files.createTempFile("unsplash_", ".tmp");
       file.transferTo(tempFile.toFile());
       
-      unsplashService.syncMetadataFromFile(tempFile, limit, offset);
-      return ResponseEntity.ok(Map.of("message", "File uploaded. Metadata sync initiated."));
+      if ("KEYWORDS".equalsIgnoreCase(fileType)) {
+        unsplashService.syncKeywordsFromFile(tempFile, limit, offset);
+      } else {
+        unsplashService.syncMetadataFromFile(tempFile, limit, offset);
+      }
+      
+      return ResponseEntity.ok(Map.of("message", "File uploaded. Sync initiated."));
     } catch (Exception e) {
       return ResponseEntity.internalServerError().body(Map.of("message", "Failed to process uploaded file."));
     }

@@ -6,6 +6,7 @@ const activeTab = ref("sync");
 const status = ref("Loading...");
 const limit = ref(5000);
 const offset = ref(0);
+const fileType = ref("PHOTOS");
 const selectedFile = ref<File | null>(null);
 let pollingInterval: any = null;
 
@@ -51,6 +52,7 @@ const startUploadAndSync = async () => {
   formData.append("file", selectedFile.value);
   formData.append("limit", limit.value.toString());
   formData.append("offset", offset.value.toString());
+  formData.append("fileType", fileType.value);
 
   try {
     await http.post("/admin/unsplash/upload", formData, {
@@ -149,10 +151,26 @@ onUnmounted(() => {
     <div v-if="activeTab === 'sync'" class="sync-layout max-w-lg" style="margin: 0 auto">
       <div class="card meta-card">
         <h3 class="meta-title">Map Unsplash Dataset</h3>
-        <p class="help-text">
+
+        <div class="file-type-toggle">
+          <label class="radio-label">
+            <input type="radio" v-model="fileType" value="PHOTOS" />
+            <span>📸 Photos Metadata (photos.tsv)</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" v-model="fileType" value="KEYWORDS" />
+            <span>🏷️ Keywords & Tags (keywords.tsv)</span>
+          </label>
+        </div>
+
+        <p class="help-text" v-if="fileType === 'PHOTOS'">
           Select your local <code>photos.csv000</code> or <code>photos.tsv</code> file. The server
           will parse the metadata directly into the database.
           <strong>Actual image downloads occur in Step 2.</strong>
+        </p>
+        <p class="help-text" v-else style="color: var(--color-warning)">
+          <strong>Note:</strong> You must sync Photos before syncing Keywords. Upload
+          <code>keywords.tsv</code>. Keywords for unknown photos will be skipped.
         </p>
 
         <div class="file-drop-area" :class="{ 'has-file': selectedFile }">
@@ -174,16 +192,16 @@ onUnmounted(() => {
 
         <div style="display: flex; gap: 1rem; margin: 1.5rem 0">
           <div class="form-group" style="flex: 1">
-            <label class="label-text">Rows to Process (Limit)</label>
-            <input type="number" v-model="limit" min="1" max="500000" />
+            <label class="label-text">Rows to Process</label>
+            <input type="number" v-model="limit" min="1" max="1000000" />
           </div>
           <div class="form-group" style="flex: 1">
-            <label class="label-text">Skip Rows (Offset)</label>
+            <label class="label-text">Skip Rows</label>
             <input type="number" v-model="offset" min="0" />
           </div>
         </div>
         <button class="btn w-full" @click="startUploadAndSync" :disabled="isBusy || !selectedFile">
-          Upload and Sync Metadata
+          Upload and Sync {{ fileType === "PHOTOS" ? "Photos" : "Keywords" }}
         </button>
       </div>
     </div>
@@ -324,6 +342,25 @@ onUnmounted(() => {
 
 .meta-card {
   padding: 2rem;
+}
+
+.file-type-toggle {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  background: var(--bg-surface-alt);
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+}
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--text-primary);
 }
 
 /* New File Drop Area Styles */
