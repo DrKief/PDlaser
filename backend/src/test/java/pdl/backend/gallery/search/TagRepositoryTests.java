@@ -31,9 +31,10 @@ class TagRepositoryTests {
 
     ArgumentCaptor<String> keywordCaptor = ArgumentCaptor.forClass(String.class);
     verify(jdbcTemplate).update(
-      eq("INSERT INTO imagekeywords (imageid, keyword) VALUES (?, ?) ON CONFLICT DO NOTHING"),
+      eq("INSERT INTO imagekeywords (imageid, keyword, is_ai_generated) VALUES (?, ?, ?) ON CONFLICT DO NOTHING"),
       eq(1L),
-      keywordCaptor.capture()
+      keywordCaptor.capture(),
+      eq(false)
     );
 
     // normalizeTag: trim, lower-case, whitespace -> underscore
