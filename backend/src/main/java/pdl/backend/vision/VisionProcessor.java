@@ -3,14 +3,21 @@ package pdl.backend.vision;
 import com.pgvector.PGvector;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import javax.imageio.ImageIO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import pdl.backend.gallery.core.FileStorageService;
+import pdl.backend.gallery.core.MediaRecord;
 import pdl.backend.gallery.search.TagRepository;
 
 @Service
@@ -20,18 +27,98 @@ public class VisionProcessor {
   private final JdbcTemplate jdbcTemplate;
   private final TagRepository queryRepoLayer;
   private final UploadStatusTracker statusNotifier;
+  private final FileStorageService fileStorageService;
+  
+  private volatile boolean isRunning = true;
+  private final List<Thread> workers = new ArrayList<>();
 
   public VisionProcessor(
     JdbcTemplate jdbcTemplate,
     TagRepository queryRepoLayer,
-    UploadStatusTracker statusNotifier
+    UploadStatusTracker statusNotifier,
+    FileStorageService fileStorageService
   ) {
     this.jdbcTemplate = jdbcTemplate;
     this.queryRepoLayer = queryRepoLayer;
     this.statusNotifier = statusNotifier;
+    this.fileStorageService = fileStorageService;
   }
 
-  @Async("taskExecutor")
+  @PostConstruct
+  public void startWorkers() {
+    log.info("Starting 2 dedicated VisionProcessor ML worker threads");
+    for (int i = 0; i < 2; i++) {
+      Thread worker = new Thread(this::processQueue, "MLWorker-" + i);
+      worker.setDaemon(false);
+      worker.start();
+      workers.add(worker);
+    }
+  }
+
+  @PreDestroy
+  public void shutdown() {
+    log.info("Gracefully shutting down VisionProcessor workers (up to 30s timeout)...");
+    isRunning = false;
+    for (Thread worker : workers) {
+      try {
+        worker.join(30000);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+      }
+    }
+  }
+
+  @EventListener(ApplicationReadyEvent.class)
+  public void resetProcessingOnStartup() {
+    log.info("Resetting any stuck PROCESSING images to PENDING");
+    jdbcTemplate.update("UPDATE images SET extraction_status = 'PENDING' WHERE extraction_status = 'PROCESSING'");
+  }
+
+  private void processQueue() {
+    while (isRunning) {
+      try {
+        // Atomic lock using SKIP LOCKED
+        List<Long> ids = jdbcTemplate.query(
+          "UPDATE images SET extraction_status = 'PROCESSING' WHERE id = (" +
+          "  SELECT id FROM images WHERE extraction_status = 'PENDING' ORDER BY id ASC LIMIT 1 FOR UPDATE SKIP LOCKED" +
+          ") RETURNING id",
+          (rs, rowNum) -> rs.getLong(1)
+        );
+
+        if (ids.isEmpty()) {
+          Thread.sleep(2000);
+        } else {
+          Long id = ids.get(0);
+          try {
+            Optional<MediaRecord> recordOpt = fileStorageService.getImageWithData(id);
+            if (recordOpt.isEmpty() || recordOpt.get().getData() == null) {
+              log.error("Failed to load file data for ID: {}", id);
+              queryRepoLayer.updateStatus(id, "FAILED");
+              statusNotifier.notify(id, "FAILED");
+              continue; // proceed to next item
+            }
+            processImageDescriptors(id, recordOpt.get().getData());
+          } catch (Throwable t) { // MASSIVE CATCH to prevent eternal queue stall
+            log.error("SEVERE CRASH processing image ID: {}", id, t);
+            queryRepoLayer.updateStatus(id, "FAILED");
+            statusNotifier.notify(id, "FAILED");
+          }
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        break; // break the loop on interrupt
+      } catch (Exception e) {
+        log.error("Error in VisionProcessor queue loop", e);
+        try {
+          Thread.sleep(5000);
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+          break;
+        }
+      }
+    }
+  }
+
   public void processImageDescriptors(Long id, byte[] data) {
     BufferedImage bimg = null;
     BufferedImage resizedImage = null;

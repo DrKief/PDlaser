@@ -18,24 +18,19 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
-import pdl.backend.vision.VisionProcessor;
 
 @Service
 public class FileStorageService {
 
   private static final Logger log = LoggerFactory.getLogger(FileStorageService.class);
   private final MediaRepository recordRepository;
-  private final VisionProcessor backgroundWorker;
 
   @Value("${app.image.directory:images}")
   private String imageDirectoryPath;
 
-  public FileStorageService(MediaRepository recordRepository, VisionProcessor backgroundWorker) {
+  public FileStorageService(MediaRepository recordRepository) {
     this.recordRepository = recordRepository;
-    this.backgroundWorker = backgroundWorker;
   }
 
   @Transactional
@@ -84,15 +79,6 @@ public class FileStorageService {
         throw new RuntimeException("Failed to write image file to disk", e);
       }
     }
-
-    TransactionSynchronizationManager.registerSynchronization(
-      new TransactionSynchronization() {
-        @Override
-        public void afterCommit() {
-          backgroundWorker.processImageDescriptors(img.getId(), img.getData());
-        }
-      }
-    );
   }
 
   public Optional<MediaRecord> getImageWithData(long id) {

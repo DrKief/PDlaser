@@ -9,6 +9,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
@@ -23,15 +24,18 @@ public class GalleryController {
   private final FileStorageService storageService;
   private final TagRepository queryRepo;
   private final UploadStatusTracker statusNotifier;
+  private final JdbcTemplate jdbcTemplate;
 
   public GalleryController(
     FileStorageService storageService,
     TagRepository queryRepo,
-    UploadStatusTracker statusNotifier
+    UploadStatusTracker statusNotifier,
+    JdbcTemplate jdbcTemplate
   ) {
     this.storageService = storageService;
     this.queryRepo = queryRepo;
     this.statusNotifier = statusNotifier;
+    this.jdbcTemplate = jdbcTemplate;
   }
 
   @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
@@ -87,8 +91,31 @@ public class GalleryController {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is empty");
     }
 
+    Long userId = getCurrentUserId();
+    
+    // Check role from DB to see if admin
+    boolean isAdmin = false;
+    if (userId != null) {
+      String role = jdbcTemplate.queryForObject("SELECT role FROM users WHERE id = ?", String.class, userId);
+      isAdmin = "ROLE_ADMIN".equals(role);
+    }
+
+    if (!isAdmin && userId != null) {
+      Integer pendingCount = jdbcTemplate.queryForObject(
+        "SELECT count(*) FROM images WHERE user_id = ? AND extraction_status IN ('PENDING', 'PROCESSING')",
+        Integer.class,
+        userId
+      );
+      if (pendingCount != null && pendingCount >= 10) {
+        throw new ResponseStatusException(
+          HttpStatus.TOO_MANY_REQUESTS,
+          "You have reached the maximum allowed pending uploads (10). Please wait for them to finish processing."
+        );
+      }
+    }
+
     MediaRecord image = new MediaRecord(file.getOriginalFilename(), file.getBytes());
-    image.setUserId(getCurrentUserId());
+    image.setUserId(userId);
     storageService.processAndSaveImage(image, true);
     long id = image.getId();
 

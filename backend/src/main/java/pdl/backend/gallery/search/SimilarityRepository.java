@@ -42,7 +42,7 @@ public class SimilarityRepository {
 
       if (vectors == null) return null;
 
-      // BUG FIX: Added JOIN images i ON d.imageid = i.id WHERE i.extraction_status != 'REMOTE_METADATA'
+      // BUG FIX: Added JOIN images i ON d.imageid = i.id WHERE i.extraction_status = 'COMPLETED'
       String sql =
         "WITH vector_matches AS (" +
         "  SELECT d.imageid, " +
@@ -51,7 +51,7 @@ public class SimilarityRepository {
         "     ? * (d.hsvvector <=> ?)) as distance " +
         "  FROM imagedescriptors d " +
         "  JOIN images i ON d.imageid = i.id " +
-        "  WHERE d.imageid != ? AND i.extraction_status != 'REMOTE_METADATA' " +
+        "  WHERE d.imageid != ? AND i.extraction_status = 'COMPLETED' " +
         "  ORDER BY distance ASC LIMIT ?" +
         ") " +
         "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
@@ -91,7 +91,7 @@ public class SimilarityRepository {
       return null;
     }
 
-    // BUG FIX: Added JOIN images i ON d.imageid = i.id WHERE i.extraction_status != 'REMOTE_METADATA'
+    // BUG FIX: Added JOIN images i ON d.imageid = i.id WHERE i.extraction_status = 'COMPLETED'
     String sql =
       "WITH vector_matches AS (" +
       "  SELECT d.imageid, " +
@@ -99,7 +99,7 @@ public class SimilarityRepository {
       " <=> ? as distance " +
       "  FROM imagedescriptors d " +
       "  JOIN images i ON d.imageid = i.id " +
-      "  WHERE d.imageid != ? AND i.extraction_status != 'REMOTE_METADATA' " +
+      "  WHERE d.imageid != ? AND i.extraction_status = 'COMPLETED' " +
       "  ORDER BY distance ASC LIMIT ?" +
       ") " +
       "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
@@ -123,7 +123,7 @@ public class SimilarityRepository {
       default -> "hogvector";
     };
 
-    // BUG FIX: Added JOIN images i ON d.imageid = i.id WHERE i.extraction_status != 'REMOTE_METADATA'
+    // BUG FIX: Added JOIN images i ON d.imageid = i.id WHERE i.extraction_status = 'COMPLETED'
     String sql =
       "WITH vector_matches AS (" +
       "  SELECT d.imageid, " +
@@ -131,7 +131,7 @@ public class SimilarityRepository {
       " <=> ? as distance " +
       "  FROM imagedescriptors d " +
       "  JOIN images i ON d.imageid = i.id " +
-      "  WHERE i.extraction_status != 'REMOTE_METADATA' " +
+      "  WHERE i.extraction_status = 'COMPLETED' " +
       "  ORDER BY distance ASC LIMIT ?" +
       ") " +
       "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
