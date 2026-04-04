@@ -36,6 +36,9 @@ class GalleryControllerWebMvcTests {
   @MockitoBean
   PasswordEncoder passwordEncoder;
 
+  @MockitoBean
+  org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
   @Test
   void getImageReturns404WhenNotFound() throws Exception {
     when(storageService.getImageWithData(42L)).thenReturn(Optional.empty());
