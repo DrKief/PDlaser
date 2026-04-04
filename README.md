@@ -61,3 +61,11 @@ docker-compose up --build
 - **Database:** Exposed on port `5432`
 
 _Note: The default `admin` account is automatically seeded (Username: `admin` | Password: `admin`)._
+
+### Development & Formatting
+
+To ensure consistent code styling across both the frontend and backend, we use Prettier. Before committing your code, please run the following command from the root directory:
+
+```bash
+npm run format
+```

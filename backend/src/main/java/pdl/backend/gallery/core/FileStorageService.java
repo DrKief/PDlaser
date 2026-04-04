@@ -45,7 +45,7 @@ public class FileStorageService {
     // BUG FIX: Use .equals() for Long object comparison, not !=
     Optional<MediaRecord> existing = recordRepository.findByHash(hash);
     if (existing.isPresent() && (img.getId() == 0 || existing.get().getId() != img.getId())) {
-        throw new ResponseStatusException(HttpStatus.CONFLICT, "Image already exists on the server.");
+      throw new ResponseStatusException(HttpStatus.CONFLICT, "Image already exists on the server.");
     }
 
     img.setHash(hash);
@@ -71,7 +71,7 @@ public class FileStorageService {
     img.setWidth(width);
     img.setHeight(height);
 
-    MediaRecord savedImage = recordRepository.save(img); 
+    MediaRecord savedImage = recordRepository.save(img);
     img.setId(savedImage.getId());
 
     if (saveToDisk) {

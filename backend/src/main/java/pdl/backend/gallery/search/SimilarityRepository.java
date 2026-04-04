@@ -59,7 +59,15 @@ public class SimilarityRepository {
         "ORDER BY v.distance ASC";
 
       return jdbcTemplate.queryForList(
-        sql, WEIGHT_HOG, vectors[0], WEIGHT_LAB, vectors[2], WEIGHT_HSV, vectors[1], targetId, limit
+        sql,
+        WEIGHT_HOG,
+        vectors[0],
+        WEIGHT_LAB,
+        vectors[2],
+        WEIGHT_HSV,
+        vectors[1],
+        targetId,
+        limit
       );
     }
 
@@ -86,7 +94,9 @@ public class SimilarityRepository {
     // BUG FIX: Added JOIN images i ON d.imageid = i.id WHERE i.extraction_status != 'REMOTE_METADATA'
     String sql =
       "WITH vector_matches AS (" +
-      "  SELECT d.imageid, " + vectorColumn + " <=> ? as distance " +
+      "  SELECT d.imageid, " +
+      vectorColumn +
+      " <=> ? as distance " +
       "  FROM imagedescriptors d " +
       "  JOIN images i ON d.imageid = i.id " +
       "  WHERE d.imageid != ? AND i.extraction_status != 'REMOTE_METADATA' " +
@@ -99,7 +109,11 @@ public class SimilarityRepository {
     return jdbcTemplate.queryForList(sql, targetVector, targetId, limit);
   }
 
-  public List<Map<String, Object>> findSimilarByVector(PGvector targetVector, String type, int limit) {
+  public List<Map<String, Object>> findSimilarByVector(
+    PGvector targetVector,
+    String type,
+    int limit
+  ) {
     String vectorColumn = switch (type.toLowerCase()) {
       case "gradient" -> "hogvector";
       case "saturation" -> "hsvvector";
@@ -112,7 +126,9 @@ public class SimilarityRepository {
     // BUG FIX: Added JOIN images i ON d.imageid = i.id WHERE i.extraction_status != 'REMOTE_METADATA'
     String sql =
       "WITH vector_matches AS (" +
-      "  SELECT d.imageid, " + vectorColumn + " <=> ? as distance " +
+      "  SELECT d.imageid, " +
+      vectorColumn +
+      " <=> ? as distance " +
       "  FROM imagedescriptors d " +
       "  JOIN images i ON d.imageid = i.id " +
       "  WHERE i.extraction_status != 'REMOTE_METADATA' " +

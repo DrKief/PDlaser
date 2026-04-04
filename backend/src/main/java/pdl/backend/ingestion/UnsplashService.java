@@ -83,7 +83,12 @@ public class UnsplashService {
 
         String[] cols = line.split(separator, -1);
         String pId = getCol(cols, colMap, "photo_id", null);
-        String rawUrl = getCol(cols, colMap, "photo_image_url", getCol(cols, colMap, "photo_url", null));
+        String rawUrl = getCol(
+          cols,
+          colMap,
+          "photo_image_url",
+          getCol(cols, colMap, "photo_url", null)
+        );
 
         if (pId == null || rawUrl == null) continue;
 
@@ -100,14 +105,28 @@ public class UnsplashService {
           downloads = Long.parseLong(getCol(cols, colMap, "stats_downloads", "0"));
         } catch (Exception ignored) {}
 
-        Integer existing = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM images WHERE provider_id = ?", Integer.class, pId);
+        Integer existing = jdbcTemplate.queryForObject(
+          "SELECT COUNT(*) FROM images WHERE provider_id = ?",
+          Integer.class,
+          pId
+        );
 
         if (existing != null && existing == 0) {
           jdbcTemplate.update(
             "INSERT INTO images (filename, format, provider, provider_id, remote_url, extraction_status, description, photographer_name, camera_make, location_country, stats_downloads, user_id) " +
               "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            "unsplash_" + pId + ".jpg", "jpeg", "UNSPLASH", pId, rawUrl, "REMOTE_METADATA",
-            description, photographerName, cameraMake, country, downloads, admin.getId()
+            "unsplash_" + pId + ".jpg",
+            "jpeg",
+            "UNSPLASH",
+            pId,
+            rawUrl,
+            "REMOTE_METADATA",
+            description,
+            photographerName,
+            cameraMake,
+            country,
+            downloads,
+            admin.getId()
           );
           processed++;
         }
@@ -118,7 +137,9 @@ public class UnsplashService {
       status = "ERROR: " + e.getMessage();
     } finally {
       // Always clean up the temporary file from the container's disk
-      try { Files.deleteIfExists(tempFilePath); } catch (Exception ignored) {}
+      try {
+        Files.deleteIfExists(tempFilePath);
+      } catch (Exception ignored) {}
     }
   }
 
@@ -165,17 +186,23 @@ public class UnsplashService {
 
         String normalizedKeyword = keyword.trim().toLowerCase().replaceAll("\\s+", "_");
 
-        batchArgs.add(new Object[]{localId, normalizedKeyword, false});
+        batchArgs.add(new Object[] { localId, normalizedKeyword, false });
         processed++;
 
         if (batchArgs.size() >= 1000) {
-            jdbcTemplate.batchUpdate("INSERT INTO imagekeywords (imageid, keyword, is_ai_generated) VALUES (?, ?, ?) ON CONFLICT DO NOTHING", batchArgs);
-            batchArgs.clear();
+          jdbcTemplate.batchUpdate(
+            "INSERT INTO imagekeywords (imageid, keyword, is_ai_generated) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
+            batchArgs
+          );
+          batchArgs.clear();
         }
       }
 
       if (!batchArgs.isEmpty()) {
-        jdbcTemplate.batchUpdate("INSERT INTO imagekeywords (imageid, keyword, is_ai_generated) VALUES (?, ?, ?) ON CONFLICT DO NOTHING", batchArgs);
+        jdbcTemplate.batchUpdate(
+          "INSERT INTO imagekeywords (imageid, keyword, is_ai_generated) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
+          batchArgs
+        );
       }
 
       status = "COMPLETED: Linked " + processed + " tags to photos.";
@@ -184,20 +211,32 @@ public class UnsplashService {
       status = "ERROR: " + e.getMessage();
     } finally {
       // Always clean up the temporary file from the container's disk
-      try { Files.deleteIfExists(tempFilePath); } catch (Exception ignored) {}
+      try {
+        Files.deleteIfExists(tempFilePath);
+      } catch (Exception ignored) {}
     }
   }
 
-  public Map<String, Object> getCatalog(int page, int size, String query, String camera, String country) {
+  public Map<String, Object> getCatalog(
+    int page,
+    int size,
+    String query,
+    String camera,
+    String country
+  ) {
     String baseSql = "FROM images WHERE extraction_status = 'REMOTE_METADATA'";
     List<Object> params = new ArrayList<>();
 
     if (query != null && !query.trim().isEmpty()) {
-      baseSql += " AND (camera_make ILIKE ? OR location_country ILIKE ? OR description ILIKE ? OR photographer_name ILIKE ?)";
+      baseSql +=
+        " AND (camera_make ILIKE ? OR location_country ILIKE ? OR description ILIKE ? OR photographer_name ILIKE ?)";
       String likeQuery = "%" + query.trim() + "%";
-      params.add(likeQuery); params.add(likeQuery); params.add(likeQuery); params.add(likeQuery);
+      params.add(likeQuery);
+      params.add(likeQuery);
+      params.add(likeQuery);
+      params.add(likeQuery);
     }
-    
+
     if (camera != null && !camera.trim().isEmpty()) {
       baseSql += " AND camera_make ILIKE ?";
       params.add("%" + camera.trim() + "%");
@@ -211,8 +250,10 @@ public class UnsplashService {
     String countSql = "SELECT COUNT(*) " + baseSql;
     Long totalElements = jdbcTemplate.queryForObject(countSql, Long.class, params.toArray());
 
-    String dataSql = "SELECT id, remote_url, photographer_name, camera_make, location_country, stats_downloads " +
-      baseSql + " ORDER BY stats_downloads DESC LIMIT ? OFFSET ?";
+    String dataSql =
+      "SELECT id, remote_url, photographer_name, camera_make, location_country, stats_downloads " +
+      baseSql +
+      " ORDER BY stats_downloads DESC LIMIT ? OFFSET ?";
     params.add(size);
     params.add(page * size);
 
@@ -221,7 +262,10 @@ public class UnsplashService {
     Map<String, Object> result = new HashMap<>();
     result.put("content", content);
     result.put("totalElements", totalElements != null ? totalElements : 0);
-    result.put("totalPages", (int) Math.ceil((double) (totalElements != null ? totalElements : 0) / size));
+    result.put(
+      "totalPages",
+      (int) Math.ceil((double) (totalElements != null ? totalElements : 0) / size)
+    );
     return result;
   }
 

@@ -37,10 +37,10 @@ class DatasetIngestControllerSecurityTests {
     when(unsplashService.getStatus()).thenReturn("IDLE");
 
     MockMultipartFile mockFile = new MockMultipartFile(
-        "file",
-        "photos.csv000",
-        "text/plain",
-        "header\ndata".getBytes()
+      "file",
+      "photos.csv000",
+      "text/plain",
+      "header\ndata".getBytes()
     );
 
     mockMvc
@@ -71,10 +71,10 @@ class DatasetIngestControllerSecurityTests {
     when(unsplashService.getStatus()).thenReturn("IDLE");
 
     MockMultipartFile mockFile = new MockMultipartFile(
-        "file",
-        "keywords.tsv",
-        "text/plain",
-        "header\ndata".getBytes()
+      "file",
+      "keywords.tsv",
+      "text/plain",
+      "header\ndata".getBytes()
     );
 
     mockMvc
@@ -102,7 +102,12 @@ class DatasetIngestControllerSecurityTests {
 
   @Test
   void nonAdminGetsForbiddenOnUpload() throws Exception {
-    MockMultipartFile mockFile = new MockMultipartFile("file", "test", "text/plain", "data".getBytes());
+    MockMultipartFile mockFile = new MockMultipartFile(
+      "file",
+      "test",
+      "text/plain",
+      "data".getBytes()
+    );
 
     mockMvc
       .perform(

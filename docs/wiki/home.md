@@ -43,3 +43,11 @@ To create a new wiki page, follow these instructions:
 3. Save changes to home.
 4. Click on your newly created link.
 5. Create the page and add your markdown documentation.
+
+### Code Formatting
+
+The project uses a unified Prettier configuration defined in the root `package.json` to enforce styling rules across both the Java backend and Vue frontend. **Before committing code, always ensure your files are formatted:**
+
+```bash
+npm run format
+```

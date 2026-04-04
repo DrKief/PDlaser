@@ -29,10 +29,10 @@ public class DatasetIngestController {
 
   @PostMapping(value = "/unsplash/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<?> uploadAndSyncMetadata(
-      @RequestPart("file") MultipartFile file,
-      @RequestParam(defaultValue = "1000") int limit,
-      @RequestParam(defaultValue = "0") int offset,
-      @RequestParam(defaultValue = "PHOTOS") String fileType
+    @RequestPart("file") MultipartFile file,
+    @RequestParam(defaultValue = "1000") int limit,
+    @RequestParam(defaultValue = "0") int offset,
+    @RequestParam(defaultValue = "PHOTOS") String fileType
   ) {
     if (
       !unsplashService.getStatus().equals("IDLE") &&
@@ -46,16 +46,18 @@ public class DatasetIngestController {
       // Save uploaded file to container's temp directory, then trigger async parsing
       Path tempFile = Files.createTempFile("unsplash_", ".tmp");
       file.transferTo(tempFile.toFile());
-      
+
       if ("KEYWORDS".equalsIgnoreCase(fileType)) {
         unsplashService.syncKeywordsFromFile(tempFile, limit, offset);
       } else {
         unsplashService.syncMetadataFromFile(tempFile, limit, offset);
       }
-      
+
       return ResponseEntity.ok(Map.of("message", "File uploaded. Sync initiated."));
     } catch (Exception e) {
-      return ResponseEntity.internalServerError().body(Map.of("message", "Failed to process uploaded file."));
+      return ResponseEntity.internalServerError().body(
+        Map.of("message", "Failed to process uploaded file.")
+      );
     }
   }
 
