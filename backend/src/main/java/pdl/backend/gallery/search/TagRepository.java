@@ -47,7 +47,7 @@ public class TagRepository {
 
   public Map<String, Object> getImageMetadata(long id) {
     Map<String, Object> meta = jdbcTemplate.queryForMap(
-      "SELECT filename as Name, format, width, height, extraction_status FROM images WHERE id = ?",
+      "SELECT filename as Name, format, width, height, extraction_status, description, photographer_name, camera_make, location_country, stats_downloads FROM images WHERE id = ?",
       id
     );
     meta.put("Keywords", getKeywords(id));

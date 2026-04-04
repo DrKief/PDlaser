@@ -80,19 +80,49 @@ const findSimilar = () => {
           </div>
           <div class="meta-row">
             <span class="label-text">Format</span>
-            <span class="meta-val">{{ metadata.Type }}</span>
+            <span class="meta-val">{{ metadata.format }}</span>
           </div>
           <div class="meta-row">
             <span class="label-text">Resolution</span>
-            <span class="meta-val">{{ metadata.Size }}</span>
+            <span class="meta-val">{{ metadata.width }} x {{ metadata.height }}</span>
           </div>
           <div class="meta-row">
             <span class="label-text">Extraction Status</span>
-            <span class="status-badge" :class="metadata.Extraction_Status.toLowerCase()">
-              {{ metadata.Extraction_Status }}
+            <span class="status-badge" :class="metadata.extraction_status?.toLowerCase()">
+              {{ metadata.extraction_status }}
             </span>
           </div>
         </div>
+
+        <div class="meta-section" v-if="metadata.photographer_name">
+          <div class="meta-row" v-if="metadata.photographer_name">
+            <span class="label-text">Photographer</span>
+            <span class="meta-val">{{ metadata.photographer_name }}</span>
+          </div>
+          <div class="meta-row" v-if="metadata.camera_make">
+            <span class="label-text">Camera</span>
+            <span class="meta-val">{{ metadata.camera_make }}</span>
+          </div>
+          <div class="meta-row" v-if="metadata.location_country">
+            <span class="label-text">Location</span>
+            <span class="meta-val">{{ metadata.location_country }}</span>
+          </div>
+          <div class="meta-row" v-if="metadata.stats_downloads != null">
+            <span class="label-text">Downloads</span>
+            <span class="meta-val">{{ metadata.stats_downloads }}</span>
+          </div>
+          <div
+            class="meta-row"
+            v-if="metadata.description"
+            style="flex-direction: column; align-items: flex-start; gap: 0.5rem; margin-top: 1rem"
+          >
+            <span class="label-text">Description</span>
+            <span class="meta-val" style="color: var(--text-secondary); line-height: 1.4">{{
+              metadata.description
+            }}</span>
+          </div>
+        </div>
+
         <div class="meta-section">
           <span class="label-text">Tags</span>
           <div class="tags-list" v-if="metadata.Keywords && metadata.Keywords.length > 0">
@@ -128,7 +158,7 @@ const findSimilar = () => {
           <button
             class="btn w-full"
             @click="findSimilar"
-            :disabled="metadata.Extraction_Status !== 'COMPLETED'"
+            :disabled="metadata.extraction_status !== 'COMPLETED'"
           >
             Find Visually Similar
           </button>

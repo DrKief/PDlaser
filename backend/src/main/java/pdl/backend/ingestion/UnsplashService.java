@@ -143,7 +143,6 @@ public class UnsplashService {
 
       int currentLine = 0;
       int processed = 0;
-      int skippedLowConfidence = 0;
       String line;
 
       List<Object[]> batchArgs = new ArrayList<>();
@@ -162,17 +161,7 @@ public class UnsplashService {
         Long localId = localPhotoIds.get(pId);
         if (localId == null) continue;
 
-        // Check confidence
-        String confStr = getCol(cols, colMap, "ai_service_1_confidence", null);
-        if (confStr != null && !confStr.trim().isEmpty()) {
-            try {
-                double conf = Double.parseDouble(confStr);
-                if (conf < 70.0) {
-                    skippedLowConfidence++;
-                    continue;
-                }
-            } catch (NumberFormatException ignored) {}
-        }
+        // We are processing all keywords regardless of confidence
 
         String normalizedKeyword = keyword.trim().toLowerCase().replaceAll("\\s+", "_");
 
@@ -189,7 +178,7 @@ public class UnsplashService {
         jdbcTemplate.batchUpdate("INSERT INTO imagekeywords (imageid, keyword) VALUES (?, ?) ON CONFLICT DO NOTHING", batchArgs);
       }
 
-      status = "COMPLETED: Linked " + processed + " tags to photos (skipped " + skippedLowConfidence + " low-confidence tags).";
+      status = "COMPLETED: Linked " + processed + " tags to photos.";
     } catch (Exception e) {
       log.error("Keywords sync failed", e);
       status = "ERROR: " + e.getMessage();
@@ -199,7 +188,7 @@ public class UnsplashService {
     }
   }
 
-  public Map<String, Object> getCatalog(int page, int size, String query) {
+  public Map<String, Object> getCatalog(int page, int size, String query, String camera, String country) {
     String baseSql = "FROM images WHERE extraction_status = 'REMOTE_METADATA'";
     List<Object> params = new ArrayList<>();
 
@@ -207,6 +196,16 @@ public class UnsplashService {
       baseSql += " AND (camera_make ILIKE ? OR location_country ILIKE ? OR description ILIKE ? OR photographer_name ILIKE ?)";
       String likeQuery = "%" + query.trim() + "%";
       params.add(likeQuery); params.add(likeQuery); params.add(likeQuery); params.add(likeQuery);
+    }
+    
+    if (camera != null && !camera.trim().isEmpty()) {
+      baseSql += " AND camera_make ILIKE ?";
+      params.add("%" + camera.trim() + "%");
+    }
+
+    if (country != null && !country.trim().isEmpty()) {
+      baseSql += " AND location_country ILIKE ?";
+      params.add("%" + country.trim() + "%");
     }
 
     String countSql = "SELECT COUNT(*) " + baseSql;

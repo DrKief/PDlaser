@@ -63,9 +63,11 @@ public class DatasetIngestController {
   public ResponseEntity<?> getCatalog(
     @RequestParam(defaultValue = "0") int page,
     @RequestParam(defaultValue = "30") int size,
-    @RequestParam(required = false) String query
+    @RequestParam(required = false) String query,
+    @RequestParam(required = false) String camera,
+    @RequestParam(required = false) String country
   ) {
-    return ResponseEntity.ok(unsplashService.getCatalog(page, size, query));
+    return ResponseEntity.ok(unsplashService.getCatalog(page, size, query, camera, country));
   }
 
   @PostMapping("/unsplash/import")

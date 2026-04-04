@@ -122,10 +122,16 @@ public class GalleryController {
       Map<String, Object> rawMeta = queryRepo.getImageMetadata(id);
       Map<String, Object> response = new HashMap<>();
       response.put("Name", rawMeta.get("Name"));
-      response.put("Type", "image/" + rawMeta.get("format"));
-      response.put("Size", rawMeta.get("width") + "*" + rawMeta.get("height"));
+      response.put("format", "image/" + rawMeta.get("format"));
+      response.put("width", rawMeta.get("width"));
+      response.put("height", rawMeta.get("height"));
       response.put("Keywords", rawMeta.get("Keywords"));
-      response.put("Extraction_Status", rawMeta.get("extraction_status"));
+      response.put("extraction_status", rawMeta.get("extraction_status"));
+      response.put("description", rawMeta.get("description"));
+      response.put("photographer_name", rawMeta.get("photographer_name"));
+      response.put("camera_make", rawMeta.get("camera_make"));
+      response.put("location_country", rawMeta.get("location_country"));
+      response.put("stats_downloads", rawMeta.get("stats_downloads"));
 
       return ResponseEntity.ok().body(response);
     } catch (Exception e) {

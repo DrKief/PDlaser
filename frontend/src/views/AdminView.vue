@@ -13,6 +13,8 @@ let pollingInterval: any = null;
 // Catalog State
 const catalogImages = ref<any[]>([]);
 const searchQuery = ref("");
+const searchCamera = ref("");
+const searchCountry = ref("");
 const currentPage = ref(0);
 const totalPages = ref(1);
 const selectedIds = ref<Set<number>>(new Set());
@@ -71,7 +73,13 @@ const fetchCatalog = async (page = 0) => {
   currentPage.value = page;
   try {
     const res = await http.get(`/admin/unsplash/catalog`, {
-      params: { page, size: 24, query: searchQuery.value },
+      params: {
+        page,
+        size: 24,
+        query: searchQuery.value,
+        camera: searchCamera.value,
+        country: searchCountry.value,
+      },
     });
     catalogImages.value = res.data.content;
     totalPages.value = res.data.totalPages || 1;
@@ -213,7 +221,21 @@ onUnmounted(() => {
           type="text"
           v-model="searchQuery"
           @keydown.enter="handleSearch"
-          placeholder="Search by Camera (e.g. Sony), Location (e.g. Japan), or Photographer..."
+          placeholder="Search any..."
+          class="search-bar"
+        />
+        <input
+          type="text"
+          v-model="searchCamera"
+          @keydown.enter="handleSearch"
+          placeholder="Filter Camera (e.g. Sony)..."
+          class="search-bar"
+        />
+        <input
+          type="text"
+          v-model="searchCountry"
+          @keydown.enter="handleSearch"
+          placeholder="Filter Country (e.g. Japan)..."
           class="search-bar"
         />
         <button class="btn" @click="handleSearch">Search</button>
