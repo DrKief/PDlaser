@@ -1,4 +1,3 @@
-# docker-compose.prod.yml
 services:
   db:
     image: pgvector/pgvector:pg18
@@ -16,6 +15,11 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    logging: &default-logging
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   backend:
     build:
@@ -30,11 +34,12 @@ services:
     expose:
       - "8080"
     volumes:
-      - pgdata:/var/lib/postgresql
+      - backend_images:/var/lib/pdl/images # BUG FIX: This was incorrectly mapped to pgdata:/var/lib/postgresql previously
     depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
+    logging: *default-logging
 
   frontend:
     build:
@@ -45,6 +50,7 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    logging: *default-logging
 
 volumes:
   pgdata:

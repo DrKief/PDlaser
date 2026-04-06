@@ -1,8 +1,11 @@
+# syntax=docker/dockerfile:1
+
 # Stage 1: Build with cache optimization
 FROM node:alpine AS build
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+# Cache NPM registry
+RUN --mount=type=cache,target=/root/.npm npm ci
 
 COPY . .
 RUN npm run build
@@ -15,12 +18,15 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Remove the default 'user' directive to silence the super-user warning
 RUN sed -i 's/^user .*//' /etc/nginx/nginx.conf
 
-RUN chown -R nginx:nginx /usr/share/nginx/html \
-  && chown -R nginx:nginx /var/cache/nginx \
-  && chown -R nginx:nginx /var/log/nginx \
-  && chown -R nginx:nginx /etc/nginx/conf.d \
+# Create non-root user dynamically
+RUN addgroup -S appgroup && adduser -S -G appgroup appuser \
+  && chown -R appuser:appgroup /usr/share/nginx/html \
+  && chown -R appuser:appgroup /var/cache/nginx \
+  && chown -R appuser:appgroup /var/log/nginx \
+  && chown -R appuser:appgroup /etc/nginx/conf.d \
   && touch /var/run/nginx.pid \
-  && chown -R nginx:nginx /var/run/nginx.pid
-USER nginx
+  && chown -R appuser:appgroup /var/run/nginx.pid
+
+USER appuser
 EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]
