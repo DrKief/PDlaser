@@ -142,16 +142,13 @@ public class VisionProcessor {
       float[] labData = FeatureExtractor.extractCieLabHistogram(resizedImage);
 
       // 2. Extract Semantic AI Data & Auto-Tags
-      float[] rawSemanticData = SemanticExtractor.extractSemanticFeatures(bimg);
+      float[] semanticVector = SemanticExtractor.extractSemanticFeatures(bimg);
 
       // Auto-Tagging logic
-      List<String> aiTags = SemanticExtractor.getAutoTags(rawSemanticData);
+      List<String> aiTags = SemanticExtractor.getAutoTags(semanticVector);
       for (String tag : aiTags) {
         queryRepoLayer.addKeyword(id, tag, true);
       }
-
-      // 3. Normalize vector for the similarity search database
-      float[] semanticVector = SemanticExtractor.normalizeL2(rawSemanticData.clone());
 
       if (hogData.length != 31) {
         float[] adjustedHog = new float[31];
@@ -203,8 +200,7 @@ public class VisionProcessor {
     float[] labData = FeatureExtractor.extractCieLabHistogram(resizedImage);
 
     // Extract semantics
-    float[] rawSemanticData = SemanticExtractor.extractSemanticFeatures(bimg);
-    float[] semanticVector = SemanticExtractor.normalizeL2(rawSemanticData.clone());
+    float[] semanticVector = SemanticExtractor.extractSemanticFeatures(bimg);
 
     // Fix HOG length mismatch
     if (hogData.length != 31) {

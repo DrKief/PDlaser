@@ -56,7 +56,7 @@ To ensure the system scales efficiently under the load of computational computer
 \begin{itemize}
     \item \textbf{Decoupled Background Execution:} Image vectorization (BoofCV) and Semantic extraction (ONNX) are computationally blocking. We deliberately offloaded these tasks to background Virtual Threads (Java 21) via a custom \texttt{ThreadPoolTaskExecutor}. This ensures the main Tomcat HTTP event loop is never blocked by mathematical computations.
     \item \textbf{Ephemeral Database Environments:} For local and staging developments, we strictly utilize \texttt{tmpfs} (RAM-based) Docker mounts for PostgreSQL 18. This organizational decision enforces a pristine state upon every container boot, ensuring Flyway schema migrations are always tested from a true zero-state, preventing configuration drift.
-    \item \textbf{HNSW Vector Indexing:} Instead of using traditional B-Trees or flat indices, we implemented Hierarchical Navigable Small World (HNSW) graphs in PostgreSQL 18 via \texttt{pgvector}. We specifically tuned the `m` and `ef\_construction` parameters to favor read-speed and recall accuracy for our 1000-dimensional semantic vectors.
+    \item \textbf{HNSW Vector Indexing:} Instead of using traditional B-Trees or flat indices, we implemented Hierarchical Navigable Small World (HNSW) graphs in PostgreSQL 18 via \texttt{pgvector}. We specifically tuned the `m` and `ef\_construction` parameters to favor read-speed and recall accuracy for our 768-dimensional semantic vectors.
     \item \textbf{Stateless Long-Polling:} To provide the frontend with real-time feedback on background image processing without the massive infrastructure overhead of WebSockets and Redis, we implemented HTTP Long-Polling using Spring's \texttt{DeferredResult}.
 \end{itemize}
 
@@ -81,7 +81,7 @@ To ensure the system scales efficiently under the load of computational computer
     \item 2D Hue/Saturation Histogram (HSV - 256 dimensions).
     \item 3D RGB Histogram (512 dimensions).
     \item 3D CIELAB Color Space Histogram (512 dimensions).
-    \item \textbf{[New]} 1D Semantic Logits Vector (1000 dimensions via ResNet-50 AI).
+    \item \textbf{[New]} 1D Semantic Logits Vector (768 dimensions via SigLIP 2 AI).
 \end{enumerate}
 \vspace{1em}
 
@@ -238,8 +238,8 @@ To ensure the system scales efficiently under the load of computational computer
 \textbf{Description :} To standardize and drastically accelerate backend image feature extraction, the application intercepts uploaded images and automatically resamples them to a uniform spatial resolution ($256\times256$) leveraging the high-quality Lanczos3 algorithm before any descriptors are computed.
 \vspace{1em}
 
-\noindent\textbf{Requirement 37 : [Extended Amendment to Requirement 3] Semantic Vectors \& ResNet-50 AI Auto-Tagging}\\
-\textbf{Description :} Beyond manual keyword tagging, the backend integrates Microsoft's ONNX Runtime (v1.17.1) to execute a ResNet-50 convolutional neural network locally. Uploaded images are automatically analyzed to extract 1000-dimensional semantic logits, which are used both for highly accurate AI context matching and to automatically append probable \texttt{ai:} prefixed tags to the image metadata.
+\noindent\textbf{Requirement 37 : [Extended Amendment to Requirement 3] Semantic Vectors \& SigLIP 2 AI Auto-Tagging}\\
+\textbf{Description :} Beyond manual keyword tagging, the backend integrates Microsoft's ONNX Runtime (v1.17.1) to execute a SigLIP 2 Vision Transformer locally. Uploaded images are automatically analyzed to extract 768-dimensional semantic logits, which are used both for highly accurate AI context matching and to automatically append probable \texttt{ai:} prefixed tags to the image metadata.
 \vspace{1em}
 
 \noindent\textbf{Requirement 38 : [Extended Amendment to Requirement 3 \& 7] Asynchronous Image Processing \& Long Polling}\\

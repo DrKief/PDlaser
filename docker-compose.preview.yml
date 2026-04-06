@@ -32,11 +32,13 @@ services:
       - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
       - APP_IMAGE_DIRECTORY=/var/lib/pdl/images
       - APP_UNSPLASH_DATASET_DIR=/var/lib/pdl/datasets
+      - APP_MODELS_DIR=/var/lib/pdl/models
     expose:
       - "8080"
     volumes:
       - preview_images:/var/lib/pdl/images
       - preview_datasets:/var/lib/pdl/datasets
+      - preview_models:/var/lib/pdl/models
     depends_on:
       db:
         condition: service_healthy
@@ -57,3 +59,4 @@ services:
 volumes:
   preview_images:
   preview_datasets:
+  preview_models:

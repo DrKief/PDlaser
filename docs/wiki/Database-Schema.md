@@ -41,7 +41,7 @@ Stores the mathematically extracted feature vectors (calculated asynchronously v
 | `hsvvector` | vector(256) | | Hue/Saturation/Value histogram (Color Intensity). |
 | `rgbvector` | vector(512) | | Standard RGB color distribution. |
 | `labvector` | vector(512) | | CIELAB color space distribution (Human vision mapping). |
-| `semanticvector`| vector(1000)| | Semantic Logits extracted from ResNet-50 AI model. |
+| `semanticvector`| vector(768)| | Semantic Logits extracted from SigLIP 2 AI model. |
 
 ## Architectural Decision: HNSW Indexes
 

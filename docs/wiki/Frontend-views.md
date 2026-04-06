@@ -46,4 +46,4 @@ Infrastructure management interface. Restricted strictly to accounts possessing 
 ### 7. About / System Architecture (`/about`)
 
 - **Component:** `src/views/AboutView.vue`
-- **Functionality:** A technical summary page explaining the pgvector indexing, HNSW algorithms, ResNet-50 implementations, and providing live mathematical estimations of the current Database Tensor Memory Size based on active indexing dimensions retrieved dynamically from the API.
+- **Functionality:** A technical summary page explaining the pgvector indexing, HNSW algorithms, SigLIP 2 implementations, and providing live mathematical estimations of the current Database Tensor Memory Size based on active indexing dimensions retrieved dynamically from the API.

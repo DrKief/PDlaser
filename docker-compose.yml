@@ -27,8 +27,10 @@ services:
       - DATABASE_PASSWORD=${POSTGRES_PASSWORD:-pdl_secure_password}
       - APP_IMAGE_DIRECTORY=/var/lib/pdl/images
       - APP_UNSPLASH_DATASET_DIR=/var/lib/pdl/datasets
+      - APP_MODELS_DIR=/var/lib/pdl/models
     volumes:
-      - ./datasets:/var/lib/pdl/datasets
+      - datasets:/var/lib/pdl/datasets
+      - models:/var/lib/pdl/models
     ports:
       - "8080:8080"
     depends_on:
@@ -45,3 +47,7 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+volumes:
+  datasets:
+  models:

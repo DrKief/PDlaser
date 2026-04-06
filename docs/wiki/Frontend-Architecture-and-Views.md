@@ -14,7 +14,7 @@ API calls are routed through a globally configured Axios instance.
 
 ### Asynchronous Status Tracking (`useImageStatus.ts`)
 
-Due to the intense computational processing required for feature extraction (Lanczos3 downsampling, BoofCV histograms, ResNet-50 AI logits), the frontend utilizes a custom composable (`useImageStatus`) to handle background tracking of uploaded images.
+Due to the intense computational processing required for feature extraction (Lanczos3 downsampling, BoofCV histograms, SigLIP 2 AI logits), the frontend utilizes a custom composable (`useImageStatus`) to handle background tracking of uploaded images.
 
 **Decision (HTTP Long-Polling):** Instead of utilizing WebSockets (which require complex state management and infrastructure like Redis), we built an optimized Long-Polling loop. The client sends a request to `/images/{id}/status`, and the Spring Boot backend (`UploadStatusTracker.java`) hangs the connection securely using `DeferredResult` until the Virtual Threads finish the descriptor extraction. This updates the UI instantly without aggressively spamming the network with polling requests.
 

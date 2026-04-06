@@ -1,63 +1,127 @@
 package pdl.backend.vision;
 
 import ai.onnxruntime.*;
+import ai.djl.huggingface.tokenizers.HuggingFaceTokenizer;
+import ai.djl.huggingface.tokenizers.Encoding;
+
 import java.awt.image.BufferedImage;
-import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
+import java.util.Collections;
 
 public class SemanticExtractor {
 
   private static OrtEnvironment env;
-  private static OrtSession session;
-  private static List<String> labels = new ArrayList<>();
+  private static OrtSession visionSession;
+  private static OrtSession textSession;
+  private static HuggingFaceTokenizer tokenizer;
+
+  private static final String MODELS_DIR = System.getenv("APP_MODELS_DIR") != null ? System.getenv("APP_MODELS_DIR") : "models";
+  private static final String VISION_URL = "https://huggingface.co/onnx-community/siglip2-base-patch16-224-ONNX/resolve/main/onnx/vision_model.onnx";
+  private static final String TEXT_URL = "https://huggingface.co/onnx-community/siglip2-base-patch16-224-ONNX/resolve/main/onnx/text_model.onnx";
+  private static final String TOKENIZER_URL = "https://huggingface.co/onnx-community/siglip2-base-patch16-224-ONNX/resolve/main/tokenizer.json";
+
+  private static final Map<String, String> CUSTOM_TAGS = Map.ofEntries(
+      Map.entry("cinematic_lighting", "a photo with moody cinematic lighting"),
+      Map.entry("natural_light", "a photo with bright and airy natural light"),
+      Map.entry("golden_hour", "a photo taken during golden hour"),
+      Map.entry("black_and_white", "a high contrast black and white photo"),
+      Map.entry("macro", "a macro photography shot"),
+      Map.entry("landscape", "a wide angle landscape photograph"),
+      Map.entry("architecture", "a minimalist architectural photo"),
+      Map.entry("portrait", "a professional portrait of a person"),
+      Map.entry("street_photography", "a candid street photography shot"),
+      Map.entry("wedding", "a photo of a wedding"),
+      Map.entry("wildlife", "a photo of wildlife"),
+      Map.entry("food", "a photo of food"),
+      Map.entry("vehicle", "a photo of a vehicle")
+  );
+
+  private static Map<String, float[]> cachedTextEmbeddings = new HashMap<>();
+
+  private static File downloadIfMissing(String urlStr, String fileName) throws Exception {
+      File dir = new File(MODELS_DIR);
+      if (!dir.exists()) {
+          dir.mkdirs();
+      }
+      File file = new File(dir, fileName);
+      if (!file.exists()) {
+          System.out.println("Downloading " + fileName + " from HuggingFace (This may take a while, please wait...)");
+          URL url = URI.create(urlStr).toURL();
+          try (InputStream in = url.openStream()) {
+              Files.copy(in, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+          }
+          System.out.println("Successfully downloaded: " + fileName);
+      }
+      return file;
+  }
 
   static {
     try {
       env = OrtEnvironment.getEnvironment();
 
-      // Load the ResNet50 model using try-with-resources
-      try (
-        InputStream modelStream = SemanticExtractor.class.getResourceAsStream("/resnet50.onnx")
-      ) {
-        if (modelStream != null) {
-          byte[] modelArray = modelStream.readAllBytes();
-          session = env.createSession(modelArray, new OrtSession.SessionOptions());
-        }
+      File visionFile = downloadIfMissing(VISION_URL, "siglip2_vision.onnx");
+      File textFile = downloadIfMissing(TEXT_URL, "siglip2_text.onnx");
+      File tokenizerFile = downloadIfMissing(TOKENIZER_URL, "tokenizer.json");
+
+      try (InputStream stream = new FileInputStream(visionFile)) {
+        byte[] modelArray = stream.readAllBytes();
+        visionSession = env.createSession(modelArray, new OrtSession.SessionOptions());
       }
 
-      // Load the 1,000 ImageNet class names
-      try (
-        InputStream labelStream = SemanticExtractor.class.getResourceAsStream(
-          "/imagenet_classes.txt"
-        )
-      ) {
-        if (labelStream != null) {
-          try (BufferedReader reader = new BufferedReader(new InputStreamReader(labelStream))) {
-            labels = reader
-              .lines()
-              .map(line -> line.split(",")[0].trim())
-              .collect(Collectors.toList());
-          }
-        }
+      try (InputStream stream = new FileInputStream(textFile)) {
+        byte[] modelArray = stream.readAllBytes();
+        textSession = env.createSession(modelArray, new OrtSession.SessionOptions());
       }
+
+      // Sanitize tokenizer.json to remove unsupported keys for older DJL versions
+      try {
+          String content = Files.readString(tokenizerFile.toPath());
+          boolean changed = false;
+          if (content.contains("\"fuse_unk\"")) {
+              content = content.replaceAll("\"fuse_unk\":\\s*(true|false),?", "");
+              changed = true;
+          }
+          if (content.contains("\"byte_fallback\"")) {
+              content = content.replaceAll("\"byte_fallback\":\\s*(true|false),?", "");
+              changed = true;
+          }
+          if (changed) {
+              Files.writeString(tokenizerFile.toPath(), content);
+              System.out.println("Sanitized tokenizer.json for compatibility.");
+          }
+      } catch (Exception e) {
+          System.err.println("Failed to sanitize tokenizer.json: " + e.getMessage());
+      }
+
+      try (InputStream stream = new FileInputStream(tokenizerFile)) {
+         tokenizer = HuggingFaceTokenizer.newInstance(stream, Map.of());
+      }
+
+      if (textSession != null && tokenizer != null) {
+          System.out.println("Caching text embeddings for tags...");
+          for (Map.Entry<String, String> entry : CUSTOM_TAGS.entrySet()) {
+              cachedTextEmbeddings.put(entry.getKey(), extractTextFeature(entry.getValue()));
+          }
+      }
+
     } catch (Exception e) {
       System.err.println("CRITICAL: Failed to initialize SemanticExtractor.");
       e.printStackTrace();
     }
   }
 
-  /**
-   * Extracts raw logits from the ResNet-50 model.
-   * Note: Does not normalize here as classification needs raw scores;
-   * use normalizeL2() separately for similarity comparisons.
-   */
   public static float[] extractSemanticFeatures(BufferedImage img) {
-    if (session == null) return new float[1000];
+    if (visionSession == null) return new float[768];
     try {
       BufferedImage resized = FeatureExtractor.resizeImageLanczos3(img, 224, 224);
       float[][][][] inputTensor = new float[1][3][224][224];
@@ -69,62 +133,79 @@ public class SemanticExtractor {
           float g = ((rgb >> 8) & 0xFF) / 255.0f;
           float b = (rgb & 0xFF) / 255.0f;
 
-          // ImageNet normalization
-          inputTensor[0][0][y][x] = (r - 0.485f) / 0.229f;
-          inputTensor[0][1][y][x] = (g - 0.456f) / 0.224f;
-          inputTensor[0][2][y][x] = (b - 0.406f) / 0.225f;
+          inputTensor[0][0][y][x] = (r * 2.0f) - 1.0f;
+          inputTensor[0][1][y][x] = (g * 2.0f) - 1.0f;
+          inputTensor[0][2][y][x] = (b * 2.0f) - 1.0f;
         }
       }
 
       try (
         OnnxTensor tensor = OnnxTensor.createTensor(env, inputTensor);
-        OrtSession.Result result = session.run(
-          Collections.singletonMap(session.getInputNames().iterator().next(), tensor)
+        OrtSession.Result result = visionSession.run(
+          Collections.singletonMap("pixel_values", tensor)
         )
       ) {
-        float[][] output = (float[][]) result.get(0).getValue();
-        return output[0]; // Raw logits
+        float[][] output = (float[][]) result.get("pooler_output").get().getValue();
+        return normalizeL2(output[0]); 
       }
     } catch (Exception e) {
-      return new float[1000];
+      e.printStackTrace();
+      return new float[768];
     }
   }
 
-  /**
-   * Identifies the Top 3 most likely tags based on model output scores.
-   * Only includes tags that meet the 8.0f sanity threshold.
-   */
-  public static List<String> getAutoTags(float[] output) {
+  private static float[] extractTextFeature(String text) {
+      if (textSession == null || tokenizer == null) return new float[768];
+      try {
+          Encoding encoding = tokenizer.encode(text);
+          long[] ids = encoding.getIds();
+          
+          long[][] inputIds = new long[1][ids.length];
+          System.arraycopy(ids, 0, inputIds[0], 0, ids.length);
+          
+          try (OnnxTensor tensor = OnnxTensor.createTensor(env, inputIds);
+               OrtSession.Result result = textSession.run(Collections.singletonMap("input_ids", tensor))) {
+              
+              float[][] output = (float[][]) result.get("pooler_output").get().getValue();
+              return normalizeL2(output[0]);
+          }
+      } catch (Exception e) {
+          e.printStackTrace();
+          return new float[768];
+      }
+  }
+
+  public static List<String> getAutoTags(float[] imageVector) {
     List<String> detected = new ArrayList<>();
-    if (labels.isEmpty() || output.length == 0) return detected;
+    if (cachedTextEmbeddings.isEmpty() || imageVector.length != 768) return detected;
 
-    // 1. Create a list of indices (0-999)
-    List<Integer> indices = new ArrayList<>();
-    for (int i = 0; i < output.length; i++) {
-      indices.add(i);
-    }
+    List<Map.Entry<String, float[]>> entries = new ArrayList<>(cachedTextEmbeddings.entrySet());
 
-    // 2. Sort indices based on the score (Descending order)
-    indices.sort((a, b) -> Float.compare(output[b], output[a]));
+    entries.sort((a, b) -> Float.compare(
+        dotProduct(imageVector, b.getValue()),
+        dotProduct(imageVector, a.getValue())
+    ));
 
-    // 3. Select the Top 3 highest scores that pass the sanity check
-    float sanityThreshold = 8.0f;
+    float threshold = 0.2f;
 
-    for (int i = 0; i < Math.min(3, indices.size()); i++) {
-      int index = indices.get(i);
-      float score = output[index];
+    for (int i = 0; i < Math.min(3, entries.size()); i++) {
+      Map.Entry<String, float[]> entry = entries.get(i);
+      float score = dotProduct(imageVector, entry.getValue());
 
-      if (score > sanityThreshold) {
-        detected.add(labels.get(index).toLowerCase().replace(" ", "_"));
+      if (score > threshold) {
+        detected.add(entry.getKey());
       }
     }
 
     return detected;
   }
+  
+  private static float dotProduct(float[] a, float[] b) {
+      float sum = 0;
+      for (int i = 0; i < a.length; i++) sum += a[i] * b[i];
+      return sum;
+  }
 
-  /**
-   * Normalizes a feature vector to unit length for similarity calculations.
-   */
   public static float[] normalizeL2(float[] vector) {
     double sumSq = 0;
     for (float v : vector) sumSq += v * v;

@@ -51,7 +51,7 @@ In local and staging environments, the application utilizes \texttt{tmpfs} Docke
 \end{itemize}
 
 \subsection{The Archaic Abstraction of Long-Polling}
-To monitor asynchronous BoofCV feature extraction and ONNX ResNet-50 semantics, the \texttt{VisionProcessor.java} relies on an \texttt{UploadStatusTracker} Long-Polling mechanism using \texttt{DeferredResult}.
+To monitor asynchronous BoofCV feature extraction and ONNX SigLIP 2 semantics, the \texttt{VisionProcessor.java} relies on an \texttt{UploadStatusTracker} Long-Polling mechanism using \texttt{DeferredResult}.
 \begin{itemize}
     \item \textbf{The Limitation:} The client simply maintains an open HTTP connection until a 200 OK response is yielded. This lacks the requisite layers of enterprise abstraction. In a production-grade system, these events must be published to a distributed Kafka event-stream, monitored by a secondary Redis instance, validated against a Zookeeper quorum, and finally pushed to the client via WebSockets.
 \end{itemize}

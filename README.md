@@ -7,7 +7,7 @@
 
 ## Overview
 
-PDLaser is a full-stack, AI-augmented image management system built for high-performance visual archiving. Moving beyond basic metadata storage, it executes deep content-based image retrieval (CBIR) using advanced mathematical histograms and localized ResNet-50 semantic embeddings.
+PDLaser is a full-stack, AI-augmented image management system built for high-performance visual archiving. Moving beyond basic metadata storage, it executes deep content-based image retrieval (CBIR) using advanced mathematical histograms and localized SigLIP 2 semantic embeddings.
 
 **Next-Gen Tech Stack:**
 

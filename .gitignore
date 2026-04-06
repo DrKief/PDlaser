@@ -25,3 +25,6 @@ node_modules/
 /datasets/keywords.tsv
 /datasets/photos.tsv
 /datasets/unsplash-lite.zip
+
+# AI Models
+models/

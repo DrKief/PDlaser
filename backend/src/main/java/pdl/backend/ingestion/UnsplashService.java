@@ -348,7 +348,7 @@ public class UnsplashService {
     String dataSql = "SELECT id " + baseSql + " ORDER BY stats_downloads DESC LIMIT ?";
     params.add(limit);
 
-    List<Long> idsToImport = jdbcTemplate.queryForList(dataSql, params.toArray(), Long.class);
+    List<Long> idsToImport = jdbcTemplate.queryForList(dataSql, Long.class, params.toArray());
     
     if (!idsToImport.isEmpty()) {
       importSelectedImages(idsToImport);

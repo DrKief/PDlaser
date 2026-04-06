@@ -90,7 +90,7 @@ onMounted(async () => {
         <div class="step-circle material-symbols-outlined">memory</div>
         <div class="step-content">
           <h4>3. Extraction</h4>
-          <p>ResNet-50 and standard vision algorithms map visual features.</p>
+          <p>SigLIP 2 and standard vision algorithms map visual features.</p>
         </div>
       </div>
       <div class="pipeline-line"></div>
@@ -117,9 +117,9 @@ onMounted(async () => {
 
       <div class="tech-card">
         <div class="card-icon material-symbols-outlined">psychology</div>
-        <h2>ResNet-50 AI Processing</h2>
+        <h2>SigLIP 2 AI Processing</h2>
         <p>
-          Integrates Microsoft's ONNX Runtime to execute a localized ResNet-50 convolutional neural
+          Integrates Microsoft's ONNX Runtime to execute a localized SigLIP 2 Vision Transformer
           network. Extracts 1000-dimensional semantic logits entirely in-memory for contextual
           matching.
         </p>
