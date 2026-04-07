@@ -330,11 +330,10 @@ onMounted(() => {
   scrollbar-width: none;
   align-items: center;
   padding-bottom: 0.25rem;
-  margin-left: max(-1rem, calc(env(safe-area-inset-left) * -1));
-  margin-right: max(-1rem, calc(env(safe-area-inset-right) * -1));
   padding-left: max(1rem, env(safe-area-inset-left));
   padding-right: max(1rem, env(safe-area-inset-right));
-  width: calc(100% + max(2rem, env(safe-area-inset-left) + env(safe-area-inset-right)));
+  margin-left: calc(-1 * max(1rem, env(safe-area-inset-left)));
+  margin-right: calc(-1 * max(1rem, env(safe-area-inset-right)));
 }
 
 @media (min-width: 768px) {
