@@ -3,19 +3,19 @@ import { ref, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import http from "../api/http-client";
 import { useAuth } from "../composables/useAuth";
+import { useGallerySearch, type Image } from "../composables/useGallerySearch";
 import AdvancedSearchSidebar from "../components/AdvancedSearchSidebar.vue";
-
-interface Image {
-  id: number | string;
-  uploader?: string;
-  keywords: { keyword: string; isAi: boolean }[];
-  extraction_status?: string;
-  url?: string;
-}
 
 const route = useRoute();
 const router = useRouter();
 const { isLoggedIn } = useAuth();
+const {
+  similarityResultsOverride,
+  similaritySourceOverride,
+  selectedSourceId,
+  clearSimilaritySearch,
+} = useGallerySearch();
+
 const displayedImages = ref<Image[]>([]);
 const isLoading = ref(true);
 const displayLimit = ref(30);
@@ -23,9 +23,6 @@ const currentPage = ref(0);
 const totalPages = ref(1);
 
 const isSidebarOpen = ref(false);
-const similarityResultsOverride = ref<Image[] | null>(null);
-const similaritySourceOverride = ref<Image | null>(null);
-const selectedSourceId = ref<number | null>(null);
 
 const openSimilarityForImage = (id: number | string) => {
   if (typeof id === "number") {
@@ -67,8 +64,7 @@ const handleSimilarityResults = (payload: any) => {
 const loadImages = async (reset = false) => {
   if (reset) currentPage.value = 0;
   isLoading.value = true;
-  similarityResultsOverride.value = null;
-  similaritySourceOverride.value = null;
+  clearSimilaritySearch();
 
   try {
     const activeTag = route.query.tags as string;
@@ -111,8 +107,7 @@ const goToPage = (pageNumber: number) => {
 
 const clearFilter = () => {
   router.push("/");
-  similarityResultsOverride.value = null;
-  similaritySourceOverride.value = null;
+  clearSimilaritySearch();
 };
 
 onMounted(() => {
@@ -144,11 +139,7 @@ const goToImage = (id: number | string) => {
         <h2 class="filter-title" v-else>Gallery</h2>
 
         <div class="header-actions">
-          <button
-            class="btn btn-outline"
-            @click="isSidebarOpen = !isSidebarOpen"
-            style="margin-right: 1rem"
-          >
+          <button class="btn btn-outline" @click="isSidebarOpen = !isSidebarOpen">
             <span
               class="material-symbols-outlined"
               style="vertical-align: middle; margin-right: 0.25rem"
@@ -328,12 +319,17 @@ const goToImage = (id: number | string) => {
   position: absolute;
   top: 10px;
   right: 10px;
-  opacity: 0;
+  opacity: 1;
   transition: opacity 0.2s;
   z-index: 10;
 }
-.artifact-card:hover .hover-actions {
-  opacity: 1;
+@media (hover: hover) and (pointer: fine) {
+  .hover-actions {
+    opacity: 0;
+  }
+  .artifact-card:hover .hover-actions {
+    opacity: 1;
+  }
 }
 
 .similarity-btn {
@@ -352,16 +348,55 @@ const goToImage = (id: number | string) => {
 
 .gallery-header {
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: var(--space-lg);
   padding-bottom: var(--space-sm);
   border-bottom: 1px solid var(--border-subtle);
+  gap: 1rem;
 }
+@media (min-width: 768px) {
+  .gallery-header {
+    flex-direction: row;
+    align-items: center;
+    gap: 0;
+  }
+}
+
+.header-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+.header-actions .btn {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+@media (min-width: 768px) {
+  .header-actions {
+    flex-direction: row;
+    width: auto;
+    gap: 1rem;
+  }
+  .header-actions .btn {
+    width: auto;
+  }
+}
+
 .filter-title {
   font-family: var(--font-headline);
-  font-size: 2.5rem;
+  font-size: 2rem;
   margin: 0;
+  word-break: break-word;
+}
+@media (min-width: 768px) {
+  .filter-title {
+    font-size: 2.5rem;
+  }
 }
 .highlight {
   color: var(--color-accent);
@@ -506,6 +541,10 @@ const goToImage = (id: number | string) => {
   border: 1px solid var(--border-subtle);
   padding: 0.5rem 1rem;
   min-width: 40px;
+}
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 .page-btn:hover:not(:disabled) {
   background: var(--bg-element);

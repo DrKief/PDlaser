@@ -147,16 +147,31 @@ const triggerSimilaritySearch = async () => {
 
 <style scoped>
 .search-sidebar {
-  width: 320px;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 100;
   background: var(--bg-surface);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
-  height: calc(100vh - 140px);
-  position: sticky;
-  top: 120px;
-  padding: 1.5rem;
+  padding: max(1.5rem, env(safe-area-inset-top)) max(1.5rem, env(safe-area-inset-right))
+    max(1.5rem, env(safe-area-inset-bottom)) max(1.5rem, env(safe-area-inset-left));
   overflow-y: auto;
   box-shadow: var(--shadow-subtle);
+  border: none;
+  border-radius: 0;
+}
+
+@media (min-width: 768px) {
+  .search-sidebar {
+    position: sticky;
+    top: 120px;
+    width: 320px;
+    height: calc(100vh - 140px);
+    border: 1px solid var(--border-subtle);
+    border-radius: 8px;
+    z-index: auto;
+    padding: 1.5rem;
+  }
 }
 .sidebar-header {
   display: flex;

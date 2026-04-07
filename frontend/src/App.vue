@@ -2,13 +2,16 @@
 import { ref, onMounted, computed } from "vue";
 import { useRouter, useRoute } from "vue-router";
 import { useAuth } from "./composables/useAuth";
+import { useGallerySearch } from "./composables/useGallerySearch";
 import TagAutocomplete from "./shared/TagAutocomplete.vue";
 import http from "./api/http-client";
 
 const { isLoggedIn, logout } = useAuth();
+const { clearSimilaritySearch } = useGallerySearch();
 const router = useRouter();
 const route = useRoute();
 const theme = ref("light");
+const isMobileMenuOpen = ref(false);
 let audioCtx: AudioContext | null = null;
 const popularTags = ref<string[]>([]);
 
@@ -44,6 +47,7 @@ const fetchPopularTags = async () => {
 };
 
 const executeSearch = (tag: string) => {
+  clearSimilaritySearch();
   if (!tag) {
     router.push({ path: "/" });
   } else {
@@ -118,79 +122,101 @@ onMounted(() => {
   <div class="app-layout">
     <header class="top-nav">
       <div class="nav-left">
-        <router-link to="/" class="logo">pdl.</router-link>
+        <router-link to="/" class="logo" @click="clearSimilaritySearch">pdl.</router-link>
       </div>
 
-      <div class="nav-right">
-        <nav class="nav-links">
-          <router-link to="/about">About</router-link>
-          <router-link v-if="isAdmin" to="/admin">Admin</router-link>
-        </nav>
-        <div class="divider"></div>
-        <button
-          class="cruelty-toggle"
-          @click="toggleTheme(theme === 'cruelty' ? 'light' : 'cruelty')"
-        >
-          {{ theme === "cruelty" ? "REVERT CRUELTY" : "CRUELTY" }}
-        </button>
-        <button
-          class="theme-toggle"
-          @click="toggleTheme(theme === 'light' ? 'dark' : 'light')"
-          v-if="theme !== 'cruelty'"
-          title="Toggle Theme"
-        >
-          <span class="material-symbols-outlined">contrast</span>
+      <div class="nav-right" :class="{ 'mobile-open': isMobileMenuOpen }">
+        <button class="hamburger-btn" @click="isMobileMenuOpen = !isMobileMenuOpen">
+          <span class="material-symbols-outlined">{{ isMobileMenuOpen ? "close" : "menu" }}</span>
         </button>
 
-        <template v-if="isLoggedIn">
-          <router-link
-            to="/profile"
-            class="user-badge"
-            style="
-              font-family: var(--font-mono);
-              color: var(--text-muted);
-              font-size: 0.85rem;
-              text-decoration: none;
-            "
-            >@{{ username }}</router-link
-          >
+        <div class="nav-content" :class="{ 'is-open': isMobileMenuOpen }">
+          <nav class="nav-links">
+            <router-link to="/about" @click="isMobileMenuOpen = false">About</router-link>
+            <router-link v-if="isAdmin" to="/admin" @click="isMobileMenuOpen = false"
+              >Admin</router-link
+            >
+          </nav>
+          <div class="divider desktop-only"></div>
           <button
-            @click="logout"
-            class="btn logout-btn"
-            style="
-              background: none;
-              border: none;
-              cursor: pointer;
-              color: var(--text-secondary);
-              font-family: var(--font-sans);
-              font-weight: 500;
+            class="cruelty-toggle"
+            @click="
+              toggleTheme(theme === 'cruelty' ? 'light' : 'cruelty');
+              isMobileMenuOpen = false;
             "
           >
-            Logout
+            {{ theme === "cruelty" ? "REVERT CRUELTY" : "CRUELTY" }}
           </button>
-          <router-link to="/upload" class="btn upload-btn">Upload</router-link>
-        </template>
-        <template v-else>
-          <router-link
-            to="/login"
-            class="btn login-btn"
-            style="
-              color: var(--text-secondary);
-              font-family: var(--font-sans);
-              font-weight: 500;
-              text-decoration: none;
-              background: transparent;
-              border: none;
+          <button
+            class="theme-toggle"
+            @click="
+              toggleTheme(theme === 'light' ? 'dark' : 'light');
+              isMobileMenuOpen = false;
             "
-            >Login</router-link
+            v-if="theme !== 'cruelty'"
+            title="Toggle Theme"
           >
-          <router-link
-            to="/register"
-            class="btn btn-outline"
-            style="padding: 0.4rem 1rem; border-radius: 4px"
-            >Register</router-link
-          >
-        </template>
+            <span class="material-symbols-outlined">contrast</span>
+          </button>
+
+          <template v-if="isLoggedIn">
+            <router-link
+              to="/profile"
+              class="user-badge"
+              @click="isMobileMenuOpen = false"
+              style="
+                font-family: var(--font-mono);
+                color: var(--text-muted);
+                font-size: 0.85rem;
+                text-decoration: none;
+              "
+              >@{{ username }}</router-link
+            >
+            <button
+              @click="
+                logout();
+                isMobileMenuOpen = false;
+              "
+              class="btn logout-btn"
+              style="
+                background: none;
+                border: none;
+                cursor: pointer;
+                color: var(--text-secondary);
+                font-family: var(--font-sans);
+                font-weight: 500;
+              "
+            >
+              Logout
+            </button>
+            <router-link to="/upload" class="btn upload-btn" @click="isMobileMenuOpen = false"
+              >Upload</router-link
+            >
+          </template>
+          <template v-else>
+            <router-link
+              to="/login"
+              class="btn login-btn"
+              @click="isMobileMenuOpen = false"
+              style="
+                color: var(--text-secondary);
+                font-family: var(--font-sans);
+                font-weight: 500;
+                text-decoration: none;
+                background: transparent;
+                border: none;
+              "
+              >Login</router-link
+            >
+            <router-link
+              to="/register"
+              class="btn btn-outline"
+              @click="isMobileMenuOpen = false"
+              style="padding: 0.4rem 1rem; border-radius: 4px"
+              >Register</router-link
+            >
+          </template>
+        </div>
       </div>
     </header>
 
@@ -235,13 +261,22 @@ onMounted(() => {
 
 /* Slimmer Top Nav */
 .top-nav {
+  position: relative; /* Ensure absolute children position relative to this */
   z-index: 51;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem 2rem;
+  padding: 0.75rem max(1rem, env(safe-area-inset-right)) 0.75rem
+    max(1rem, env(safe-area-inset-left));
   background: var(--bg-surface);
   border-bottom: 1px solid var(--border-subtle);
+}
+
+@media (min-width: 768px) {
+  .top-nav {
+    padding: 0.75rem max(2rem, env(safe-area-inset-right)) 0.75rem
+      max(2rem, env(safe-area-inset-left));
+  }
 }
 
 .nav-left {
@@ -269,21 +304,47 @@ onMounted(() => {
   top: 0; /* Sits at the top since top-nav scrolls away */
   z-index: 50;
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
-  align-items: center;
-  padding: 0.5rem 2rem;
+  align-items: stretch;
+  padding: 0.5rem max(1rem, env(safe-area-inset-right)) 0.5rem max(1rem, env(safe-area-inset-left));
   background: var(--bg-element);
   border-bottom: 1px solid var(--border-subtle);
   gap: 1rem;
 }
 
+@media (min-width: 768px) {
+  .sub-nav {
+    flex-direction: row;
+    align-items: center;
+    padding: 0.5rem max(2rem, env(safe-area-inset-right)) 0.5rem
+      max(2rem, env(safe-area-inset-left));
+  }
+}
+
 .tags-scroll {
   display: flex;
-  gap: 1.5rem;
+  gap: 1rem;
   overflow-x: auto;
   white-space: nowrap;
   scrollbar-width: none;
   align-items: center;
+  padding-bottom: 0.25rem;
+  margin-left: max(-1rem, calc(env(safe-area-inset-left) * -1));
+  margin-right: max(-1rem, calc(env(safe-area-inset-right) * -1));
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+  width: calc(100% + max(2rem, env(safe-area-inset-left) + env(safe-area-inset-right)));
+}
+
+@media (min-width: 768px) {
+  .tags-scroll {
+    gap: 1.5rem;
+    padding-bottom: 0;
+    margin: 0;
+    padding: 0;
+    width: auto;
+  }
 }
 .tags-scroll::-webkit-scrollbar {
   display: none;
@@ -315,9 +376,17 @@ onMounted(() => {
   border-radius: 4px;
   padding: 0.25rem 0.75rem;
   border: 1px solid var(--border-subtle);
-  max-width: 250px;
   width: 100%;
+  max-width: none;
   transition: border-color 0.2s;
+  order: -1; /* move search above tags on mobile */
+}
+
+@media (min-width: 768px) {
+  .global-search {
+    max-width: 250px;
+    order: 0;
+  }
 }
 .global-search:focus-within {
   border-color: var(--color-accent);
@@ -334,13 +403,62 @@ onMounted(() => {
   align-items: center;
   gap: 1.5rem;
 }
-.nav-links {
+.hamburger-btn {
+  display: block;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 0.5rem;
+}
+@media (min-width: 768px) {
+  .hamburger-btn {
+    display: none;
+  }
+}
+
+.nav-content {
   display: none;
-  gap: 1.5rem;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-surface);
+  flex-direction: column;
+  align-items: stretch;
+  padding: 1.5rem 1rem;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  z-index: 60;
+}
+
+.nav-content.is-open {
+  display: flex;
+}
+
+@media (min-width: 768px) {
+  .nav-content {
+    display: flex;
+    position: static;
+    flex-direction: row;
+    align-items: center;
+    padding: 0;
+    box-shadow: none;
+    border-bottom: none;
+    background: transparent;
+  }
+}
+
+.nav-links {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 @media (min-width: 768px) {
   .nav-links {
-    display: flex;
+    flex-direction: row;
+    gap: 1.5rem;
   }
 }
 .nav-links a {
@@ -350,6 +468,12 @@ onMounted(() => {
   font-size: 0.95rem;
   font-weight: 500;
   transition: color 0.2s;
+  padding: 0.5rem 0; /* Larger touch targets */
+}
+@media (min-width: 768px) {
+  .nav-links a {
+    padding: 0;
+  }
 }
 .nav-links a:hover,
 .nav-links a.router-link-active {
@@ -357,9 +481,25 @@ onMounted(() => {
 }
 
 .divider {
-  height: 24px;
-  width: 1px;
+  height: 1px;
+  width: 100%;
   background: var(--border-subtle);
+  margin: 0.5rem 0;
+}
+@media (min-width: 768px) {
+  .divider {
+    height: 24px;
+    width: 1px;
+    margin: 0;
+  }
+  .divider.desktop-only {
+    display: block;
+  }
+}
+@media (max-width: 767px) {
+  .divider.desktop-only {
+    display: none;
+  }
 }
 
 .cruelty-toggle {
@@ -373,9 +513,14 @@ onMounted(() => {
   color: var(--text-muted);
   cursor: pointer;
   transition: color 0.2s;
+  padding: 0.75rem 0; /* Larger touch target */
+  text-align: left;
 }
-.cruelty-toggle:hover {
-  color: var(--color-danger);
+@media (min-width: 768px) {
+  .cruelty-toggle {
+    padding: 0;
+    text-align: center;
+  }
 }
 
 .theme-toggle {
@@ -385,13 +530,22 @@ onMounted(() => {
   cursor: pointer;
   display: flex;
   align-items: center;
+  padding: 0.75rem 0;
 }
-.theme-toggle:hover {
-  color: var(--text-primary);
+@media (min-width: 768px) {
+  .theme-toggle {
+    padding: 0;
+  }
 }
 
 .upload-btn {
-  padding: 0.5rem 1.25rem;
+  padding: 0.75rem;
+  text-align: center;
+}
+@media (min-width: 768px) {
+  .upload-btn {
+    padding: 0.5rem 1.25rem;
+  }
 }
 .btn-outline {
   border: 1px solid var(--border-strong);
@@ -401,6 +555,14 @@ onMounted(() => {
   font-size: 0.9rem;
   font-weight: 500;
   transition: background 0.2s;
+  padding: 0.75rem;
+  text-align: center;
+  border-radius: 4px;
+}
+@media (min-width: 768px) {
+  .btn-outline {
+    padding: 0.4rem 1rem;
+  }
 }
 .btn-outline:hover {
   background: var(--bg-element);
@@ -408,12 +570,20 @@ onMounted(() => {
 
 .content-canvas {
   flex: 1;
-  padding: 2rem;
+  padding: 1rem max(1rem, env(safe-area-inset-right)) env(safe-area-inset-bottom)
+    max(1rem, env(safe-area-inset-left));
   width: 100%;
+}
+@media (min-width: 768px) {
+  .content-canvas {
+    padding: 2rem max(2rem, env(safe-area-inset-right)) env(safe-area-inset-bottom)
+      max(2rem, env(safe-area-inset-left));
+  }
 }
 @media (min-width: 1024px) {
   .content-canvas {
-    padding: 3rem 4rem;
+    padding: 3rem max(4rem, env(safe-area-inset-right)) env(safe-area-inset-bottom)
+      max(4rem, env(safe-area-inset-left));
   }
 }
 

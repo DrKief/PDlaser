@@ -247,15 +247,26 @@ onMounted(async () => {
 /* Pipeline CSS */
 .pipeline-container {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
   margin-bottom: 5rem;
   background: var(--bg-surface);
-  padding: 3rem;
+  padding: 2rem 1.5rem;
   border-radius: 8px;
   border: 1px solid var(--border-subtle);
-  overflow-x: auto;
 }
+
+@media (min-width: 768px) {
+  .pipeline-container {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 3rem;
+    gap: 0;
+  }
+}
+
 .pipeline-step {
   display: flex;
   flex-direction: column;
@@ -296,26 +307,54 @@ onMounted(async () => {
   font-size: 0.85rem;
   color: var(--text-secondary);
 }
+
 .pipeline-line {
-  flex: 1;
-  height: 2px;
+  flex: none;
+  width: 2px;
+  height: 40px;
   background: var(--border-strong);
-  margin-top: 30px;
-  min-width: 50px;
+  margin: 0;
   position: relative;
 }
+
+@media (min-width: 768px) {
+  .pipeline-line {
+    flex: 1;
+    height: 2px;
+    width: auto;
+    margin-top: 30px;
+    min-width: 50px;
+  }
+}
+
 .pipeline-line::after {
   content: "";
   position: absolute;
   top: 0;
   left: 0;
-  height: 100%;
-  width: 0%;
-  background: var(--color-accent);
-  transition: width 0.5s ease;
-}
-.pipeline-container:hover .pipeline-line::after {
+  height: 0%;
   width: 100%;
+  background: var(--color-accent);
+  transition:
+    height 0.5s ease,
+    width 0.5s ease;
+}
+
+@media (min-width: 768px) {
+  .pipeline-line::after {
+    height: 100%;
+    width: 0%;
+  }
+}
+
+.pipeline-container:hover .pipeline-line::after {
+  height: 100%;
+}
+
+@media (min-width: 768px) {
+  .pipeline-container:hover .pipeline-line::after {
+    width: 100%;
+  }
 }
 
 /* Tech Grid CSS */
