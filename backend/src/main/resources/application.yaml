@@ -44,6 +44,6 @@ management:
 s3:
   endpoint: ${S3_ENDPOINT:http://localhost:3900}
   region: ${S3_REGION:garage}
-  access-key: ${S3_ACCESS_KEY:GK_PDLASER_ADMIN}
-  secret-key: ${S3_SECRET_KEY:super_secret_garage_key_12345}
+  access-key: ${S3_ACCESS_KEY:GKd9a141dcde05cfa37575793b}
+  secret-key: ${S3_SECRET_KEY:09ef00b287a87bad8dedd3d2c432b9e9ea801909d525469603f283ef71ca37e8}
   bucket: ${S3_BUCKET:pdl-images}

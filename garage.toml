@@ -5,8 +5,11 @@ db_engine = "lmdb"
 replication_factor = 1
 consistency_mode = "consistent"
 
-[rpc]
-bind_addr = "[::]:3901"
+# FIX 1: Moved rpc_bind_addr to the top level (removed the [rpc] block)
+rpc_bind_addr = "[::]:3901"
+
+# FIX 2: Added the mandatory 32-byte hex-encoded random string secret
+rpc_secret = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
 [s3_api]
 api_bind_addr = "[::]:3900"
