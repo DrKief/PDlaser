@@ -34,6 +34,11 @@ public class S3Config {
         StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey))
       )
       .forcePathStyle(true) // Crucial for Garage
+      .serviceConfiguration(
+        software.amazon.awssdk.services.s3.S3Configuration.builder()
+          .chunkedEncodingEnabled(false)
+          .build()
+      )
       .build();
   }
 
