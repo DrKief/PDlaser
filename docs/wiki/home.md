@@ -2,51 +2,39 @@
 
 Welcome to the official documentation for the **PDLaser Image Management System (v3a)**.
 
-This wiki contains the comprehensive technical documentation detailing our architectural decisions, backend API, frontend Vue structure, database schema tuning, and deployment infrastructure.
+This wiki contains the comprehensive technical documentation detailing our bleeding-edge architectural decisions, backend API, frontend SPA structure, distributed S3-compatible storage, database schema tuning, and poly-container deployment infrastructure.
 
 ## 📚 Navigation
 
-### [API Reference](API-Reference)
+### [API Reference](api-reference)
 
-Comprehensive guide to the Spring Boot 4.0.5 REST API, including core image operations, ephemeral similarity endpoints, JWT authentication, and administrative dataset ingestion.
+Comprehensive guide to the Spring Boot 4.0.5 REST API, including core S3 image streams, ephemeral similarity endpoints, stateless JWT authentication, and the background Unsplash dataset ingestion engine.
 
-### [Frontend Architecture & Views](Frontend-Architecture-and-Views)
+### [Frontend Architecture & Views](frontend-architecture)
 
-Detailed overview of the Vue 3.5 SPA, exploring the component structure, Vue Router 5 configuration, HTTP Long-Polling logic, Axios interceptors, and the Cruelty Squad easter-egg theme (HUX).
+Detailed overview of the Vue 3.5 SPA, exploring the component structure, Vue Router 5 routing, HTTP Long-Polling logic for async tasks, Axios 1.15.0 interceptors, and the Cruelty Squad easter-egg aesthetic (HUX).
 
-### [Frontend Views Routing](Frontend-views)
+### [Frontend Views Routing](frontend-views)
 
-In-depth breakdown of the specific route targets (`/gallery`, `/search`, `/profile`, `/admin`, etc.) and the expected client-side data flows on each page.
+In-depth breakdown of specific route targets (`/gallery`, `/search`, `/profile`, `/admin`, etc.) and the expected client-side data flows executing against the backend.
 
-### [Database Schema & HNSW](Database-Schema)
+### [Database Schema & HNSW](database-schema)
 
-Extensive details on the PostgreSQL 18 implementation, including the `pgvector` extension usage, table structures (`images`, `imagedescriptors`, `imagekeywords`, `users`), and the mathematically tuned multi-dimensional HNSW vector indexing parameters.
+Extensive details on the PostgreSQL 18 implementation utilizing the `pgvector` 0.1.6 extension. Explains the transition to Garage (S3) for blob storage, relational table structures (`images`, `imagedescriptors`), and mathematically tuned multi-dimensional HNSW vector indexing algorithms.
 
-### [Docker & Deployment](Docker-and-Deployment)
+### [Docker & Deployment](deployment)
 
-Guide to our containerized microservices architecture, explaining the different Docker Compose environments (local `tmpfs`, preview, production), Dokploy integration, Nginx reverse proxying, and Cryptographic Subresource Integrity checks.
+Guide to our containerized microservices orchestration. Explains the multi-tier Docker Compose environments, Garage S3 blob storage initialization, Prometheus 3.5 / Grafana 12.4 telemetry observability, Dokploy integration, and Cryptographic Subresource Integrity limits.
 
 ---
 
 ## ✍️ Wiki Usage
 
-**Make sure to keep this wiki updated at all times.**
-
-### Adding pages
-
-Follow the current format. A wiki page should contain a list of features, technical details, and how to use them. Every wiki page must be written in Markdown. Wiki pages should only be added for **LARGE** architectural parts of the project.
-
-To create a new wiki page, follow these instructions:
-
-1. Edit this home wiki page.
-2. Create a new `### [Title](Slug)` link under the Navigation section.
-3. Save changes to home.
-4. Click on your newly created link.
-5. Create the page and add your markdown documentation.
+**Keep this wiki updated at all times.**
 
 ### Code Formatting
 
-The project uses a unified Prettier configuration defined in the root `package.json` to enforce styling rules across both the Java backend and Vue frontend. **Before committing code, always ensure your files are formatted:**
+The project uses a unified Prettier configuration defined in the root `package.json` to enforce styling rules across the Java backend, Vue frontend, and documentation markdown. **Before committing code, always ensure your files are formatted:**
 
 ```bash
 npm run format

@@ -69,3 +69,15 @@ To ensure consistent code styling across both the frontend and backend, we use P
 ```bash
 npm run format
 ```
+
+## System Compatibility & Validation (Requirement 27)
+
+In accordance with the project specifications, the client, server, and distributed object storage infrastructure have been rigorously compiled, tested, and validated across multiple architectures:
+
+**Server / Infrastructure Environments (x86_64 & ARM64):**
+- **Ubuntu 24.04.4 LTS (aarch64):** Oracle Cloud (Neoverse-N1, Linux 6.17.0-1009-oracle). Proves ARM64 Docker compilation and ONNX/pgvector cross-architecture stability.
+- **Arch Linux (x86_64):** AMD Ryzen 5 7640U, Linux 6.19.11-zen1-1-zen.
+
+**Client Environments:**
+- **OS:** Arch Linux (KDE Plasma 6.6.4 / Wayland)
+- **Browsers Tested:** Mozilla Firefox, Zen Browser

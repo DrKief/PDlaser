@@ -23,7 +23,7 @@
 \maketitle
 
 \section*{Introduction}
-This document presents the rigorous requirements for developing an AI-augmented image similarity search application using a client-server architecture backed by PostgreSQL 18 for high-dimensional vector indexing.
+This document presents the rigorous requirements for developing an AI-augmented image similarity search application using a poly-container architecture backed by PostgreSQL 18, Garage S3 blob storage, and high-dimensional vector mathematics.
 
 The application processes color images saved in the following formats:
 \begin{itemize}
@@ -32,7 +32,7 @@ The application processes color images saved in the following formats:
 \end{itemize}
 
 \subsection*{Requirement Classifications}
-To clarify the state of each requirement relative to the initial specifications, the following tags are used throughout the document.
+To clarify the state of each requirement relative to the initial specifications (Besoins 1--27), the following tags are used throughout the document.
 
 \begin{itemize}
     \item \textbf{[Original to Requirement X]}: The requirement remains functionally identical to the initial specifications and is fully implemented.
@@ -51,13 +51,13 @@ To clarify the state of each requirement relative to the initial specifications,
 \clearpage
 
 \section{Architectural \& Organizational Decisions}
-To ensure the system scales efficiently under the load of computational computer vision tasks and machine learning inference, the following organizational standards were established:
+To ensure the system scales efficiently under the load of computational computer vision tasks, the following bleeding-edge standards were established:
 
 \begin{itemize}
-    \item \textbf{Decoupled Background Execution:} Image vectorization (BoofCV) and Semantic extraction (ONNX) are computationally blocking. We deliberately offloaded these tasks to background Virtual Threads (Java 21) via a custom \texttt{ThreadPoolTaskExecutor}. This ensures the main Tomcat HTTP event loop is never blocked by mathematical computations.
-    \item \textbf{Ephemeral Database Environments:} For local and staging developments, we strictly utilize \texttt{tmpfs} (RAM-based) Docker mounts for PostgreSQL 18. This organizational decision enforces a pristine state upon every container boot, ensuring Flyway schema migrations are always tested from a true zero-state, preventing configuration drift.
-    \item \textbf{HNSW Vector Indexing:} Instead of using traditional B-Trees or flat indices, we implemented Hierarchical Navigable Small World (HNSW) graphs in PostgreSQL 18 via \texttt{pgvector}. We specifically tuned the `m` and `ef\_construction` parameters to favor read-speed and recall accuracy for our 768-dimensional semantic vectors.
-    \item \textbf{Stateless Long-Polling:} To provide the frontend with real-time feedback on background image processing without the massive infrastructure overhead of WebSockets and Redis, we implemented HTTP Long-Polling using Spring's \texttt{DeferredResult}.
+    \item \textbf{Decoupled Background Execution:} Image vectorization (BoofCV) and Semantic extraction (ONNX) are computationally blocking. We deliberately offloaded these tasks to Virtual Threads (Java 21) via a custom \texttt{ThreadPoolTaskExecutor}, ensuring the HTTP event loop is never blocked.
+    \item \textbf{Distributed S3 Blob Storage:} The backend abandons standard local filesystem IO in favor of \textbf{Garage v2.2.0}, a highly distributed S3-compatible object storage layer, utilizing the AWS Java SDK v2.42.32.
+    \item \textbf{HNSW Vector Indexing:} We implemented Hierarchical Navigable Small World (HNSW) graphs in PostgreSQL 18 via \texttt{pgvector} 0.1.6, prioritizing read-speed and recall accuracy for our 768-dimensional semantic vectors.
+    \item \textbf{Stateless Long-Polling:} To provide real-time frontend feedback without the overhead of WebSockets, we implemented HTTP Long-Polling using Spring Boot's \texttt{DeferredResult}.
 \end{itemize}
 
 \clearpage
@@ -67,72 +67,68 @@ To ensure the system scales efficiently under the load of computational computer
 \subsection*{Server}
 
 \noindent\textbf{Requirement 1 : [Amended (Up) to Requirement 1] Initialize a set of images present on the server}\\
-\textbf{Description :} When the server is launched, it verifies the existence of the image directory. \textbf{Amendment:} The server calculates a SHA-256 hash of the binary file to ensure images are not duplicated in storage. To optimize initialization, the server utilizes fast header-only stream reading (\texttt{ImageReader}) to extract width/height dimensions instantly without fully loading multi-megabyte images into RAM. A default \texttt{admin} user is also seeded into the database automatically.
+\textbf{Description :} The server verifies the connection to the external Garage S3 bucket upon launch. \textbf{Amendment:} The server automatically calculates a SHA-256 hash of binary payloads upon upload to ensure images are strictly deduplicated in the object storage layer. A default \texttt{admin} user is also securely seeded into the relational database.
 \vspace{1em}
 
 \noindent\textbf{Requirement 2 : [Amended (Up) to Requirement 2] Manage images present on the server}\\
-\textbf{Description :} The server manages a set of images, allowing access to raw data and metadata. \textbf{Amendment:} Image management is now strictly bound to an authentication context. Images track their uploader's \texttt{user\_id} and support privacy scoping (public vs. private visibility) to secure multi-tenant use cases.
+\textbf{Description :} The server manages references to images, allowing access to S3 data and relational metadata. \textbf{Amendment:} Image management is strictly bound to stateless JSON Web Tokens. Images track their uploader's \texttt{user\_id} to support privacy scoping (public vs. private) securing multi-tenant configurations.
 \vspace{1em}
 
 \noindent\textbf{Requirement 3 : [Amended (Up) to Requirement 3] Index an image}\\
-\textbf{Description :} The server calculates an image's descriptors. \textbf{Amendment:} Descriptors are mapped to PostgreSQL 18 \texttt{pgvector} formats. The comprehensively supported descriptors are:
+\textbf{Description :} The server calculates an image's descriptors. \textbf{Amendment:} Descriptors are mapped natively to \texttt{pgvector} formats. Supported mathematical indices include:
 \begin{enumerate}
     \item 1D Histogram of Oriented Gradients (HOG - 31 dimensions).
     \item 2D Hue/Saturation Histogram (HSV - 256 dimensions).
-    \item 3D RGB Histogram (512 dimensions).
+    \item 3D RGB Color Histogram (512 dimensions).
     \item 3D CIELAB Color Space Histogram (512 dimensions).
     \item \textbf{[New]} 1D Semantic Logits Vector (768 dimensions via SigLIP 2 AI).
 \end{enumerate}
 \vspace{1em}
 
 \noindent\textbf{Requirement 4 : [Amended (Up) to Requirement 4] Search for images similar to a given image}\\
-\textbf{Description :} The server allows constructing a sorted list of the N most similar images. \textbf{Amendment:} Now supports deep semantic similarity searches using AI-generated contextual data. The search is accelerated at the database level utilizing HNSW graphs mapping L2 and Cosine distances directly within Postgres.
+\textbf{Description :} Constructs a sorted list of the N most similar images. \textbf{Amendment:} Executes deep semantic similarity mapping utilizing L2 and Cosine distances mapped directly inside PostgreSQL, eliminating the need to pull data into JVM memory.
 \vspace{1em}
 
 \noindent\textbf{Requirement 5 : [Original to Requirement 5] Search for images with a list of given attributes}\\
-\textbf{Description :} The server constructs a list of images possessing one or more attributes among: File name, Image size, Format, and a set of relational keywords.
+\textbf{Description :} The server constructs a list of images possessing one or more attributes among: File name, Format, and relational tags.
 \vspace{1em}
 
 \subsection*{Communication}
 
 \noindent\textbf{Requirement 6 : [Amended (Up) to Requirement 6] Transfer the list of existing images}\\
-\textbf{Description :} The list of available images is sent when receiving a \texttt{GET} request at \texttt{/images}. \textbf{Amendment:} To heavily optimize frontend DOM rendering, the result is now \textbf{paginated} (\texttt{page}, \texttt{size}) and provided in JSON format, avoiding the N+1 query problem. It natively filters based on the user's JWT authentication token and supports ownership isolation (\texttt{mine} query parameter).
+\textbf{Description :} The list of available images is sent when receiving a \texttt{GET /images}. \textbf{Amendment:} To protect DOM rendering, results are strictly \textbf{paginated} (\texttt{page}, \texttt{size}) and dynamically filtered by ownership parameters (\texttt{mine=true}).
 \vspace{1em}
 
 \noindent\textbf{Requirement 7 : [Amended (Up) to Requirement 7] Add an image}\\
-\textbf{Description :} Sending a \texttt{POST} request to \texttt{/images} with \texttt{multipart/form-data} adds an image to the server. \textbf{Amendment:} The endpoint accepts an optional list of keywords to tag images immediately upon upload. It leverages asynchronous processing and responds with \textbf{202 Accepted}. Additionally, the server utilizes a local AI model to automatically append inferred semantic tags (prefixed with \texttt{ai:}) to the image metadata.
+\textbf{Description :} A \texttt{POST /images} payload adds an image. \textbf{Amendment:} Offloads the binary to S3 immediately, schedules background extraction, and answers with \textbf{202 Accepted} (rather than 201) to prevent the HTTP request from freezing during computation. Evaluates an embedded AI model to infer semantic \texttt{ai:} tags automatically.
 \vspace{1em}
 
-\noindent\textbf{Requirement 8 : [Original to Requirement 8] Retrieve an image}\\
-\textbf{Description :} Sending a \texttt{GET} request to \texttt{/images/id} returns the binary payload of the image stored with the identifier \texttt{id}.
+\noindent\textbf{Requirement 8 : [Amended (Up) to Requirement 8] Retrieve an image}\\
+\textbf{Description :} A \texttt{GET /images/id} stream. \textbf{Amendment:} Data is actively streamed down to the client via AWS S3 Client response buffers rather than pulling from local physical paths.
 \vspace{1em}
 
 \noindent\textbf{Requirement 9 : [Amended (Up) to Requirement 9] Delete an image}\\
-\textbf{Description :} Sending a \texttt{DELETE} request to \texttt{/images/id} deletes the image. \textbf{Amendment:} Deletion is strictly protected by JWT claims. Only the original uploader (or a system administrator) possesses the authority to delete a specific physical file and its database record.
+\textbf{Description :} A \texttt{DELETE /images/id} securely removes the image. \textbf{Amendment:} Protected by JWT Authority. Issues a cascading deletion in PostgreSQL alongside a destructive SDK call to Garage S3.
 \vspace{1em}
 
 \noindent\textbf{Requirement 10 : [Amended (Up) to Requirement 10] Transfer the list of most similar images}\\
-\textbf{Description :} A \texttt{GET} request to \texttt{/images/id/similar} returns a JSON array of the N most similar images. Valid algorithms now natively include \texttt{semantic}, \texttt{cielab}, and a hybrid \texttt{weighted} Euclidean fusion.
+\textbf{Description :} A \texttt{GET /images/id/similar} executes \texttt{semantic}, \texttt{cielab}, and hybrid \texttt{weighted} Euclidean fusion searches natively in the DB.
 \vspace{1em}
 
 \noindent\textbf{Requirement 11 : [Original to Requirement 11] Retrieve image metadata}\\
-\textbf{Description :} A \texttt{GET} request to \texttt{/images/id/metadata} returns metadata including Name, Type, Size, Keywords, and the background \texttt{Extraction\_Status}.
+\textbf{Description :} \texttt{GET /images/id/metadata} reveals dimensions, generated AI tags, and processing state.
 \vspace{1em}
 
-\noindent\textbf{Requirement 12 : [Original to Requirement 12] Add a keyword to an image}\\
-\textbf{Description :} A \texttt{PUT} request to \texttt{/images/id/keywords?tag=TAG} securely adds the keyword TAG to the image metadata.
-\vspace{1em}
-
-\noindent\textbf{Requirement 13 : [Original to Requirement 13] Delete a keyword from an image}\\
-\textbf{Description :} A \texttt{DELETE} request to \texttt{/images/id/keywords?tag=TAG} removes the keyword TAG from the image.
+\noindent\textbf{Requirement 12 \& 13 : [Original] Add / Delete a keyword}\\
+\textbf{Description :} Safely mutate relational tags attached to image metadata.
 \vspace{1em}
 
 \noindent\textbf{Requirement 14 : [Amended (Up) to Requirement 14] Transfer the list of keywords}\\
-\textbf{Description :} A \texttt{GET} request to \texttt{/images/keywords} returns the distinct list of all unique keywords. \textbf{Amendment:} Supports sophisticated search queries (\texttt{/search?q=}) and limits output to the most popular keywords (\texttt{/popular}) to drive a high-performance Vue 3 frontend autocomplete component.
+\textbf{Description :} Provides distinct autocomplete data points including \texttt{/search?q=} and statistical \texttt{/popular} queries to drive the frontend UI.
 \vspace{1em}
 
 \noindent\textbf{Requirement 15 : [Amended (Up) to Requirement 15] Search for images by attributes}\\
-\textbf{Description :} During a \texttt{GET} request to \texttt{/images/search}, the client passes a list of attributes via standard Query Parameters, adhering to modern RESTful standards.
+\textbf{Description :} Handled dynamically via paginated query parameters (e.g., \texttt{?keywords=xyz}) adhering to modern RESTful standards rather than utilizing the body of a GET request.
 
 \clearpage
 
@@ -141,31 +137,27 @@ To ensure the system scales efficiently under the load of computational computer
 \subsection*{User Interface Operations}
 
 \noindent\textbf{Requirement 16 : [Amended (Up) to Requirement 16] Browse images available on the server}\\
-\textbf{Description :} The user can view available images displayed in a responsive Gallery view. \textbf{Amendment:} To support massive Unsplash datasets, the gallery UI dynamically handles backend pagination logic, offering Next/Prev controls to prevent DOM overload.
+\textbf{Description :} Responsive CSS masonry grid dynamically integrating backend pagination controls.
 \vspace{1em}
 
 \noindent\textbf{Requirement 17 : [Amended (Up) to Requirement 17] Select an image and display similar images}\\
-\textbf{Description :} The user can request visually similar images from the database. \textbf{Amendment:} The UI now displays a mathematically calculated "Percentage Match" based on the inverse distance returned by the pgvector operator.
+\textbf{Description :} Advanced search sidebar provides algorithm customization and mathematically precise percentage match readouts.
 \vspace{1em}
 
-\noindent\textbf{Requirement 18 : [Original to Requirement 18] Save an image to disk}\\
-\textbf{Description :} The user can save a loaded image to their local file system using native browser rendering behavior.
+\noindent\textbf{Requirement 18 : [Amended (Up) to Requirement 18] Save an image to disk}\\
+\textbf{Description :} The UI provides a dedicated "Download Original" action utilizing a presigned S3 routing mechanism with enforced \texttt{Content-Disposition: attachment} headers.
 \vspace{1em}
 
 \noindent\textbf{Requirement 19 : [Amended (Up) to Requirement 19] Add an image to the server}\\
-\textbf{Description :} The user can upload images. \textbf{Amendment:} The UI tracks a multi-file queue (up to 10 images) and uses a dedicated \texttt{useImageStatus} composable to dynamically poll the background processing status, displaying precise visual badges (Uploading, Extracting, Completed).
+\textbf{Description :} Queue-based upload form natively tracking up to 10 incoming file buffers. Seamlessly binds with \texttt{useImageStatus} to visualize asynchronous backend polling states.
 \vspace{1em}
 
 \noindent\textbf{Requirement 20 : [Original to Requirement 20] Delete an image}\\
-\textbf{Description :} The user can permanently delete an image from the server. The Vue 3.5 reactive engine executes an optimistic DOM update to remove the element instantly.
+\textbf{Description :} Executes an optimistic DOM update alongside the REST API call to strip elements instantly.
 \vspace{1em}
 
-\noindent\textbf{Requirement 21 \& 22 : [Original] Add / Delete Keywords}\\
-\textbf{Description :} The user can add or delete tags associated with an image directly from the detailed view interface.
-\vspace{1em}
-
-\noindent\textbf{Requirement 23 : [Original to Requirement 23] Search for an image by its attributes}\\
-\textbf{Description :} The client offers an advanced slide-out Search Sidebar to dynamically filter images by text attributes or trigger mathematical similarity searches.
+\noindent\textbf{Requirement 21, 22 \& 23 : [Original] Tags and Search}\\
+\textbf{Description :} Integrated UI systems allowing deep metadata mutations and filtering.
 
 \clearpage
 
@@ -174,19 +166,21 @@ To ensure the system scales efficiently under the load of computational computer
 \subsection*{Environment \& Quality}
 
 \noindent\textbf{Requirement 24 : [Amended (Up) to Requirement 24] Continuous Integration \& Code Quality}\\
-\textbf{Description :} Gitlab CI/CD pipelines are utilized for compilation and automated testing on isolated Docker runners. \textbf{Amendment:} Strict automated code formatting is enforced globally via Prettier integrations (\texttt{.prettierrc}) to ensure uniform style across all pull requests.
+\textbf{Description :} Gitlab pipelines construct isolated execution layers. \textbf{Amendment:} A global Prettier (\texttt{.prettierrc}) integration enforces universal styling standardization.
 \vspace{1em}
 
-\noindent\textbf{Requirement 25 : [Original to Requirement 25] Server compatibility}\\
-\textbf{Description :} The server is strictly bound to Java (JDK 21) utilizing Spring Boot 4.0.5, BoofCV 1.3.0, ONNX Runtime 1.17.1, PostgreSQL 18, and \texttt{pgvector} 0.1.6. Spring Data JDBC manages the persistence layer.
+\noindent\textbf{Requirement 25 : [Amended (Up) to Requirement 25] Server compatibility}\\
+\textbf{Description :} Bleeding-edge environment: Java JDK 21, Spring Boot 4.0.5, BoofCV 1.3.0, ONNX Runtime 1.24.3, DJL 0.36.0, AWS SDK 2.42.32, PostgreSQL 18, \texttt{pgvector} 0.1.6, Garage v2.2.0. \\
+\textbf{Cross-Architecture Validation:} The Dockerized infrastructure was successfully compiled and proven resilient across fundamentally different architectures, including an \textbf{x86\_64 Arch Linux} kernel (6.19) and an \textbf{ARM64 (aarch64) Ubuntu 24.04 LTS} Oracle Cloud environment.
 \vspace{1em}
 
-\noindent\textbf{Requirement 26 : [Original to Requirement 26] Client compatibility}\\
-\textbf{Description :} The SPA client is strictly typed in TypeScript 6.0 and relies on the Vue.js 3.5 framework (Composition API) built via Vite 8.0.
+\noindent\textbf{Requirement 26 : [Amended (Up) to Requirement 26] Client compatibility}\\
+\textbf{Description :} Modern SPA structure: TypeScript 6.0, Vue 3.5 (Composition API), Vite 8.0.8, Axios 1.15.0, Vue Router 5.0.4. \\
+\textbf{Validation:} Verified working on Mozilla Firefox and Zen Browser via a KDE Plasma 6 (Wayland) display server.
 \vspace{1em}
 
-\noindent\textbf{Requirement 27 : [Original to Requirement 27] Documentation}\\
-\textbf{Description :} A comprehensively expanded \texttt{README.md} and fully maintained GitLab Wiki tracks architectural diagrams, design decisions, endpoints, and deployment guidelines.
+\noindent\textbf{Requirement 27 : [Amended (Up) to Requirement 27] Documentation}\\
+\textbf{Description :} Comprehensively expanded Markdown Wiki tracking deployment paradigms and architectural flows. Hardware validation specs appended to the \texttt{README.md}.
 
 \clearpage
 
@@ -195,79 +189,70 @@ To ensure the system scales efficiently under the load of computational computer
 \subsection*{Architecture \& Data Integrity}
 
 \noindent\textbf{Requirement 28 : [Extension] Global ProblemDetail Exception Handling (RFC 7807)}\\
-\textbf{Description :} The application features a globally centralized \texttt{ErrorHandler.java} class. All internal server exceptions are gracefully captured and translated into standardized RFC 7807 \texttt{ProblemDetail} JSON responses, appending a unique \texttt{traceId} to aid rapid debugging in production.
+\textbf{Description :} All uncaught server exceptions are translated into standardized RFC 7807 \texttt{ProblemDetail} JSON schemas equipped with unique \texttt{traceId} tags for telemetry tracking.
 \vspace{1em}
 
-\noindent\textbf{Requirement 29 : [Extension] SHA-256 Deduplication}\\
-\textbf{Description :} To prevent identical images from bloating the database and filesystem, the server automatically calculates a SHA-256 hash of the binary file during upload.
+\noindent\textbf{Requirement 29 : [Extension] Ephemeral Database Environments}\\
+\textbf{Description :} The system utilizes ephemeral \texttt{tmpfs} mounts locally to strictly enforce a pristine zero-state initialization environment for Flyway schema migrations, eradicating configuration drift.
 \vspace{1em}
 
-\noindent\textbf{Requirement 30 : [Extension] Automated Schema Migrations (Flyway)}\\
-\textbf{Description :} The database schema is version-controlled via Flyway. Upon boot, the application automatically executes migrations (\texttt{V1} through \texttt{V3}) to ensure tables, relations, and HNSW indexes are perfectly synced with the backend codebase.
+\noindent\textbf{Requirement 30 : [Extension] Docker Orchestration \& Nginx Reverse Proxy}\\
+\textbf{Description :} A compiled Vue 3 static artifact is served via an \textbf{Nginx} container which dynamically reverse-proxies API calls directly to the Java Backend, completely masking the Tomcat engine from public network exposure.
 \vspace{1em}
 
-\noindent\textbf{Requirement 31 : [Extension] Docker Orchestration \& Nginx Reverse Proxy}\\
-\textbf{Description :} The stack is fully containerized. To bypass CORS complexity and ensure production-grade security, the compiled Vue frontend is served via an \textbf{Nginx} container. Nginx intercepts all traffic, routing \texttt{/images}, \texttt{/auth}, and \texttt{/admin} directly to the backend container, keeping the Java application entirely hidden from public port exposure.
+\noindent\textbf{Requirement 31 : [Extension] Telemetry Observability Pipelines}\\
+\textbf{Description :} Spring Boot Actuator endpoints are actively scraped by a dedicated \textbf{Prometheus v3.5.0} container and visualized within \textbf{Grafana 12.4.2} dashboards to provide unparalleled metrics on GC latency and virtual thread overhead.
 
 \subsection*{Security \& Dataset Management}
 
-\noindent\textbf{Requirement 32 : [Extension] Stateless JWT Authentication \& Authorization}\\
-\textbf{Description :} The application features a robust role-based access control (RBAC) system. Users can register and authenticate to receive JSON Web Tokens (JWT). The system supports \texttt{ROLE\_USER} and \texttt{ROLE\_ADMIN} privileges, tying image ownership directly to authenticated accounts to support private visibility scopes and protect deletion endpoints.
+\noindent\textbf{Requirement 32 : [Extension] Stateless JWT Authentication}\\
+\textbf{Description :} Fully implemented stateless Role-Based Access Control allowing User and Admin privilege tiers, natively securing deletion and administrative operations.
 \vspace{1em}
 
 \noindent\textbf{Requirement 33 : [Extension] Admin Unsplash Dataset Ingestion}\\
-\textbf{Description :} Authorized administrators have access to an automated asynchronous ingestion engine capable of securely downloading, parsing, and vectorizing massive datasets (e.g., Unsplash TSV metadata) directly into the system's storage and \texttt{pgvector} indexes without blocking the main event loop.
-\vspace{1em}
-
-\noindent\textbf{Requirement 34 : [Extension] Client Profile \& Administration Interfaces}\\
-\textbf{Description :} The client provides a dedicated \texttt{/profile} interface for authenticated users to view, manage, and permanently delete their own uploaded images ("My Archive"), as well as an \texttt{/admin} view for elevated users to trigger the dataset ingestion API.
+\textbf{Description :} The \texttt{ROLE\_ADMIN} interface features an async ingestion mechanism capable of parsing massive `.tsv` datasets and automatically scheduling rate-limited batch downloads from external CDNs directly into our localized S3 buckets.
 
 \subsection*{User Interface \& Experience}
 
-\noindent\textbf{Requirement 35 : [Extension] Cruelty Squad Audio-Visual Theme (HUX)}\\
-\textbf{Description :} A hidden Easter egg theme toggle exists in the frontend. When activated, it drastically alters the CSS rendering engine to mimic the abrasive aesthetic of "Cruelty Squad", applying CRT scanlines, and overriding global DOM events to procedurally generate raw sawtooth frequency sound effects via the Web Audio API.
+\noindent\textbf{Requirement 34 : [Extension] Cruelty Squad Audio-Visual Theme (HUX)}\\
+\textbf{Description :} A hidden "Cruelty" theme actively manipulates DOM events to generate a Hostile User Experience, projecting pixel-perfect CRT scanlines and procedural Web Audio API sawtooth frequencies.
 
 \clearpage
 
 \section{Extended Amendments}
-\textit{This section highlights highly complex architectural implementations that drastically expand upon and modernize the original foundational requirements.}
 
 \subsection*{Advanced Image Processing \& AI}
 
-\noindent\textbf{Requirement 36 : [Extended Amendment to Requirement 3] Lanczos3 Image Pre-processing}\\
-\textbf{Description :} To standardize and drastically accelerate backend image feature extraction, the application intercepts uploaded images and automatically resamples them to a uniform spatial resolution ($256\times256$) leveraging the high-quality Lanczos3 algorithm before any descriptors are computed.
+\noindent\textbf{Requirement 35 : [Extended Amendment to Requirement 3] Lanczos3 Spatial Standardization}\\
+\textbf{Description :} Before descriptors are computed, all inputs are intercepted and mathematically resampled to a uniform spatial resolution ($256\times256$) using the pristine Lanczos3 algorithm.
 \vspace{1em}
 
-\noindent\textbf{Requirement 37 : [Extended Amendment to Requirement 3] Semantic Vectors \& SigLIP 2 AI Auto-Tagging}\\
-\textbf{Description :} Beyond manual keyword tagging, the backend integrates Microsoft's ONNX Runtime (v1.17.1) to execute a SigLIP 2 Vision Transformer locally. Uploaded images are automatically analyzed to extract 768-dimensional semantic logits, which are used both for highly accurate AI context matching and to automatically append probable \texttt{ai:} prefixed tags to the image metadata.
+\noindent\textbf{Requirement 36 : [Extended Amendment to Requirement 3] ONNX SigLIP 2 Semantic Inference}\\
+\textbf{Description :} An embedded ONNX Runtime inference engine executes a SigLIP 2 Vision Transformer locally to map images to a 768-dimensional semantic logits array, enabling complex contextual querying.
 \vspace{1em}
 
-\noindent\textbf{Requirement 38 : [Extended Amendment to Requirement 3 \& 7] Asynchronous Image Processing \& Long Polling}\\
-\textbf{Description :} Descriptor extraction tasks are offloaded to background execution threads via a custom \texttt{ThreadPoolTaskExecutor}. To track this securely without the overhead of WebSockets, the client utilizes a \textbf{Long-Polling} mechanism (\texttt{UploadStatusTracker.java}) via \texttt{DeferredResult}. The HTTP connection is held open until the server finishes processing, providing instant frontend feedback without aggressively spamming the REST API.
+\noindent\textbf{Requirement 37 : [Extended Amendment to Requirement 3 \& 7] Long-Polling Thread Suspension}\\
+\textbf{Description :} To limit constant API polling, background async status endpoints use Spring \texttt{DeferredResult} to securely suspend the HTTP context, mimicking real-time Socket updates while remaining purely RESTful.
 \vspace{1.5em}
 
 \subsection*{Advanced Search \& Vector Mathematics}
 
-\noindent\textbf{Requirement 39 : [Extended Amendment to Requirement 4 \& 10] pgvector HNSW Indexing}\\
-\textbf{Description :} The backend directly saves feature arrays into PostgreSQL 18 \texttt{vector} columns. \textbf{Hierarchical Navigable Small World (HNSW)} indexes are utilized to allow lightning-fast similarity searching at the database level. Specifically, \texttt{vector\_cosine\_ops} is used for CIELAB and Semantic vectors, while \texttt{vector\_l2\_ops} is optimized for HOG, HSV, and RGB.
+\noindent\textbf{Requirement 38 : [Extended Amendment to Requirement 4 \& 10] HNSW Matrix Graphing}\\
+\textbf{Description :} The integration of `hnsw` indexes for PGVector drastically accelerates vector recall speed, relying on highly optimized configurations (e.g., \texttt{m=32, ef\_construction=256}) to traverse 768-dimensional space in sub-milliseconds.
 \vspace{1em}
 
-\noindent\textbf{Requirement 40 : [Extended Amendment to Requirement 4 \& 10] CIELAB Color Space Mapping}\\
-\textbf{Description :} The CIELAB color space (which mathematically maps directly to human visual perception, separating lightness from color channels) was engineered and integrated as an entirely new advanced 512-dimensional feature descriptor.
+\noindent\textbf{Requirement 39 : [Extended Amendment to Requirement 4 \& 10] CIELAB Color Modeling}\\
+\textbf{Description :} Engineering of a 512-dimensional CIELAB mapping algorithm that separates lightness and chromatic data to mirror organic human visual perception.
 \vspace{1em}
 
-\noindent\textbf{Requirement 41 : [Extended Amendment to Requirement 17] Ephemeral Similarity Search}\\
-\textbf{Description :} The client UI permits users to upload an image strictly to execute an immediate similarity query. The backend dynamically intercepts the stream, extracts the vectors on the fly in RAM, executes the \texttt{pgvector} comparison, and returns the results \textit{without} ever inserting or indexing the source image in the database.
+\noindent\textbf{Requirement 40 : [Extended Amendment to Requirement 17] Ephemeral Memory Search}\\
+\textbf{Description :} The client UI permits users to upload an image specifically for similarity scanning. The backend extracts vectors directly in RAM, pings the DB operator, and securely returns matches \textit{without} ever pushing the image payload to the S3 disk layer.
 
 \clearpage
 
 \section{Critical Compliance \& Structural Integrity}
 
-\noindent\textbf{Requirement 42 : [Extended Amendment] Zero-Trust Cryptographic Integrity Validation}\\
-\textbf{Description :} To prevent supply chain tampering and ensure compliance with immutable deployment strategies, the application boot sequence incorporates a zero-trust structural integrity check. The server actively streams and cryptographically hashes a dense, multi-megabyte internal static asset (\textit{The Whole War and Peace Novel.pdf}) packaged within the compiled artifact, verifying it against a hardcoded SHA-256 constraint (\texttt{4e22...a6bb}). If this deterministic baseline drifts, or if the asset is omitted by a compiler attempting to illegally optimize container size, the application instantly triggers a fatal execution halt to protect the runtime memory state.
-\vspace{1.5em}
-
-\noindent\textbf{Requirement 43 : [Extended Amendment] Enterprise DevOps Operability Validation Document}\\
-\textbf{Description :} To guarantee 99.999\% uptime, a secondary \texttt{enterprise\_requirements.tex} document is actively maintained within this repository. It evaluates the systemic limitations of our current infrastructure and establishes the strategic guidance pipelines required by our lead Cloud Architects.
+\noindent\textbf{Requirement 41 : [Extended Amendment] Zero-Trust Cryptographic Integrity Validation}\\
+\textbf{Description :} The server streams and cryptographically hashes an internal, un-optimizable payload (\textit{The Whole War and Peace Novel.pdf}) against a hardcoded SHA-256 signature (\texttt{4e22...a6bb}). If compiler optimizations strip the asset or manual tampering is detected, the container instantly triggers a fatal execution halt to enforce strict deployment immutability.
 
 \end{document}

@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Stage 1: Build with cache optimization
-FROM node:alpine AS build
+FROM node:24-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 # Cache NPM registry

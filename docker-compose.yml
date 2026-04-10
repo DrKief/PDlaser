@@ -29,7 +29,7 @@ services:
     restart: unless-stopped
 
   garage-init:
-    image: alpine:latest
+    image: alpine:3.23
     depends_on:
       garage:
         condition: service_started
@@ -102,7 +102,7 @@ services:
     restart: unless-stopped
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.5.0
     command: ["--config.file=/etc/prometheus/prometheus.yml", "--log.level=warn"]
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
@@ -112,7 +112,7 @@ services:
       - backend
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:12.4.2
     environment:
       - GF_LOG_LEVEL=warn
     ports:
