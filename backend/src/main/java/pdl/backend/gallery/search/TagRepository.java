@@ -186,7 +186,7 @@ public class TagRepository {
       "SELECT i.id, i.extraction_status, u.username as uploader " +
         "FROM images i LEFT JOIN users u ON i.user_id = u.id " +
         "WHERE ((i.user_id = :currentUserId) OR (:onlyUser = false AND i.is_private = false)) " +
-        "AND i.extraction_status = 'COMPLETED' "
+        "AND i.extraction_status != 'FAILED' "
     );
     MapSqlParameterSource params = new MapSqlParameterSource();
     params.addValue("currentUserId", currentUserId);

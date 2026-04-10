@@ -217,17 +217,30 @@ public class GalleryController {
   }
 
   @GetMapping(value = "/{id}/download")
-  public ResponseEntity<?> downloadImage(@PathVariable("id") long id) {
-    Optional<MediaRecord> imageOpt = storageService.getImageWithData(id);
-    if (imageOpt.isEmpty() || imageOpt.get().getData() == null) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Image not found");
+  public ResponseEntity<org.springframework.core.io.InputStreamResource> downloadImage(
+    @PathVariable("id") long id
+  ) {
+    Map<String, Object> metadata;
+    try {
+      metadata = queryRepo.getImageMetadata(id);
+    } catch (Exception e) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Image metadata not found");
     }
-    MediaRecord image = imageOpt.get();
-    String filename = image.getName();
-    return ResponseEntity.ok()
-      .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-      .header(HttpHeaders.CONTENT_TYPE, "image/" + image.getFormat())
-      .body(image.getData());
+
+    String filename = (String) metadata.get("name");
+    String format = (String) metadata.get("format");
+
+    try {
+      // Get the stream from S3
+      var s3Stream = storageService.streamImageFromS3(id, filename);
+
+      return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+        .header(HttpHeaders.CONTENT_TYPE, "image/" + format)
+        .body(new org.springframework.core.io.InputStreamResource(s3Stream));
+    } catch (Exception e) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Image data not found in storage");
+    }
   }
 
   private Long getCurrentUserId() {

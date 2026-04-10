@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
@@ -144,6 +145,13 @@ public class FileStorageService {
       .build();
 
     return s3Presigner.presignGetObject(presignRequest).url().toString();
+  }
+
+  // --- NEW: Stream from S3 ---
+  public ResponseInputStream<GetObjectResponse> streamImageFromS3(long id, String filename) {
+    String s3Key = id + "_" + filename;
+    GetObjectRequest getOb = GetObjectRequest.builder().bucket(bucketName).key(s3Key).build();
+    return s3Client.getObject(getOb);
   }
 
   private String calculateSHA256(byte[] data) {

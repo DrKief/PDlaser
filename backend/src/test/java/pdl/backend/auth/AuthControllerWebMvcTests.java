@@ -33,6 +33,9 @@ class AuthControllerWebMvcTests {
   @MockitoBean
   JwtEncoder jwtEncoder;
 
+  @MockitoBean
+  AppSettingRepository appSettingRepository;
+
   @Test
   void registerReturnsBadRequestWhenUsernameTaken() throws Exception {
     when(userRepository.findByUsername("alice")).thenReturn(
