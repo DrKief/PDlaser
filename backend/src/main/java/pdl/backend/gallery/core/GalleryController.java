@@ -81,12 +81,17 @@ public class GalleryController {
   public ResponseEntity<?> deleteImage(@PathVariable("id") final long id) {
     final Long userId = getCurrentUserId();
     if (userId == null) {
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
-          "You must be logged in to delete images");
+      throw new ResponseStatusException(
+        HttpStatus.UNAUTHORIZED,
+        "You must be logged in to delete images"
+      );
     }
 
     final String role = jdbcTemplate.queryForObject(
-        "SELECT role FROM users WHERE id = ?", String.class, userId);
+      "SELECT role FROM users WHERE id = ?",
+      String.class,
+      userId
+    );
     final boolean isAdmin = "ROLE_ADMIN".equals(role);
 
     final Optional<MediaRecord> imageOpt = storageService.getImageWithData(id);
@@ -95,18 +100,18 @@ public class GalleryController {
     }
 
     final MediaRecord image = imageOpt.get();
-    final boolean notOwner = image.getUserId() == null
-        || !image.getUserId().equals(userId);
+    final boolean notOwner = image.getUserId() == null || !image.getUserId().equals(userId);
 
     if (!isAdmin && notOwner) {
-      throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-          "You do not have permission to delete this image");
+      throw new ResponseStatusException(
+        HttpStatus.FORBIDDEN,
+        "You do not have permission to delete this image"
+      );
     }
 
     final boolean deleted = storageService.deleteImage(id);
     if (!deleted) {
-      throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-          "Failed to delete image");
+      throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to delete image");
     }
     return ResponseEntity.noContent().build();
   }
@@ -125,11 +130,15 @@ public class GalleryController {
     }
 
     Long userId = getCurrentUserId();
-    
+
     // Check role from DB to see if admin
     boolean isAdmin = false;
     if (userId != null) {
-      String role = jdbcTemplate.queryForObject("SELECT role FROM users WHERE id = ?", String.class, userId);
+      String role = jdbcTemplate.queryForObject(
+        "SELECT role FROM users WHERE id = ?",
+        String.class,
+        userId
+      );
       isAdmin = "ROLE_ADMIN".equals(role);
     }
 

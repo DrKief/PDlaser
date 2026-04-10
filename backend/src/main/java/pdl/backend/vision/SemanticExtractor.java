@@ -1,9 +1,8 @@
 package pdl.backend.vision;
 
-import ai.onnxruntime.*;
-import ai.djl.huggingface.tokenizers.HuggingFaceTokenizer;
 import ai.djl.huggingface.tokenizers.Encoding;
-
+import ai.djl.huggingface.tokenizers.HuggingFaceTokenizer;
+import ai.onnxruntime.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
@@ -13,10 +12,10 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Collections;
 
 public class SemanticExtractor {
 
@@ -25,44 +24,50 @@ public class SemanticExtractor {
   private static OrtSession textSession;
   private static HuggingFaceTokenizer tokenizer;
 
-  private static final String MODELS_DIR = System.getenv("APP_MODELS_DIR") != null ? System.getenv("APP_MODELS_DIR") : "models";
-  private static final String VISION_URL = "https://huggingface.co/onnx-community/siglip2-base-patch16-224-ONNX/resolve/main/onnx/vision_model.onnx";
-  private static final String TEXT_URL = "https://huggingface.co/onnx-community/siglip2-base-patch16-224-ONNX/resolve/main/onnx/text_model.onnx";
-  private static final String TOKENIZER_URL = "https://huggingface.co/onnx-community/siglip2-base-patch16-224-ONNX/resolve/main/tokenizer.json";
+  private static final String MODELS_DIR =
+    System.getenv("APP_MODELS_DIR") != null ? System.getenv("APP_MODELS_DIR") : "models";
+  private static final String VISION_URL =
+    "https://huggingface.co/onnx-community/siglip2-base-patch16-224-ONNX/resolve/main/onnx/vision_model.onnx";
+  private static final String TEXT_URL =
+    "https://huggingface.co/onnx-community/siglip2-base-patch16-224-ONNX/resolve/main/onnx/text_model.onnx";
+  private static final String TOKENIZER_URL =
+    "https://huggingface.co/onnx-community/siglip2-base-patch16-224-ONNX/resolve/main/tokenizer.json";
 
   private static final Map<String, String> CUSTOM_TAGS = Map.ofEntries(
-      Map.entry("cinematic_lighting", "a photo with moody cinematic lighting"),
-      Map.entry("natural_light", "a photo with bright and airy natural light"),
-      Map.entry("golden_hour", "a photo taken during golden hour"),
-      Map.entry("black_and_white", "a high contrast black and white photo"),
-      Map.entry("macro", "a macro photography shot"),
-      Map.entry("landscape", "a wide angle landscape photograph"),
-      Map.entry("architecture", "a minimalist architectural photo"),
-      Map.entry("portrait", "a professional portrait of a person"),
-      Map.entry("street_photography", "a candid street photography shot"),
-      Map.entry("wedding", "a photo of a wedding"),
-      Map.entry("wildlife", "a photo of wildlife"),
-      Map.entry("food", "a photo of food"),
-      Map.entry("vehicle", "a photo of a vehicle")
+    Map.entry("cinematic_lighting", "a photo with moody cinematic lighting"),
+    Map.entry("natural_light", "a photo with bright and airy natural light"),
+    Map.entry("golden_hour", "a photo taken during golden hour"),
+    Map.entry("black_and_white", "a high contrast black and white photo"),
+    Map.entry("macro", "a macro photography shot"),
+    Map.entry("landscape", "a wide angle landscape photograph"),
+    Map.entry("architecture", "a minimalist architectural photo"),
+    Map.entry("portrait", "a professional portrait of a person"),
+    Map.entry("street_photography", "a candid street photography shot"),
+    Map.entry("wedding", "a photo of a wedding"),
+    Map.entry("wildlife", "a photo of wildlife"),
+    Map.entry("food", "a photo of food"),
+    Map.entry("vehicle", "a photo of a vehicle")
   );
 
   private static Map<String, float[]> cachedTextEmbeddings = new HashMap<>();
 
   private static File downloadIfMissing(String urlStr, String fileName) throws Exception {
-      File dir = new File(MODELS_DIR);
-      if (!dir.exists()) {
-          dir.mkdirs();
+    File dir = new File(MODELS_DIR);
+    if (!dir.exists()) {
+      dir.mkdirs();
+    }
+    File file = new File(dir, fileName);
+    if (!file.exists()) {
+      System.out.println(
+        "Downloading " + fileName + " from HuggingFace (This may take a while, please wait...)"
+      );
+      URL url = URI.create(urlStr).toURL();
+      try (InputStream in = url.openStream()) {
+        Files.copy(in, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
       }
-      File file = new File(dir, fileName);
-      if (!file.exists()) {
-          System.out.println("Downloading " + fileName + " from HuggingFace (This may take a while, please wait...)");
-          URL url = URI.create(urlStr).toURL();
-          try (InputStream in = url.openStream()) {
-              Files.copy(in, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
-          }
-          System.out.println("Successfully downloaded: " + fileName);
-      }
-      return file;
+      System.out.println("Successfully downloaded: " + fileName);
+    }
+    return file;
   }
 
   static {
@@ -85,35 +90,34 @@ public class SemanticExtractor {
 
       // Sanitize tokenizer.json to remove unsupported keys for older DJL versions
       try {
-          String content = Files.readString(tokenizerFile.toPath());
-          boolean changed = false;
-          if (content.contains("\"fuse_unk\"")) {
-              content = content.replaceAll("\"fuse_unk\":\\s*(true|false),?", "");
-              changed = true;
-          }
-          if (content.contains("\"byte_fallback\"")) {
-              content = content.replaceAll("\"byte_fallback\":\\s*(true|false),?", "");
-              changed = true;
-          }
-          if (changed) {
-              Files.writeString(tokenizerFile.toPath(), content);
-              System.out.println("Sanitized tokenizer.json for compatibility.");
-          }
+        String content = Files.readString(tokenizerFile.toPath());
+        boolean changed = false;
+        if (content.contains("\"fuse_unk\"")) {
+          content = content.replaceAll("\"fuse_unk\":\\s*(true|false),?", "");
+          changed = true;
+        }
+        if (content.contains("\"byte_fallback\"")) {
+          content = content.replaceAll("\"byte_fallback\":\\s*(true|false),?", "");
+          changed = true;
+        }
+        if (changed) {
+          Files.writeString(tokenizerFile.toPath(), content);
+          System.out.println("Sanitized tokenizer.json for compatibility.");
+        }
       } catch (Exception e) {
-          System.err.println("Failed to sanitize tokenizer.json: " + e.getMessage());
+        System.err.println("Failed to sanitize tokenizer.json: " + e.getMessage());
       }
 
       try (InputStream stream = new FileInputStream(tokenizerFile)) {
-         tokenizer = HuggingFaceTokenizer.newInstance(stream, Map.of());
+        tokenizer = HuggingFaceTokenizer.newInstance(stream, Map.of());
       }
 
       if (textSession != null && tokenizer != null) {
-          System.out.println("Caching text embeddings for tags...");
-          for (Map.Entry<String, String> entry : CUSTOM_TAGS.entrySet()) {
-              cachedTextEmbeddings.put(entry.getKey(), extractTextFeature(entry.getValue()));
-          }
+        System.out.println("Caching text embeddings for tags...");
+        for (Map.Entry<String, String> entry : CUSTOM_TAGS.entrySet()) {
+          cachedTextEmbeddings.put(entry.getKey(), extractTextFeature(entry.getValue()));
+        }
       }
-
     } catch (Exception e) {
       System.err.println("CRITICAL: Failed to initialize SemanticExtractor.");
       e.printStackTrace();
@@ -146,7 +150,7 @@ public class SemanticExtractor {
         )
       ) {
         float[][] output = (float[][]) result.get("pooler_output").get().getValue();
-        return normalizeL2(output[0]); 
+        return normalizeL2(output[0]);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -155,24 +159,25 @@ public class SemanticExtractor {
   }
 
   private static float[] extractTextFeature(String text) {
-      if (textSession == null || tokenizer == null) return new float[768];
-      try {
-          Encoding encoding = tokenizer.encode(text);
-          long[] ids = encoding.getIds();
-          
-          long[][] inputIds = new long[1][ids.length];
-          System.arraycopy(ids, 0, inputIds[0], 0, ids.length);
-          
-          try (OnnxTensor tensor = OnnxTensor.createTensor(env, inputIds);
-               OrtSession.Result result = textSession.run(Collections.singletonMap("input_ids", tensor))) {
-              
-              float[][] output = (float[][]) result.get("pooler_output").get().getValue();
-              return normalizeL2(output[0]);
-          }
-      } catch (Exception e) {
-          e.printStackTrace();
-          return new float[768];
+    if (textSession == null || tokenizer == null) return new float[768];
+    try {
+      Encoding encoding = tokenizer.encode(text);
+      long[] ids = encoding.getIds();
+
+      long[][] inputIds = new long[1][ids.length];
+      System.arraycopy(ids, 0, inputIds[0], 0, ids.length);
+
+      try (
+        OnnxTensor tensor = OnnxTensor.createTensor(env, inputIds);
+        OrtSession.Result result = textSession.run(Collections.singletonMap("input_ids", tensor))
+      ) {
+        float[][] output = (float[][]) result.get("pooler_output").get().getValue();
+        return normalizeL2(output[0]);
       }
+    } catch (Exception e) {
+      e.printStackTrace();
+      return new float[768];
+    }
   }
 
   public static List<String> getAutoTags(float[] imageVector) {
@@ -181,10 +186,9 @@ public class SemanticExtractor {
 
     List<Map.Entry<String, float[]>> entries = new ArrayList<>(cachedTextEmbeddings.entrySet());
 
-    entries.sort((a, b) -> Float.compare(
-        dotProduct(imageVector, b.getValue()),
-        dotProduct(imageVector, a.getValue())
-    ));
+    entries.sort((a, b) ->
+      Float.compare(dotProduct(imageVector, b.getValue()), dotProduct(imageVector, a.getValue()))
+    );
 
     float threshold = 0.2f;
 
@@ -199,11 +203,11 @@ public class SemanticExtractor {
 
     return detected;
   }
-  
+
   private static float dotProduct(float[] a, float[] b) {
-      float sum = 0;
-      for (int i = 0; i < a.length; i++) sum += a[i] * b[i];
-      return sum;
+    float sum = 0;
+    for (int i = 0; i < a.length; i++) sum += a[i] * b[i];
+    return sum;
   }
 
   public static float[] normalizeL2(float[] vector) {

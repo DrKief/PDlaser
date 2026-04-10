@@ -277,7 +277,7 @@ public class UnsplashService {
     // This instantly hides them from the frontend catalog
     List<Object[]> batchArgs = new ArrayList<>();
     for (Long id : imageIds) {
-      batchArgs.add(new Object[]{ id });
+      batchArgs.add(new Object[] { id });
     }
     jdbcTemplate.batchUpdate(
       "UPDATE images SET extraction_status = 'DOWNLOADING' WHERE id = ? AND extraction_status = 'REMOTE_METADATA'",
@@ -305,16 +305,22 @@ public class UnsplashService {
         if (bytes != null) {
           record.setData(bytes);
           // storageService sets it to PENDING and our ML queue takes over
-          storageService.processAndSaveImage(record, true); 
+          storageService.processAndSaveImage(record, true);
           Thread.sleep(1000); // Politeness delay
         } else {
           // If bytes are null, it failed to fetch. Revert to REMOTE_METADATA so it shows up again.
-          jdbcTemplate.update("UPDATE images SET extraction_status = 'REMOTE_METADATA' WHERE id = ?", id);
+          jdbcTemplate.update(
+            "UPDATE images SET extraction_status = 'REMOTE_METADATA' WHERE id = ?",
+            id
+          );
         }
       } catch (Exception e) {
         log.error("Failed to import image ID: " + id, e);
         // On any HTTP or network error, revert the status so it isn't permanently stuck as DOWNLOADING
-        jdbcTemplate.update("UPDATE images SET extraction_status = 'REMOTE_METADATA' WHERE id = ?", id);
+        jdbcTemplate.update(
+          "UPDATE images SET extraction_status = 'REMOTE_METADATA' WHERE id = ?",
+          id
+        );
       }
       count++;
     }
@@ -349,7 +355,7 @@ public class UnsplashService {
     params.add(limit);
 
     List<Long> idsToImport = jdbcTemplate.queryForList(dataSql, Long.class, params.toArray());
-    
+
     if (!idsToImport.isEmpty()) {
       importSelectedImages(idsToImport);
     }

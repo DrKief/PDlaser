@@ -1,6 +1,8 @@
 package pdl.backend.vision;
 
 import com.pgvector.PGvector;
+import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
@@ -10,8 +12,6 @@ import java.util.Optional;
 import javax.imageio.ImageIO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import jakarta.annotation.PostConstruct;
-import jakarta.annotation.PreDestroy;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -28,7 +28,7 @@ public class VisionProcessor {
   private final TagRepository queryRepoLayer;
   private final UploadStatusTracker statusNotifier;
   private final FileStorageService fileStorageService;
-  
+
   private volatile boolean isRunning = true;
   private final List<Thread> workers = new ArrayList<>();
 
@@ -71,7 +71,9 @@ public class VisionProcessor {
   @EventListener(ApplicationReadyEvent.class)
   public void resetProcessingOnStartup() {
     log.info("Resetting any stuck PROCESSING images to PENDING");
-    jdbcTemplate.update("UPDATE images SET extraction_status = 'PENDING' WHERE extraction_status = 'PROCESSING'");
+    jdbcTemplate.update(
+      "UPDATE images SET extraction_status = 'PENDING' WHERE extraction_status = 'PROCESSING'"
+    );
   }
 
   private void processQueue() {
@@ -80,8 +82,8 @@ public class VisionProcessor {
         // Atomic lock using SKIP LOCKED
         List<Long> ids = jdbcTemplate.query(
           "UPDATE images SET extraction_status = 'PROCESSING' WHERE id = (" +
-          "  SELECT id FROM images WHERE extraction_status = 'PENDING' ORDER BY id ASC LIMIT 1 FOR UPDATE SKIP LOCKED" +
-          ") RETURNING id",
+            "  SELECT id FROM images WHERE extraction_status = 'PENDING' ORDER BY id ASC LIMIT 1 FOR UPDATE SKIP LOCKED" +
+            ") RETURNING id",
           (rs, rowNum) -> rs.getLong(1)
         );
 
@@ -98,7 +100,8 @@ public class VisionProcessor {
               continue; // proceed to next item
             }
             processImageDescriptors(id, recordOpt.get().getData());
-          } catch (Throwable t) { // MASSIVE CATCH to prevent eternal queue stall
+          } catch (Throwable t) {
+            // MASSIVE CATCH to prevent eternal queue stall
             log.error("SEVERE CRASH processing image ID: {}", id, t);
             queryRepoLayer.updateStatus(id, "FAILED");
             statusNotifier.notify(id, "FAILED");

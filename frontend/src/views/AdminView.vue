@@ -399,32 +399,57 @@ onUnmounted(() => {
     <!-- TAB 3: USER APPROVALS -->
     <div v-if="activeTab === 'users'" class="users-section max-w-lg" style="margin: 0 auto">
       <div class="card meta-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-          <h3 class="meta-title" style="margin-bottom: 0;">Pending Account Approvals</h3>
-          <div style="display: flex; gap: 1rem; align-items: center;">
-            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-primary);">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+          "
+        >
+          <h3 class="meta-title" style="margin-bottom: 0">Pending Account Approvals</h3>
+          <div style="display: flex; gap: 1rem; align-items: center">
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                cursor: pointer;
+                color: var(--text-primary);
+              "
+            >
               <input type="checkbox" v-model="autoApprove" @change="toggleAutoApprove" />
               Auto-Approve New Users
             </label>
-            <button class="btn btn-outline" @click="fetchPendingUsers" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.8rem;">
-              <span class="material-symbols-outlined" style="font-size: 1.2rem;">refresh</span>
+            <button
+              class="btn btn-outline"
+              @click="fetchPendingUsers"
+              style="display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.8rem"
+            >
+              <span class="material-symbols-outlined" style="font-size: 1.2rem">refresh</span>
               Refresh
             </button>
           </div>
         </div>
-        
-        <div v-if="pendingUsers.length === 0" class="empty-state label-text" style="padding: 2rem 0; text-align: center;">
+
+        <div
+          v-if="pendingUsers.length === 0"
+          class="empty-state label-text"
+          style="padding: 2rem 0; text-align: center"
+        >
           No accounts pending approval.
         </div>
-        
+
         <div v-else class="user-list">
           <div v-for="user in pendingUsers" :key="user.id" class="user-item">
             <span class="user-name">@{{ user.username }}</span>
             <div class="user-actions">
-              <button class="btn" @click="approveUser(user.id)" :disabled="isBusy">
-                Approve
-              </button>
-              <button class="btn btn-outline danger" @click="rejectUser(user.id)" :disabled="isBusy">
+              <button class="btn" @click="approveUser(user.id)" :disabled="isBusy">Approve</button>
+              <button
+                class="btn btn-outline danger"
+                @click="rejectUser(user.id)"
+                :disabled="isBusy"
+              >
                 Reject
               </button>
             </div>

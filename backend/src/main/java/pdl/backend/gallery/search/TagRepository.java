@@ -53,11 +53,11 @@ public class TagRepository {
    */
   public Map<String, Object> getImageMetadata(final long id) {
     final Map<String, Object> meta = jdbcTemplate.queryForMap(
-        "SELECT filename as Name, format, width, height, "
-            + "extraction_status, description, photographer_name, "
-            + "camera_make, location_country, stats_downloads, user_id "
-            + "FROM images WHERE id = ?",
-        id
+      "SELECT filename as Name, format, width, height, " +
+        "extraction_status, description, photographer_name, " +
+        "camera_make, location_country, stats_downloads, user_id " +
+        "FROM images WHERE id = ?",
+      id
     );
     meta.put("Keywords", getKeywords(id));
     return meta;
@@ -137,9 +137,9 @@ public class TagRepository {
   public List<String> getPopularKeywords(int limit) {
     return jdbcTemplate.queryForList(
       "SELECT k.keyword FROM imagekeywords k " +
-      "JOIN images i ON k.imageid = i.id " +
-      "WHERE i.extraction_status = 'COMPLETED' AND i.is_private = false " +
-      "GROUP BY k.keyword ORDER BY COUNT(k.imageid) DESC LIMIT ?",
+        "JOIN images i ON k.imageid = i.id " +
+        "WHERE i.extraction_status = 'COMPLETED' AND i.is_private = false " +
+        "GROUP BY k.keyword ORDER BY COUNT(k.imageid) DESC LIMIT ?",
       String.class,
       limit
     );

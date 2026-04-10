@@ -5,11 +5,11 @@ import java.util.concurrent.ThreadPoolExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -37,7 +37,11 @@ public class Application implements AsyncConfigurer {
     return args -> {
       if (userRepository.findByUsername(adminUsername).isEmpty()) {
         log.info("Seeding dynamic ADMIN account...");
-        UserAccount admin = new UserAccount(adminUsername, passwordEncoder.encode(adminPassword), "ROLE_ADMIN");
+        UserAccount admin = new UserAccount(
+          adminUsername,
+          passwordEncoder.encode(adminPassword),
+          "ROLE_ADMIN"
+        );
         admin.setApproved(true);
         userRepository.save(admin);
         log.info("Default ADMIN account successfully seeded. Username: {}", adminUsername);

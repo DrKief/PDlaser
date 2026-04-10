@@ -11,9 +11,9 @@ const currentUserRole = computed(() => {
   const token = localStorage.getItem("token");
   if (!token) return null;
   try {
-    const payloadBase64 = token.split('.')[1];
+    const payloadBase64 = token.split(".")[1];
     if (!payloadBase64) return null;
-    const payloadStr = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
+    const payloadStr = atob(payloadBase64.replace(/-/g, "+").replace(/_/g, "/"));
     return JSON.parse(payloadStr).role;
   } catch (e) {
     return null;
@@ -22,7 +22,7 @@ const currentUserRole = computed(() => {
 
 onMounted(async () => {
   try {
-    const mine = currentUserRole.value === 'ROLE_ADMIN' ? 'false' : 'true';
+    const mine = currentUserRole.value === "ROLE_ADMIN" ? "false" : "true";
     const response = await http.get(`/images?page=0&size=100&mine=${mine}`);
     displayedImages.value = response.data.content;
   } catch (error) {
