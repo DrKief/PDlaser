@@ -89,6 +89,7 @@ services:
       - S3_ACCESS_KEY=${S3_ACCESS_KEY:-GKd9a141dcde05cfa37575793b}
       - S3_SECRET_KEY=${S3_SECRET_KEY:-09ef00b287a87bad8dedd3d2c432b9e9ea801909d525469603f283ef71ca37e8}
       - S3_BUCKET=pdl-images
+      - JWT_SECRET=${JWT_SECRET:-8a9b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0}
       - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK=WARN
     volumes:
       - datasets:/var/lib/pdl/datasets

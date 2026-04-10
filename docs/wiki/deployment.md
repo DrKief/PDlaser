@@ -1,6 +1,6 @@
 # Docker & Deployment Infrastructure
 
-The application operates as a mature, containerized poly-service ecosystem. Configuration is split across three isolated environments (`docker-compose.yml`, `docker-compose.preview.yml`, `docker-compose.prod.yml`).
+The application operates as a mature, containerized poly-service ecosystem. Configuration is split across three isolated environments (`docker-compose.dev.yml`, `docker-compose.preview.yml`, `docker-compose.prod.yml`).
 
 ## Microservice Tiers
 
