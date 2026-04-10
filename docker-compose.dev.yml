@@ -34,7 +34,6 @@ services:
       garage:
         condition: service_started
     network_mode: service:garage
-    networks: []
     pid: service:garage
     environment:
       - ACCESS_KEY=${S3_ACCESS_KEY:-GKd9a141dcde05cfa37575793b}
