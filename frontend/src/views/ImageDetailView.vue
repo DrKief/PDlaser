@@ -82,20 +82,19 @@ const findSimilar = () => {
   router.push({ path: "/", query: { sourceId: imageId } });
 };
 
-const downloadOriginal = async () => {
+const downloadOriginal = () => {
   try {
-    const res = await http.get(`/images/${imageId}/download`);
-    const presignedUrl = res.data.downloadUrl;
+    // Navigate directly to the download endpoint which returns the file with Content-Disposition
+    const downloadUrl = `/images/${imageId}/download`;
 
-    // Invisible anchor tag to trigger browser download
     const a = document.createElement("a");
-    a.href = presignedUrl;
+    a.href = downloadUrl;
     a.target = "_blank";
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
   } catch (error) {
-    console.error("Failed to generate download link", error);
+    console.error("Failed to trigger download", error);
     alert("Failed to download image.");
   }
 };

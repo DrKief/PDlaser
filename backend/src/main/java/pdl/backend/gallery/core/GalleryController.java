@@ -216,16 +216,18 @@ public class GalleryController {
     }
   }
 
-  @GetMapping(value = "/{id}/download", produces = MediaType.APPLICATION_JSON_VALUE)
-  public ResponseEntity<?> getDownloadUrl(@PathVariable("id") long id) {
-      try {
-          Map<String, Object> metadata = queryRepo.getImageMetadata(id);
-          String filename = (String) metadata.get("name"); // Note: "name" is lowercase in the DB result map per the getMetadata method
-          String url = storageService.getPresignedDownloadUrl(id, filename);
-          return ResponseEntity.ok(Map.of("downloadUrl", url));
-      } catch (Exception e) {
+  @GetMapping(value = "/{id}/download")
+  public ResponseEntity<?> downloadImage(@PathVariable("id") long id) {
+      Optional<MediaRecord> imageOpt = storageService.getImageWithData(id);
+      if (imageOpt.isEmpty() || imageOpt.get().getData() == null) {
           throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Image not found");
       }
+      MediaRecord image = imageOpt.get();
+      String filename = image.getName();
+      return ResponseEntity.ok()
+              .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+              .header(HttpHeaders.CONTENT_TYPE, "image/" + image.getFormat())
+              .body(image.getData());
   }
 
   private Long getCurrentUserId() {

@@ -90,6 +90,7 @@ services:
       - S3_ACCESS_KEY=${S3_ACCESS_KEY}
       - S3_SECRET_KEY=${S3_SECRET_KEY}
       - S3_BUCKET=pdl-images
+      - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK=WARN
     expose:
       - "8080"
     volumes:
@@ -105,6 +106,7 @@ services:
 
   prometheus:
     image: prom/prometheus:latest
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--log.level=warn"]
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
     expose:
