@@ -2,9 +2,6 @@ package pdl.backend.gallery.core;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.Iterator;
@@ -20,27 +17,38 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.*;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import java.time.Duration;
+
 @Service
 public class FileStorageService {
 
   private static final Logger log = LoggerFactory.getLogger(FileStorageService.class);
   private final MediaRepository recordRepository;
+  private final S3Client s3Client;
+  private final S3Presigner s3Presigner;
 
-  @Value("${app.image.directory:images}")
-  private String imageDirectoryPath;
+  @Value("${s3.bucket}")
+  private String bucketName;
 
-  public FileStorageService(MediaRepository recordRepository) {
+  public FileStorageService(MediaRepository recordRepository, S3Client s3Client, S3Presigner s3Presigner) {
     this.recordRepository = recordRepository;
+    this.s3Client = s3Client;
+    this.s3Presigner = s3Presigner;
   }
 
   @Transactional
-  public void processAndSaveImage(MediaRecord img, boolean saveToDisk) {
+  public void processAndSaveImage(MediaRecord img, boolean saveToS3) {
     String hash = calculateSHA256(img.getData());
 
     // BUG FIX: Use .equals() for Long object comparison, not !=
     Optional<MediaRecord> existing = recordRepository.findByHash(hash);
     if (existing.isPresent() && (img.getId() == 0 || existing.get().getId() != img.getId())) {
-      throw new ResponseStatusException(HttpStatus.CONFLICT, "Image already exists on the server.");
+      throw new ResponseStatusException(HttpStatus.CONFLICT, "Image already exists.");
     }
 
     img.setHash(hash);
@@ -69,15 +77,14 @@ public class FileStorageService {
     MediaRecord savedImage = recordRepository.save(img);
     img.setId(savedImage.getId());
 
-    if (saveToDisk) {
-      try {
-        Path dirPath = Paths.get(imageDirectoryPath);
-        Files.createDirectories(dirPath);
-        Path filePath = dirPath.resolve(img.getName());
-        Files.write(filePath, img.getData());
-      } catch (IOException e) {
-        throw new RuntimeException("Failed to write image file to disk", e);
-      }
+    if (saveToS3) {
+      String s3Key = savedImage.getId() + "_" + img.getName();
+      PutObjectRequest putOb = PutObjectRequest.builder()
+              .bucket(bucketName)
+              .key(s3Key)
+              .contentType("image/" + img.getFormat())
+              .build();
+      s3Client.putObject(putOb, RequestBody.fromBytes(img.getData()));
     }
   }
 
@@ -86,13 +93,13 @@ public class FileStorageService {
     if (imageOpt.isPresent()) {
       MediaRecord img = imageOpt.get();
       try {
-        Path path = Paths.get(imageDirectoryPath, img.getName());
-        if (Files.exists(path)) {
-          img.setData(Files.readAllBytes(path));
+          String s3Key = img.getId() + "_" + img.getName();
+          GetObjectRequest getOb = GetObjectRequest.builder().bucket(bucketName).key(s3Key).build();
+          byte[] bytes = s3Client.getObjectAsBytes(getOb).asByteArray();
+          img.setData(bytes);
           return Optional.of(img);
-        }
-      } catch (IOException e) {
-        log.error("Found DB record but failed to load physical file for ID: " + id, e);
+      } catch (S3Exception e) {
+          log.error("Failed to load from Garage S3 for ID: " + id, e);
       }
     }
     return Optional.empty();
@@ -104,14 +111,33 @@ public class FileStorageService {
     if (imageOpt.isPresent()) {
       MediaRecord img = imageOpt.get();
       try {
-        Files.deleteIfExists(Paths.get(imageDirectoryPath, img.getName()));
-      } catch (IOException e) {
-        log.error("Could not delete file from disk for ID: " + id, e);
+          String s3Key = img.getId() + "_" + img.getName();
+          DeleteObjectRequest delReq = DeleteObjectRequest.builder().bucket(bucketName).key(s3Key).build();
+          s3Client.deleteObject(delReq);
+      } catch (S3Exception e) {
+          log.error("Failed to delete from Garage S3 for ID: " + id, e);
       }
       recordRepository.delete(img);
       return true;
     }
     return false;
+  }
+
+  // --- NEW: Presigned URL Generation ---
+  public String getPresignedDownloadUrl(long id, String filename) {
+      String s3Key = id + "_" + filename;
+      GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+              .bucket(bucketName)
+              .key(s3Key)
+              .responseContentDisposition("attachment; filename=\"" + filename + "\"")
+              .build();
+
+      GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
+              .signatureDuration(Duration.ofMinutes(15))
+              .getObjectRequest(getObjectRequest)
+              .build();
+
+      return s3Presigner.presignGetObject(presignRequest).url().toString();
   }
 
   private String calculateSHA256(byte[] data) {

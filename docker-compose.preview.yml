@@ -21,6 +21,23 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  garage:
+    image: dxflrs/garage:v2.2.0
+    environment:
+      - GARAGE_DEFAULT_ACCESS_KEY=GK_PDLASER_ADMIN
+      - GARAGE_DEFAULT_SECRET_KEY=super_secret_garage_key_12345
+      - GARAGE_DEFAULT_BUCKET=pdl-images
+    expose:
+      - "3900" # S3 API
+    tmpfs:
+      - /var/lib/garage/data
+      - /var/lib/garage/meta
+    volumes:
+      - ./garage.toml:/etc/garage.toml
+    command: /garage server
+    restart: unless-stopped
+    logging: *default-logging
+
   backend:
     build:
       context: ./backend
@@ -35,6 +52,11 @@ services:
       - APP_MODELS_DIR=/var/lib/pdl/models
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
+      - S3_ENDPOINT=http://garage:3900
+      - S3_REGION=garage
+      - S3_ACCESS_KEY=GK_PDLASER_ADMIN
+      - S3_SECRET_KEY=super_secret_garage_key_12345
+      - S3_BUCKET=pdl-images
     expose:
       - "8080"
     volumes:
@@ -44,7 +66,29 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      garage:
+        condition: service_started
     restart: unless-stopped
+    logging: *default-logging
+
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    expose:
+      - "9090"
+    depends_on:
+      - backend
+    logging: *default-logging
+
+  grafana:
+    image: grafana/grafana:latest
+    environment:
+      - GF_LOG_LEVEL=warn
+    expose:
+      - "3000"
+    depends_on:
+      - prometheus
     logging: *default-logging
 
   frontend:

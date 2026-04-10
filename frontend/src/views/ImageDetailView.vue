@@ -81,6 +81,24 @@ const deleteImage = async () => {
 const findSimilar = () => {
   router.push({ path: "/", query: { sourceId: imageId } });
 };
+
+const downloadOriginal = async () => {
+  try {
+    const res = await http.get(`/images/${imageId}/download`);
+    const presignedUrl = res.data.downloadUrl;
+
+    // Invisible anchor tag to trigger browser download
+    const a = document.createElement("a");
+    a.href = presignedUrl;
+    a.target = "_blank";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch (error) {
+    console.error("Failed to generate download link", error);
+    alert("Failed to download image.");
+  }
+};
 </script>
 
 <template>
@@ -187,6 +205,23 @@ const findSimilar = () => {
           </div>
         </div>
         <div class="actions">
+          <button
+            class="btn w-full"
+            @click="downloadOriginal"
+            :disabled="metadata.extraction_status !== 'COMPLETED'"
+            style="
+              background: transparent;
+              border: 1px solid var(--color-accent);
+              color: var(--color-accent);
+            "
+          >
+            <span
+              class="material-symbols-outlined"
+              style="vertical-align: middle; margin-right: 8px"
+              >download</span
+            >
+            Download Original
+          </button>
           <button
             class="btn w-full"
             @click="findSimilar"

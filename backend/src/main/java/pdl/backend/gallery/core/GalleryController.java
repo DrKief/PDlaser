@@ -216,6 +216,18 @@ public class GalleryController {
     }
   }
 
+  @GetMapping(value = "/{id}/download", produces = MediaType.APPLICATION_JSON_VALUE)
+  public ResponseEntity<?> getDownloadUrl(@PathVariable("id") long id) {
+      try {
+          Map<String, Object> metadata = queryRepo.getImageMetadata(id);
+          String filename = (String) metadata.get("name"); // Note: "name" is lowercase in the DB result map per the getMetadata method
+          String url = storageService.getPresignedDownloadUrl(id, filename);
+          return ResponseEntity.ok(Map.of("downloadUrl", url));
+      } catch (Exception e) {
+          throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Image not found");
+      }
+  }
+
   private Long getCurrentUserId() {
     org.springframework.security.core.Authentication authentication =
       org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
