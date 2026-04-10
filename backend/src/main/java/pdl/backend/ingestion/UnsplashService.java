@@ -91,6 +91,7 @@ public class UnsplashService {
         );
 
         if (pId == null || rawUrl == null) continue;
+        if (!rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) continue;
 
         String description = getCol(cols, colMap, "photo_description", "No description");
         String firstName = getCol(cols, colMap, "photographer_first_name", "");
@@ -301,12 +302,15 @@ public class UnsplashService {
         String remoteUrl = record.getRemoteUrl();
         String fetchUrl = remoteUrl + (remoteUrl.contains("?") ? "&" : "?") + "w=1080&q=85&fm=jpg";
 
+        if (!fetchUrl.startsWith("http://") && !fetchUrl.startsWith("https://")) {
+            fetchUrl = "https://" + fetchUrl;
+        }
+
         byte[] bytes = restTemplate.getForObject(URI.create(fetchUrl), byte[].class);
         if (bytes != null) {
           record.setData(bytes);
           // storageService sets it to PENDING and our ML queue takes over
           storageService.processAndSaveImage(record, true);
-          Thread.sleep(1000); // Politeness delay
         } else {
           // If bytes are null, it failed to fetch. Revert to REMOTE_METADATA so it shows up again.
           jdbcTemplate.update(
@@ -321,6 +325,12 @@ public class UnsplashService {
           "UPDATE images SET extraction_status = 'REMOTE_METADATA' WHERE id = ?",
           id
         );
+      } finally {
+        try {
+          Thread.sleep(1000); // Politeness delay regardless of success or failure
+        } catch (InterruptedException ie) {
+          Thread.currentThread().interrupt();
+        }
       }
       count++;
     }

@@ -356,7 +356,15 @@ onUnmounted(() => {
               >check_circle</span
             >
           </div>
-          <img :src="img.remote_url + '?w=400'" class="thumb" loading="lazy" />
+          <img
+            :src="
+              img.remote_url?.startsWith('http')
+                ? img.remote_url + '?w=400'
+                : 'https://' + img.remote_url + '?w=400'
+            "
+            class="thumb"
+            loading="lazy"
+          />
           <div class="info">
             <span class="photog">📸 {{ img.photographer_name || "Unknown" }}</span>
             <span class="detail">🌍 {{ img.location_country || "Unknown Loc" }}</span>

@@ -5,6 +5,7 @@ services:
       POSTGRES_USER: pdl_user
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pdl_secure_password}
       POSTGRES_DB: pdl_db
+      PGDATA: /var/lib/postgresql/18/data
     ports:
       - "5432:5432"
     tmpfs:
@@ -33,8 +34,8 @@ services:
     depends_on:
       garage:
         condition: service_started
-    network_mode: service:garage
-    pid: service:garage
+    network_mode: "service:garage"
+    pid: "service:garage"
     environment:
       - ACCESS_KEY=${S3_ACCESS_KEY:-GKd9a141dcde05cfa37575793b}
       - SECRET_KEY=${S3_SECRET_KEY:-09ef00b287a87bad8dedd3d2c432b9e9ea801909d525469603f283ef71ca37e8}
@@ -45,6 +46,7 @@ services:
       - -eu
       - -c
       - |
+        # Use the binary from the live Garage container
         G="chroot /proc/1/root /garage"
 
         echo "Waiting for Garage daemon..."
@@ -54,7 +56,7 @@ services:
         done
 
         # 1. Initialize the layout if it hasn't been assigned yet
-        if $$G status 2>&1 | grep -q 'NO ROLE ASSIGNED'; then
+        if $$G status 2>&1 | grep -q "NO ROLE ASSIGNED"; then
           echo "Initializing single-node layout..."
           NODE_ID=$$($$G node id -q)
           $$G layout assign "$$NODE_ID" -z dc1 -c 1G
