@@ -218,16 +218,16 @@ public class GalleryController {
 
   @GetMapping(value = "/{id}/download")
   public ResponseEntity<?> downloadImage(@PathVariable("id") long id) {
-      Optional<MediaRecord> imageOpt = storageService.getImageWithData(id);
-      if (imageOpt.isEmpty() || imageOpt.get().getData() == null) {
-          throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Image not found");
-      }
-      MediaRecord image = imageOpt.get();
-      String filename = image.getName();
-      return ResponseEntity.ok()
-              .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-              .header(HttpHeaders.CONTENT_TYPE, "image/" + image.getFormat())
-              .body(image.getData());
+    Optional<MediaRecord> imageOpt = storageService.getImageWithData(id);
+    if (imageOpt.isEmpty() || imageOpt.get().getData() == null) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Image not found");
+    }
+    MediaRecord image = imageOpt.get();
+    String filename = image.getName();
+    return ResponseEntity.ok()
+      .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+      .header(HttpHeaders.CONTENT_TYPE, "image/" + image.getFormat())
+      .body(image.getData());
   }
 
   private Long getCurrentUserId() {
