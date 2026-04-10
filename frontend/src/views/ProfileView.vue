@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import http from "../api/http-client";
 
@@ -7,9 +7,23 @@ const router = useRouter();
 const displayedImages = ref<any[]>([]);
 const isLoading = ref(true);
 
+const currentUserRole = computed(() => {
+  const token = localStorage.getItem("token");
+  if (!token) return null;
+  try {
+    const payloadBase64 = token.split('.')[1];
+    if (!payloadBase64) return null;
+    const payloadStr = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(payloadStr).role;
+  } catch (e) {
+    return null;
+  }
+});
+
 onMounted(async () => {
   try {
-    const response = await http.get(`/images?page=0&size=100&mine=true`);
+    const mine = currentUserRole.value === 'ROLE_ADMIN' ? 'false' : 'true';
+    const response = await http.get(`/images?page=0&size=100&mine=${mine}`);
     displayedImages.value = response.data.content;
   } catch (error) {
     console.error(error);

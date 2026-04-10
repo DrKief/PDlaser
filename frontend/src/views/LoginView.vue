@@ -19,8 +19,8 @@ const handleLogin = async () => {
     localStorage.removeItem("intendedRoute");
 
     window.location.href = redirectUrl;
-  } catch (e) {
-    errorMessage.value = "Invalid credentials.";
+  } catch (e: any) {
+    errorMessage.value = e.response?.data?.error || "Invalid credentials.";
   }
 };
 </script>

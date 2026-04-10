@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from "vue";
+import { ref, onMounted, onUnmounted, computed, watch } from "vue";
 import http from "../api/http-client";
 
 const activeTab = ref("sync");
@@ -137,6 +137,69 @@ const handleSearch = () => {
   fetchCatalog(0);
 };
 
+// Users Tab
+const pendingUsers = ref<any[]>([]);
+const autoApprove = ref(false);
+
+const fetchAutoApprove = async () => {
+  try {
+    const res = await http.get("/admin/users/settings/auto-approve");
+    autoApprove.value = res.data.enabled;
+  } catch (e) {
+    console.error("Failed to fetch auto-approve setting");
+  }
+};
+
+const toggleAutoApprove = async () => {
+  try {
+    await http.put(`/admin/users/settings/auto-approve?enabled=${autoApprove.value}`);
+  } catch (e) {
+    alert("Failed to update auto-approve setting");
+    autoApprove.value = !autoApprove.value; // revert on fail
+  }
+};
+
+const fetchPendingUsers = async () => {
+  try {
+    const res = await http.get("/admin/users/pending");
+    if (Array.isArray(res.data)) {
+      pendingUsers.value = res.data;
+    } else {
+      console.warn("Expected an array but got something else:", res.data);
+      pendingUsers.value = [];
+    }
+  } catch (e) {
+    console.error("Failed to fetch pending users");
+    pendingUsers.value = [];
+  }
+};
+
+const approveUser = async (id: number) => {
+  try {
+    await http.put(`/admin/users/${id}/approve`);
+    fetchPendingUsers();
+  } catch (e) {
+    alert("Failed to approve user");
+  }
+};
+
+const rejectUser = async (id: number) => {
+  if (!confirm("Are you sure you want to reject and permanently delete this account?")) return;
+  try {
+    await http.delete(`/admin/users/${id}`);
+    fetchPendingUsers();
+  } catch (e) {
+    alert("Failed to reject user");
+  }
+};
+
+watch(activeTab, (newVal) => {
+  if (newVal === "users") {
+    fetchPendingUsers();
+    fetchAutoApprove();
+  }
+});
+
 onMounted(() => {
   checkStatus();
   fetchCatalog();
@@ -169,6 +232,9 @@ onUnmounted(() => {
       </button>
       <button :class="{ active: activeTab === 'catalog' }" @click="activeTab = 'catalog'">
         2. Remote Catalog
+      </button>
+      <button :class="{ active: activeTab === 'users' }" @click="activeTab = 'users'">
+        3. User Approvals <span v-if="pendingUsers.length > 0">({{ pendingUsers.length }})</span>
       </button>
     </div>
 
@@ -327,6 +393,43 @@ onUnmounted(() => {
           ><strong>{{ selectedIds.size }}</strong> images selected for import.</span
         >
         <button class="btn" @click="importSelected" :disabled="isBusy">Download & Vectorize</button>
+      </div>
+    </div>
+
+    <!-- TAB 3: USER APPROVALS -->
+    <div v-if="activeTab === 'users'" class="users-section max-w-lg" style="margin: 0 auto">
+      <div class="card meta-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+          <h3 class="meta-title" style="margin-bottom: 0;">Pending Account Approvals</h3>
+          <div style="display: flex; gap: 1rem; align-items: center;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; color: var(--text-primary);">
+              <input type="checkbox" v-model="autoApprove" @change="toggleAutoApprove" />
+              Auto-Approve New Users
+            </label>
+            <button class="btn btn-outline" @click="fetchPendingUsers" style="display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.8rem;">
+              <span class="material-symbols-outlined" style="font-size: 1.2rem;">refresh</span>
+              Refresh
+            </button>
+          </div>
+        </div>
+        
+        <div v-if="pendingUsers.length === 0" class="empty-state label-text" style="padding: 2rem 0; text-align: center;">
+          No accounts pending approval.
+        </div>
+        
+        <div v-else class="user-list">
+          <div v-for="user in pendingUsers" :key="user.id" class="user-item">
+            <span class="user-name">@{{ user.username }}</span>
+            <div class="user-actions">
+              <button class="btn" @click="approveUser(user.id)" :disabled="isBusy">
+                Approve
+              </button>
+              <button class="btn btn-outline danger" @click="rejectUser(user.id)" :disabled="isBusy">
+                Reject
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -561,5 +664,42 @@ onUnmounted(() => {
   align-items: center;
   z-index: 100;
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.user-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.user-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-surface-alt);
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+}
+.user-name {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+.user-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.danger {
+  color: var(--color-danger);
+  border-color: var(--color-danger);
+}
+.danger:hover:not(:disabled) {
+  background: var(--color-danger);
+  color: #fff;
+}
+
+input[type="radio"] {
+  width: auto;
+  min-height: auto;
 }
 </style>

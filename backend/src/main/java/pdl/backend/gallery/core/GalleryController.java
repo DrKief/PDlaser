@@ -71,10 +71,43 @@ public class GalleryController {
       .body(image.get().getData());
   }
 
+  /**
+   * Deletes an image.
+   *
+   * @param id the image id
+   * @return response entity
+   */
   @DeleteMapping("/{id}")
-  public ResponseEntity<?> deleteImage(@PathVariable("id") long id) {
-    boolean deleted = storageService.deleteImage(id);
-    if (!deleted) throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Image not found");
+  public ResponseEntity<?> deleteImage(@PathVariable("id") final long id) {
+    final Long userId = getCurrentUserId();
+    if (userId == null) {
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+          "You must be logged in to delete images");
+    }
+
+    final String role = jdbcTemplate.queryForObject(
+        "SELECT role FROM users WHERE id = ?", String.class, userId);
+    final boolean isAdmin = "ROLE_ADMIN".equals(role);
+
+    final Optional<MediaRecord> imageOpt = storageService.getImageWithData(id);
+    if (imageOpt.isEmpty()) {
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Image not found");
+    }
+
+    final MediaRecord image = imageOpt.get();
+    final boolean notOwner = image.getUserId() == null
+        || !image.getUserId().equals(userId);
+
+    if (!isAdmin && notOwner) {
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+          "You do not have permission to delete this image");
+    }
+
+    final boolean deleted = storageService.deleteImage(id);
+    if (!deleted) {
+      throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+          "Failed to delete image");
+    }
     return ResponseEntity.noContent().build();
   }
 
@@ -143,12 +176,18 @@ public class GalleryController {
     return statusNotifier.waitFor(id, 10000L);
   }
 
+  /**
+   * Gets image metadata.
+   *
+   * @param id the image id
+   * @return response entity with metadata
+   */
   @GetMapping("/{id}/metadata")
-  public ResponseEntity<?> getMetadata(@PathVariable("id") long id) {
+  public ResponseEntity<?> getMetadata(@PathVariable("id") final long id) {
     try {
-      Map<String, Object> rawMeta = queryRepo.getImageMetadata(id);
-      Map<String, Object> response = new HashMap<>();
-      response.put("Name", rawMeta.get("Name"));
+      final Map<String, Object> rawMeta = queryRepo.getImageMetadata(id);
+      final Map<String, Object> response = new HashMap<>();
+      response.put("Name", rawMeta.get("name"));
       response.put("format", "image/" + rawMeta.get("format"));
       response.put("width", rawMeta.get("width"));
       response.put("height", rawMeta.get("height"));
@@ -159,10 +198,12 @@ public class GalleryController {
       response.put("camera_make", rawMeta.get("camera_make"));
       response.put("location_country", rawMeta.get("location_country"));
       response.put("stats_downloads", rawMeta.get("stats_downloads"));
+      response.put("user_id", rawMeta.get("user_id"));
 
       return ResponseEntity.ok().body(response);
     } catch (Exception e) {
-      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Image not found");
+      e.printStackTrace();
+      throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Image not found", e);
     }
   }
 

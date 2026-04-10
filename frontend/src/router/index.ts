@@ -21,9 +21,26 @@ const router = createRouter({
   routes,
 });
 
+function getUserRole() {
+  const token = localStorage.getItem("token");
+  if (!token) return null;
+  try {
+    const payloadBase64 = token.split('.')[1];
+    if (!payloadBase64) return null;
+    const payloadStr = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(payloadStr).role;
+  } catch (e) {
+    return null;
+  }
+}
+
 router.beforeEach((to, _from, next) => {
   const isAuthenticated = !!localStorage.getItem("token");
-  if (to.name === "upload" && !isAuthenticated) {
+  const role = getUserRole();
+
+  if (to.name === "admin" && role !== "ROLE_ADMIN") {
+    next({ name: "gallery" });
+  } else if (to.name === "upload" && !isAuthenticated) {
     // Save the intended destination before redirecting
     localStorage.setItem("intendedRoute", to.fullPath);
     next({ name: "login" });

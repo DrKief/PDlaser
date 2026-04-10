@@ -28,6 +28,8 @@ services:
       - APP_IMAGE_DIRECTORY=/var/lib/pdl/images
       - APP_UNSPLASH_DATASET_DIR=/var/lib/pdl/datasets
       - APP_MODELS_DIR=/var/lib/pdl/models
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
     volumes:
       - datasets:/var/lib/pdl/datasets
       - ./backend/models:/var/lib/pdl/models

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, onMounted, computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import http from "../api/http-client";
 const route = useRoute();
@@ -10,6 +10,26 @@ const isLoading = ref(true);
 
 const newTag = ref("");
 const isAddingTag = ref(false);
+
+const currentUser = computed(() => {
+  const token = localStorage.getItem("token");
+  if (!token) return null;
+  try {
+    const payloadBase64 = token.split('.')[1];
+    if (!payloadBase64) return null;
+    const payloadStr = atob(payloadBase64.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(payloadStr);
+  } catch (e) {
+    return null;
+  }
+});
+
+const canDelete = computed(() => {
+  if (!currentUser.value) return false;
+  if (currentUser.value.role === "ROLE_ADMIN") return true;
+  if (metadata.value && metadata.value.user_id && currentUser.value.userId === metadata.value.user_id) return true;
+  return false;
+});
 
 const addTag = async () => {
   const tag = newTag.value.trim();
@@ -169,7 +189,7 @@ const findSimilar = () => {
           >
             Find Visually Similar
           </button>
-          <button class="btn btn-outline danger w-full" @click="deleteImage">Delete Image</button>
+          <button class="btn btn-outline danger w-full" @click="deleteImage" v-if="canDelete">Delete Image</button>
         </div>
       </aside>
     </div>

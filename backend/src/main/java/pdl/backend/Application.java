@@ -9,6 +9,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -29,14 +30,17 @@ public class Application implements AsyncConfigurer {
   @Bean
   public CommandLineRunner dataSeeder(
     UserRepository userRepository,
-    PasswordEncoder passwordEncoder
+    PasswordEncoder passwordEncoder,
+    @Value("${app.admin.username}") String adminUsername,
+    @Value("${app.admin.password}") String adminPassword
   ) {
     return args -> {
-      if (userRepository.findByUsername("admin").isEmpty()) {
-        log.info("Seeding default ADMIN account...");
-        UserAccount admin = new UserAccount("admin", passwordEncoder.encode("admin"), "ROLE_ADMIN");
+      if (userRepository.findByUsername(adminUsername).isEmpty()) {
+        log.info("Seeding dynamic ADMIN account...");
+        UserAccount admin = new UserAccount(adminUsername, passwordEncoder.encode(adminPassword), "ROLE_ADMIN");
+        admin.setApproved(true);
         userRepository.save(admin);
-        log.info("Default ADMIN account successfully seeded. Username: admin | Password: admin");
+        log.info("Default ADMIN account successfully seeded. Username: {}", adminUsername);
       }
     };
   }

@@ -32,6 +32,8 @@ services:
       - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
       - APP_IMAGE_DIRECTORY=/var/lib/pdl/images
       - APP_MODELS_DIR=/var/lib/pdl/models
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
     expose:
       - "8080"
     volumes:

@@ -45,10 +45,19 @@ public class TagRepository {
     }
   }
 
-  public Map<String, Object> getImageMetadata(long id) {
-    Map<String, Object> meta = jdbcTemplate.queryForMap(
-      "SELECT filename as Name, format, width, height, extraction_status, description, photographer_name, camera_make, location_country, stats_downloads FROM images WHERE id = ?",
-      id
+  /**
+   * Gets image metadata by id.
+   *
+   * @param id the image id
+   * @return a map of metadata fields
+   */
+  public Map<String, Object> getImageMetadata(final long id) {
+    final Map<String, Object> meta = jdbcTemplate.queryForMap(
+        "SELECT filename as Name, format, width, height, "
+            + "extraction_status, description, photographer_name, "
+            + "camera_make, location_country, stats_downloads, user_id "
+            + "FROM images WHERE id = ?",
+        id
     );
     meta.put("Keywords", getKeywords(id));
     return meta;

@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.List;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Table;
+import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -18,12 +19,24 @@ public class UserAccount implements UserDetails {
   private String password;
   private String role;
 
+  @Column("is_approved")
+  private boolean isApproved;
+
   public UserAccount() {}
 
   public UserAccount(String username, String password, String role) {
     this.username = username;
     this.password = password;
     this.role = role;
+    this.isApproved = false;
+  }
+
+  public boolean isApproved() {
+    return isApproved;
+  }
+
+  public void setApproved(boolean approved) {
+    this.isApproved = approved;
   }
 
   public Long getId() {
@@ -82,6 +95,6 @@ public class UserAccount implements UserDetails {
 
   @Override
   public boolean isEnabled() {
-    return true;
+    return isApproved;
   }
 }
