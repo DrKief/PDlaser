@@ -48,7 +48,7 @@ To clarify the state of each requirement relative to the initial specifications 
 To ensure the system scales efficiently under the load of computational computer vision tasks, the following bleeding-edge standards were established:
 
 \begin{itemize}
-    \item \textbf{Decoupled Background Execution:} Image vectorization (BoofCV) and Semantic extraction (ONNX) are computationally blocking. We deliberately offloaded these tasks to Virtual Threads (Java 21) via a custom \texttt{ThreadPoolTaskExecutor}.
+    \item \textbf{Decoupled Background Execution:} Image vectorization (BoofCV) and Semantic extraction (ONNX) are computationally blocking. We deliberately offloaded these tasks to Virtual Threads (Java 21) via Spring Boot's native Virtual Thread support (\texttt{spring.threads.virtual.enabled}).
     \item \textbf{Distributed S3 Blob Storage:} The backend abandons standard local filesystem IO in favor of \textbf{Garage v2.2.0}, a highly distributed S3-compatible object storage layer, utilizing the AWS Java SDK v2.42.32.
     \item \textbf{Twelve-Factor App Compliance:} The infrastructure strictly adheres to the Twelve-Factor methodology. It treats backing services (PGVector, Garage S3) as attached resources (Factor IV), strictly separates configuration into environment variables (Factor III), executes as stateless processes utilizing stateless JWTs (Factor VI), and maintains absolute Dev/Prod parity using deterministic Docker Compose topologies (Factor X).
     \item \textbf{HNSW Vector Indexing:} We implemented Hierarchical Navigable Small World (HNSW) graphs in PostgreSQL 18 via \texttt{pgvector} 0.1.6, prioritizing read-speed and recall accuracy for our 768-dimensional semantic vectors.
