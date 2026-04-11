@@ -80,7 +80,6 @@ services:
       - DATABASE_NAME=pdl_db
       - DATABASE_USER=pdl_user
       - DATABASE_PASSWORD=${POSTGRES_PASSWORD:-pdl_secure_password}
-      - APP_IMAGE_DIRECTORY=/var/lib/pdl/images
       - APP_UNSPLASH_DATASET_DIR=/var/lib/pdl/datasets
       - APP_MODELS_DIR=/var/lib/pdl/models
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}

@@ -130,23 +130,6 @@ public class FileStorageService {
     return false;
   }
 
-  // --- NEW: Presigned URL Generation ---
-  public String getPresignedDownloadUrl(long id, String filename) {
-    String s3Key = id + "_" + filename;
-    GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-      .bucket(bucketName)
-      .key(s3Key)
-      .responseContentDisposition("attachment; filename=\"" + filename + "\"")
-      .build();
-
-    GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-      .signatureDuration(Duration.ofMinutes(15))
-      .getObjectRequest(getObjectRequest)
-      .build();
-
-    return s3Presigner.presignGetObject(presignRequest).url().toString();
-  }
-
   // --- NEW: Stream from S3 ---
   public ResponseInputStream<GetObjectResponse> streamImageFromS3(long id, String filename) {
     String s3Key = id + "_" + filename;

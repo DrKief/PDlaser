@@ -25,9 +25,6 @@ public class MediaRecord {
   @Column("user_id")
   private Long userId;
 
-  @Column("is_private")
-  private boolean isPrivate;
-
   // --- NEW ROBUST METADATA FIELDS ---
   private String provider = "LOCAL";
 
@@ -39,22 +36,11 @@ public class MediaRecord {
   @Column("photographer_name")
   private String photographerName;
 
-  @Column("photographer_username")
-  private String photographerUsername;
-
   @Column("camera_make")
   private String cameraMake;
 
-  @Column("camera_model")
-  private String cameraModel;
-
-  private Integer iso;
-
   @Column("location_country")
   private String locationCountry;
-
-  @Column("location_city")
-  private String locationCity;
 
   @Column("stats_downloads")
   private Long statsDownloads;
@@ -145,14 +131,6 @@ public class MediaRecord {
     this.userId = userId;
   }
 
-  public boolean isPrivate() {
-    return isPrivate;
-  }
-
-  public void setPrivate(boolean isPrivate) {
-    this.isPrivate = isPrivate;
-  }
-
   // --- ROBUST GETTERS & SETTERS ---
   public String getProvider() {
     return provider;
@@ -186,14 +164,6 @@ public class MediaRecord {
     this.photographerName = photographerName;
   }
 
-  public String getPhotographerUsername() {
-    return photographerUsername;
-  }
-
-  public void setPhotographerUsername(String photographerUsername) {
-    this.photographerUsername = photographerUsername;
-  }
-
   public String getCameraMake() {
     return cameraMake;
   }
@@ -202,36 +172,12 @@ public class MediaRecord {
     this.cameraMake = cameraMake;
   }
 
-  public String getCameraModel() {
-    return cameraModel;
-  }
-
-  public void setCameraModel(String cameraModel) {
-    this.cameraModel = cameraModel;
-  }
-
-  public Integer getIso() {
-    return iso;
-  }
-
-  public void setIso(Integer iso) {
-    this.iso = iso;
-  }
-
   public String getLocationCountry() {
     return locationCountry;
   }
 
   public void setLocationCountry(String locationCountry) {
     this.locationCountry = locationCountry;
-  }
-
-  public String getLocationCity() {
-    return locationCity;
-  }
-
-  public void setLocationCity(String locationCity) {
-    this.locationCity = locationCity;
   }
 
   public Long getStatsDownloads() {

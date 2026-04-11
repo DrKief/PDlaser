@@ -83,7 +83,6 @@ services:
       - DATABASE_NAME=pdl_db
       - DATABASE_USER=pdl_user
       - DATABASE_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-      - APP_IMAGE_DIRECTORY=/var/lib/pdl/images
       - APP_MODELS_DIR=/var/lib/pdl/models
       - ADMIN_USERNAME=${ADMIN_USERNAME:?ADMIN_USERNAME is required}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
@@ -97,7 +96,6 @@ services:
     expose:
       - "8080"
     volumes:
-      - backend_images:/var/lib/pdl/images # BUG FIX: This was incorrectly mapped to pgdata:/var/lib/postgresql previously
       - backend_models:/var/lib/pdl/models
     depends_on:
       db:
@@ -141,7 +139,6 @@ services:
 
 volumes:
   pgdata:
-  backend_images:
   backend_models:
   garage_data:
   garage_meta:

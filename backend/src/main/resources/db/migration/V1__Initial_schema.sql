@@ -16,17 +16,12 @@ CREATE TABLE IF NOT EXISTS images (
     hash VARCHAR(64) UNIQUE,
     extraction_status VARCHAR(20) DEFAULT 'PENDING',
     user_id BIGINT REFERENCES users(id) ON DELETE CASCADE,
-    is_private BOOLEAN DEFAULT false,
     provider VARCHAR(50) DEFAULT 'LOCAL',
     provider_id VARCHAR(100),
     description TEXT,
     photographer_name VARCHAR(255),
-    photographer_username VARCHAR(255),
     camera_make VARCHAR(255),
-    camera_model VARCHAR(255),
-    iso INT,
     location_country VARCHAR(255),
-    location_city VARCHAR(255),
     stats_downloads BIGINT DEFAULT 0,
     remote_url TEXT
 );

@@ -86,7 +86,6 @@ services:
       - DATABASE_NAME=pdl_db
       - DATABASE_USER=pdl_user
       - DATABASE_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
-      - APP_IMAGE_DIRECTORY=/var/lib/pdl/images
       - APP_UNSPLASH_DATASET_DIR=/var/lib/pdl/datasets
       - APP_MODELS_DIR=/var/lib/pdl/models
       - ADMIN_USERNAME=${ADMIN_USERNAME:?ADMIN_USERNAME is required}
@@ -101,7 +100,6 @@ services:
     expose:
       - "8080"
     tmpfs:
-      - /var/lib/pdl/images
       - /var/lib/pdl/datasets
       - /var/lib/pdl/models
     depends_on:

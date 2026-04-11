@@ -13,19 +13,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class HealthCheck implements HealthIndicator {
 
-  @Value("${app.image.directory:images}")
-  private String imageDirectoryPath;
-
   @Override
   public Health health() {
     try {
-      Path path = Paths.get(imageDirectoryPath);
-      if (!Files.exists(path) || !Files.isDirectory(path) || !Files.isWritable(path)) {
-        return Health.down()
-          .withDetail("error", "Image directory is missing or not writable")
-          .build();
-      }
-
       try (
         java.io.InputStream is = getClass().getResourceAsStream("/Whole War and Peace Novel.pdf")
       ) {

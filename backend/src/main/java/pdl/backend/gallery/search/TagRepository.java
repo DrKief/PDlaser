@@ -114,10 +114,9 @@ public class TagRepository {
     return jdbcTemplate.queryForList(
       "SELECT DISTINCT k.keyword FROM imagekeywords k " +
         "JOIN images i ON k.imageid = i.id " +
-        "WHERE (i.is_private = false OR i.user_id = ?) AND i.extraction_status != 'FAILED' " +
+        "WHERE i.extraction_status != 'FAILED' " +
         "ORDER BY k.keyword ASC",
-      String.class,
-      currentUserId
+      String.class
     );
   }
 
@@ -126,10 +125,9 @@ public class TagRepository {
     return jdbcTemplate.queryForList(
       "SELECT DISTINCT k.keyword FROM imagekeywords k " +
         "JOIN images i ON k.imageid = i.id " +
-        "WHERE (i.is_private = false OR i.user_id = ?) AND i.extraction_status != 'FAILED' AND k.keyword LIKE ? " +
+        "WHERE i.extraction_status != 'FAILED' AND k.keyword LIKE ? " +
         "ORDER BY k.keyword ASC LIMIT 8",
       String.class,
-      currentUserId,
       "%" + normalized + "%"
     );
   }
@@ -138,7 +136,7 @@ public class TagRepository {
     return jdbcTemplate.queryForList(
       "SELECT k.keyword FROM imagekeywords k " +
         "JOIN images i ON k.imageid = i.id " +
-        "WHERE i.extraction_status = 'COMPLETED' AND i.is_private = false " +
+        "WHERE i.extraction_status = 'COMPLETED' " +
         "GROUP BY k.keyword ORDER BY COUNT(k.imageid) DESC LIMIT ?",
       String.class,
       limit
@@ -154,7 +152,7 @@ public class TagRepository {
     String sql =
       "SELECT i.id, i.extraction_status, u.username as uploader " +
       "FROM images i LEFT JOIN users u ON i.user_id = u.id " +
-      "WHERE ((i.user_id = ?) OR (? = false AND i.is_private = false)) " +
+      "WHERE (? = false OR i.user_id = ?) " +
       "AND i.extraction_status != 'FAILED' " +
       "ORDER BY i.id DESC LIMIT ? OFFSET ?";
 
@@ -168,8 +166,8 @@ public class TagRepository {
         map.put("extraction_status", rs.getString("extraction_status"));
         return map;
       },
-      currentUserId,
       onlyUser,
+      currentUserId,
       limit,
       offset
     );
@@ -185,7 +183,7 @@ public class TagRepository {
     StringBuilder sql = new StringBuilder(
       "SELECT i.id, i.extraction_status, u.username as uploader " +
         "FROM images i LEFT JOIN users u ON i.user_id = u.id " +
-        "WHERE ((i.user_id = :currentUserId) OR (:onlyUser = false AND i.is_private = false)) " +
+        "WHERE (:onlyUser = false OR i.user_id = :currentUserId) " +
         "AND i.extraction_status != 'FAILED' "
     );
     MapSqlParameterSource params = new MapSqlParameterSource();
@@ -224,8 +222,8 @@ public class TagRepository {
 
   public long getGalleryTotalCount(Long currentUserId, boolean onlyUser) {
     String sql =
-      "SELECT COUNT(*) FROM images i WHERE ((i.user_id = ?) OR (? = false AND i.is_private = false)) AND i.extraction_status != 'FAILED'";
-    Long count = jdbcTemplate.queryForObject(sql, Long.class, currentUserId, onlyUser);
+      "SELECT COUNT(*) FROM images i WHERE (? = false OR i.user_id = ?) AND i.extraction_status != 'FAILED'";
+    Long count = jdbcTemplate.queryForObject(sql, Long.class, onlyUser, currentUserId);
     return count != null ? count : 0L;
   }
 
@@ -239,7 +237,7 @@ public class TagRepository {
     }
 
     StringBuilder sql = new StringBuilder(
-      "SELECT COUNT(*) FROM images i WHERE ((i.user_id = :currentUserId) OR (:onlyUser = false AND i.is_private = false)) AND i.extraction_status != 'FAILED' "
+      "SELECT COUNT(*) FROM images i WHERE (:onlyUser = false OR i.user_id = :currentUserId) AND i.extraction_status != 'FAILED' "
     );
     MapSqlParameterSource params = new MapSqlParameterSource();
     params.addValue("currentUserId", currentUserId);
