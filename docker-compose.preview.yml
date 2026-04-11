@@ -26,6 +26,8 @@ services:
     image: dxflrs/garage:v2.2.0
     expose:
       - "3900" # S3 API
+    environment:
+      - GARAGE_RPC_SECRET=${GARAGE_RPC_SECRET:?GARAGE_RPC_SECRET is required}
     tmpfs:
       - /var/lib/garage/data
       - /var/lib/garage/meta

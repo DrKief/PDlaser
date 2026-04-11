@@ -87,12 +87,7 @@ public class GalleryController {
       );
     }
 
-    final String role = jdbcTemplate.queryForObject(
-      "SELECT role FROM users WHERE id = ?",
-      String.class,
-      userId
-    );
-    final boolean isAdmin = "ROLE_ADMIN".equals(role);
+    final boolean isAdmin = isAdmin();
 
     final Optional<MediaRecord> imageOpt = storageService.getImageWithData(id);
     if (imageOpt.isEmpty()) {
@@ -130,17 +125,7 @@ public class GalleryController {
     }
 
     Long userId = getCurrentUserId();
-
-    // Check role from DB to see if admin
-    boolean isAdmin = false;
-    if (userId != null) {
-      String role = jdbcTemplate.queryForObject(
-        "SELECT role FROM users WHERE id = ?",
-        String.class,
-        userId
-      );
-      isAdmin = "ROLE_ADMIN".equals(role);
-    }
+    boolean isAdmin = isAdmin();
 
     if (!isAdmin && userId != null) {
       Integer pendingCount = jdbcTemplate.queryForObject(
@@ -256,5 +241,11 @@ public class GalleryController {
       }
     }
     return null;
+  }
+
+  private boolean isAdmin() {
+    org.springframework.security.core.Authentication auth =
+      org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+    return auth != null && auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
   }
 }

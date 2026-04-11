@@ -1,9 +1,13 @@
 services:
   db:
     image: pgvector/pgvector:pg18
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
     environment:
       POSTGRES_USER: pdl_user
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pdl_secure_password}
       POSTGRES_DB: pdl_db
       PGDATA: /var/lib/postgresql/18/data
     ports:
@@ -19,6 +23,11 @@ services:
 
   garage:
     image: dxflrs/garage:v2.2.0
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
     ports:
       - "3900:3900" # S3 API
     tmpfs:
@@ -36,9 +45,12 @@ services:
         condition: service_started
     network_mode: "service:garage"
     pid: "service:garage"
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
     environment:
-      - ACCESS_KEY=${S3_ACCESS_KEY:-GKd9a141dcde05cfa37575793b}
-      - SECRET_KEY=${S3_SECRET_KEY:-09ef00b287a87bad8dedd3d2c432b9e9ea801909d525469603f283ef71ca37e8}
       - BUCKET_NAME=pdl-images
     restart: "on-failure:3"
     entrypoint:
@@ -75,21 +87,20 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
     environment:
       - HOST_NAME=db
       - DATABASE_NAME=pdl_db
       - DATABASE_USER=pdl_user
-      - DATABASE_PASSWORD=${POSTGRES_PASSWORD:-pdl_secure_password}
       - APP_UNSPLASH_DATASET_DIR=/var/lib/pdl/datasets
       - APP_MODELS_DIR=/var/lib/pdl/models
-      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
       - S3_ENDPOINT=http://garage:3900
       - S3_REGION=garage
-      - S3_ACCESS_KEY=${S3_ACCESS_KEY:-GKd9a141dcde05cfa37575793b}
-      - S3_SECRET_KEY=${S3_SECRET_KEY:-09ef00b287a87bad8dedd3d2c432b9e9ea801909d525469603f283ef71ca37e8}
       - S3_BUCKET=pdl-images
-      - JWT_SECRET=${JWT_SECRET:-8a9b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0}
       - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK=WARN
     volumes:
       - datasets:/var/lib/pdl/datasets
