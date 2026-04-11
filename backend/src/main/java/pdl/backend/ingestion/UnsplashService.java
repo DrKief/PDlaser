@@ -303,7 +303,7 @@ public class UnsplashService {
         String fetchUrl = remoteUrl + (remoteUrl.contains("?") ? "&" : "?") + "w=1080&q=85&fm=jpg";
 
         if (!fetchUrl.startsWith("http://") && !fetchUrl.startsWith("https://")) {
-            fetchUrl = "https://" + fetchUrl;
+          fetchUrl = "https://" + fetchUrl;
         }
 
         byte[] bytes = restTemplate.getForObject(URI.create(fetchUrl), byte[].class);
