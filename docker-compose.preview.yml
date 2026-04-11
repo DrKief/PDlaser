@@ -36,10 +36,10 @@ services:
     volumes:
       - ./garage.toml:/etc/garage.toml
     command: ["/garage", "server"]
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3900"]
+    healthcheck: # FIX: Use internal CLI instead of HTTP wget
+      test: ["CMD-SHELL", "garage node id -q || exit 1"]
       interval: 5s
-      timeout: 3s
+      timeout: 5s
       retries: 5
     restart: unless-stopped
     logging: *default-logging
@@ -50,7 +50,7 @@ services:
       - .env
     depends_on:
       garage:
-        condition: service_healthy # FIX: Wait for garage to be fully healthy
+        condition: service_healthy
     network_mode: "service:garage"
     pid: "service:garage"
     environment:
@@ -113,7 +113,7 @@ services:
       db:
         condition: service_healthy
       garage:
-        condition: service_healthy # FIX: Wait for garage to be fully healthy
+        condition: service_healthy
     restart: unless-stopped
     logging: *default-logging
 
