@@ -28,3 +28,6 @@ replay_pid*
 /nbdist/
 /.nb-gradle/
 build/
+
+# AI Models
+models/

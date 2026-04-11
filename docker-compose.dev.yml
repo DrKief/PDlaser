@@ -1,0 +1,147 @@
+services:
+  db:
+    image: pgvector/pgvector:pg18
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
+    environment:
+      POSTGRES_USER: pdl_user
+      POSTGRES_DB: pdl_db
+      PGDATA: /var/lib/postgresql/18/data
+    ports:
+      - "5432:5432"
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pdl_user -d pdl_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  garage:
+    image: dxflrs/garage:v2.2.0
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
+    ports:
+      - "3900:3900" # S3 API
+    tmpfs:
+      - /var/lib/garage/data
+      - /var/lib/garage/meta
+    volumes:
+      - ./garage.toml:/etc/garage.toml
+    command: ["/garage", "server"]
+    restart: unless-stopped
+
+  garage-init:
+    image: alpine:3.23
+    depends_on:
+      garage:
+        condition: service_started
+    network_mode: "service:garage"
+    pid: "service:garage"
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
+    environment:
+      - BUCKET_NAME=pdl-images
+    restart: "on-failure:3"
+    entrypoint:
+      - /bin/sh
+      - -eu
+      - -c
+      - |
+        # Use the binary from the live Garage container
+        G="chroot /proc/1/root /garage"
+
+        echo "Waiting for Garage daemon..."
+        for i in $$(seq 1 20); do
+          if $$G node id -q 2>/dev/null; then break; fi
+          sleep 2
+        done
+
+        # 1. Initialize the layout if it hasn't been assigned yet
+        if $$G status 2>&1 | grep -q "NO ROLE ASSIGNED"; then
+          echo "Initializing single-node layout..."
+          NODE_ID=$$($$G node id -q)
+          $$G layout assign "$$NODE_ID" -z dc1 -c 1G
+          $$G layout apply --version 1
+        fi
+
+        # 2. Provision Bucket and Key
+        echo "Configuring bucket and credentials..."
+        $$G key import --yes -n pdl-key "$$ACCESS_KEY" "$$SECRET_KEY" || true
+        $$G bucket create "$$BUCKET_NAME" || true
+        $$G bucket allow "$$BUCKET_NAME" --read --write --owner --key pdl-key || true
+
+        echo "Garage S3 initialized successfully."
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
+    environment:
+      - HOST_NAME=db
+      - DATABASE_NAME=pdl_db
+      - DATABASE_USER=pdl_user
+      - APP_UNSPLASH_DATASET_DIR=/var/lib/pdl/datasets
+      - APP_MODELS_DIR=/var/lib/pdl/models
+      - S3_ENDPOINT=http://garage:3900
+      - S3_REGION=garage
+      - S3_BUCKET=pdl-images
+      - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK=WARN
+    volumes:
+      - datasets:/var/lib/pdl/datasets
+      - ./backend/models:/var/lib/pdl/models
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      garage:
+        condition: service_started
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--log.level=warn"]
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    depends_on:
+      - backend
+
+  grafana:
+    image: grafana/grafana:12.4.2
+    environment:
+      - GF_LOG_LEVEL=warn
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:8080"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  datasets:
