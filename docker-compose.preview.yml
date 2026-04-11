@@ -143,3 +143,11 @@ services:
       - backend
     restart: unless-stopped
     logging: *default-logging
+    networks:
+      - default
+      - dokploy-network
+
+networks:
+  default:
+  dokploy-network:
+    external: true

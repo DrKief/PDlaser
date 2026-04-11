@@ -136,9 +136,17 @@ services:
       - backend
     restart: unless-stopped
     logging: *default-logging
+    networks:
+      - default
+      - dokploy-network
 
 volumes:
   pgdata:
   backend_models:
   garage_data:
   garage_meta:
+
+networks:
+  default:
+  dokploy-network:
+    external: true
