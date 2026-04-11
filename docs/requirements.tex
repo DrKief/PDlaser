@@ -25,12 +25,6 @@
 \section*{Introduction}
 This document presents the rigorous requirements for developing an AI-augmented image similarity search application using a poly-container architecture backed by PostgreSQL 18, Garage S3 blob storage, and high-dimensional vector mathematics.
 
-The application processes color images saved in the following formats:
-\begin{itemize}
-    \item JPEG / JPG
-    \item PNG
-\end{itemize}
-
 \subsection*{Requirement Classifications}
 To clarify the state of each requirement relative to the initial specifications (Besoins 1--27), the following tags are used throughout the document.
 
@@ -54,10 +48,10 @@ To clarify the state of each requirement relative to the initial specifications 
 To ensure the system scales efficiently under the load of computational computer vision tasks, the following bleeding-edge standards were established:
 
 \begin{itemize}
-    \item \textbf{Decoupled Background Execution:} Image vectorization (BoofCV) and Semantic extraction (ONNX) are computationally blocking. We deliberately offloaded these tasks to Virtual Threads (Java 21) via a custom \texttt{ThreadPoolTaskExecutor}, ensuring the HTTP event loop is never blocked.
+    \item \textbf{Decoupled Background Execution:} Image vectorization (BoofCV) and Semantic extraction (ONNX) are computationally blocking. We deliberately offloaded these tasks to Virtual Threads (Java 21) via a custom \texttt{ThreadPoolTaskExecutor}.
     \item \textbf{Distributed S3 Blob Storage:} The backend abandons standard local filesystem IO in favor of \textbf{Garage v2.2.0}, a highly distributed S3-compatible object storage layer, utilizing the AWS Java SDK v2.42.32.
+    \item \textbf{Twelve-Factor App Compliance:} The infrastructure strictly adheres to the Twelve-Factor methodology. It treats backing services (PGVector, Garage S3) as attached resources (Factor IV), strictly separates configuration into environment variables (Factor III), executes as stateless processes utilizing stateless JWTs (Factor VI), and maintains absolute Dev/Prod parity using deterministic Docker Compose topologies (Factor X).
     \item \textbf{HNSW Vector Indexing:} We implemented Hierarchical Navigable Small World (HNSW) graphs in PostgreSQL 18 via \texttt{pgvector} 0.1.6, prioritizing read-speed and recall accuracy for our 768-dimensional semantic vectors.
-    \item \textbf{Stateless Long-Polling:} To provide real-time frontend feedback without the overhead of WebSockets, we implemented HTTP Long-Polling using Spring Boot's \texttt{DeferredResult}.
 \end{itemize}
 
 \clearpage
@@ -202,19 +196,43 @@ To ensure the system scales efficiently under the load of computational computer
 
 \noindent\textbf{Requirement 31 : [Extension] Telemetry Observability Pipelines}\\
 \textbf{Description :} Spring Boot Actuator endpoints are actively scraped by a dedicated \textbf{Prometheus v3.5.0} container and visualized within \textbf{Grafana 12.4.2} dashboards to provide unparalleled metrics on GC latency and virtual thread overhead.
+\vspace{1em}
+
+\noindent\textbf{Requirement 32 : [Extension] SPA Fallback Routing Filter}\\
+\textbf{Description :} A custom \texttt{OncePerRequestFilter} intercepts HTML5 History Mode paths directly in the Tomcat execution context during native development, forwarding undefined routes to \texttt{index.html} without relying on external Nginx fallbacks.
+\vspace{1em}
+
+\noindent\textbf{Requirement 33 : [Extension] SHA-256 Payload Deduplication Layer}\\
+\textbf{Description :} Upon upload, every binary payload is mapped against a cryptographic SHA-256 hash. If an exact duplicate hash is detected, a \texttt{409 Conflict} is explicitly thrown to prevent S3 object storage bloat.
 
 \subsection*{Security \& Dataset Management}
 
-\noindent\textbf{Requirement 32 : [Extension] Stateless JWT Authentication}\\
+\noindent\textbf{Requirement 34 : [Extension] Stateless JWT Authentication}\\
 \textbf{Description :} Fully implemented stateless Role-Based Access Control allowing User and Admin privilege tiers, natively securing deletion and administrative operations.
 \vspace{1em}
 
-\noindent\textbf{Requirement 33 : [Extension] Admin Unsplash Dataset Ingestion}\\
+\noindent\textbf{Requirement 35 : [Extension] Admin Unsplash Dataset Ingestion}\\
 \textbf{Description :} The \texttt{ROLE\_ADMIN} interface features an async ingestion mechanism capable of parsing massive `.tsv` datasets and automatically scheduling rate-limited batch downloads from external CDNs directly into our localized S3 buckets.
+\vspace{1em}
+
+\noindent\textbf{Requirement 36 : [Extension] S3 Presigned URL Secure Downloads}\\
+\textbf{Description :} To bypass unnecessary memory buffering during high-throughput downloads, the application utilizes the AWS SDK \texttt{S3Presigner} to generate cryptographically signed, expiring URLs enabling direct, secure peer-to-peer downloading from the Garage infrastructure.
+\vspace{1em}
+
+\noindent\textbf{Requirement 37 : [Extension] Dynamic Administrator Configuration State}\\
+\textbf{Description :} Global boolean flags, such as \texttt{auto\_approve\_users}, are persisted to a dynamic \texttt{app\_settings} database table, allowing administrators to modify registration security parameters in real-time without restarting containers.
+\vspace{1em}
+
+\noindent\textbf{Requirement 38 : [Extension] Asynchronous Politeness Rate-Limiting}\\
+\textbf{Description :} When processing massive batch downloads from the Unsplash API, the \texttt{UnsplashService} integrates Thread suspension politeness limits, ensuring external CDNs are not DDoS'd by the application's ingestion engine.
+\vspace{1em}
+
+\noindent\textbf{Requirement 39 : [Extension] Upload Request Quotas}\\
+\textbf{Description :} The API actively scans the database queue upon multi-part file reception. Standard users are rate-limited to a maximum of 10 concurrently \texttt{PENDING} machine learning extraction tasks to preserve global CPU stability.
 
 \subsection*{User Interface \& Experience}
 
-\noindent\textbf{Requirement 34 : [Extension] Cruelty Squad Audio-Visual Theme (HUX)}\\
+\noindent\textbf{Requirement 40 : [Extension] Cruelty Squad Audio-Visual Theme (HUX)}\\
 \textbf{Description :} A hidden "Cruelty" theme actively manipulates DOM events to generate a Hostile User Experience, projecting pixel-perfect CRT scanlines and procedural Web Audio API sawtooth frequencies.
 
 \clearpage
@@ -223,36 +241,40 @@ To ensure the system scales efficiently under the load of computational computer
 
 \subsection*{Advanced Image Processing \& AI}
 
-\noindent\textbf{Requirement 35 : [Extended Amendment to Requirement 3] Lanczos3 Spatial Standardization}\\
+\noindent\textbf{Requirement 41 : [Extended Amendment to Requirement 3] Lanczos3 Spatial Standardization}\\
 \textbf{Description :} Before descriptors are computed, all inputs are intercepted and mathematically resampled to a uniform spatial resolution ($256\times256$) using the pristine Lanczos3 algorithm.
 \vspace{1em}
 
-\noindent\textbf{Requirement 36 : [Extended Amendment to Requirement 3] ONNX SigLIP 2 Semantic Inference}\\
+\noindent\textbf{Requirement 42 : [Extended Amendment to Requirement 3] ONNX SigLIP 2 Semantic Inference}\\
 \textbf{Description :} An embedded ONNX Runtime inference engine executes a SigLIP 2 Vision Transformer locally to map images to a 768-dimensional semantic logits array, enabling complex contextual querying.
 \vspace{1em}
 
-\noindent\textbf{Requirement 37 : [Extended Amendment to Requirement 3 \& 7] Long-Polling Thread Suspension}\\
+\noindent\textbf{Requirement 43 : [Extended Amendment to Requirement 3] SigLIP 2 Auto-Tagging}\\
+\textbf{Description :} The ONNX runtime executes dot-product threshold filtering mapping extracted vision logits against a cached array of text token embeddings to dynamically infer semantic boolean tags (e.g., \texttt{wildlife}, \texttt{cinematic\_lighting}) with zero human input.
+\vspace{1em}
+
+\noindent\textbf{Requirement 44 : [Extended Amendment to Requirement 3 \& 7] Long-Polling Thread Suspension}\\
 \textbf{Description :} To limit constant API polling, background async status endpoints use Spring \texttt{DeferredResult} to securely suspend the HTTP context, mimicking real-time Socket updates while remaining purely RESTful.
 \vspace{1.5em}
 
 \subsection*{Advanced Search \& Vector Mathematics}
 
-\noindent\textbf{Requirement 38 : [Extended Amendment to Requirement 4 \& 10] HNSW Matrix Graphing}\\
+\noindent\textbf{Requirement 45 : [Extended Amendment to Requirement 4 \& 10] HNSW Matrix Graphing}\\
 \textbf{Description :} The integration of `hnsw` indexes for PGVector drastically accelerates vector recall speed, relying on highly optimized configurations (e.g., \texttt{m=32, ef\_construction=256}) to traverse 768-dimensional space in sub-milliseconds.
 \vspace{1em}
 
-\noindent\textbf{Requirement 39 : [Extended Amendment to Requirement 4 \& 10] CIELAB Color Modeling}\\
+\noindent\textbf{Requirement 46 : [Extended Amendment to Requirement 4 \& 10] CIELAB Color Modeling}\\
 \textbf{Description :} Engineering of a 512-dimensional CIELAB mapping algorithm that separates lightness and chromatic data to mirror organic human visual perception.
 \vspace{1em}
 
-\noindent\textbf{Requirement 40 : [Extended Amendment to Requirement 17] Ephemeral Memory Search}\\
+\noindent\textbf{Requirement 47 : [Extended Amendment to Requirement 17] Ephemeral Memory Search}\\
 \textbf{Description :} The client UI permits users to upload an image specifically for similarity scanning. The backend extracts vectors directly in RAM, pings the DB operator, and securely returns matches \textit{without} ever pushing the image payload to the S3 disk layer.
 
 \clearpage
 
 \section{Critical Compliance \& Structural Integrity}
 
-\noindent\textbf{Requirement 41 : [Extended Amendment] Zero-Trust Cryptographic Integrity Validation}\\
+\noindent\textbf{Requirement 48 : [Extended Amendment] Zero-Trust Cryptographic Integrity Validation}\\
 \textbf{Description :} The server streams and cryptographically hashes an internal, un-optimizable payload (\textit{The Whole War and Peace Novel.pdf}) against a hardcoded SHA-256 signature (\texttt{4e22...a6bb}). If compiler optimizations strip the asset or manual tampering is detected, the container instantly triggers a fatal execution halt to enforce strict deployment immutability.
 
 \end{document}

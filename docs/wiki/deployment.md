@@ -1,6 +1,23 @@
-# Docker & Deployment Infrastructure
+# Docker, Deployment & Twelve-Factor Methodology
 
-The application operates as a mature, containerized poly-service ecosystem. Configuration is split across three isolated environments (`docker-compose.dev.yml`, `docker-compose.preview.yml`, `docker-compose.prod.yml`).
+The application operates as a mature, containerized poly-service ecosystem strictly adhering to the **Twelve-Factor App** methodology. Configuration is elegantly split across three isolated environments (`docker-compose.dev.yml`, `docker-compose.preview.yml`, `docker-compose.prod.yml`).
+
+## The Twelve-Factor Adherence
+
+We have engineered the system to maximize disposability, parity, and horizontal scalability:
+
+1. **I. Codebase:** One repository tracks the entirety of the architecture (Frontend, Backend, and Infrastructure as Code).
+2. **II. Dependencies:** All backend and frontend dependencies are explicitly declared in `pom.xml` and `package.json`, isolated entirely within Docker multi-stage builds. No system-level packages leak into the containers.
+3. **III. Config:** Zero hardcoded credentials exist in the source. S3 keys, Postgres passwords, and JWT Secrets are injected dynamically into the `application.yaml` via OS-level Environment Variables.
+4. **IV. Backing Services:** PostgreSQL and Garage S3 are treated as detached resources. If Garage goes down, it can be swapped with AWS S3 simply by changing the `S3_ENDPOINT` environment variable without altering a single line of Java code.
+5. **VI. Processes:** The Java API and the Vue SPA execute as entirely stateless processes. Authentication states are handled client-side via JSON Web Tokens (JWT).
+6. **VIII. Concurrency:** Workloads scale effortlessly via the process model. The application leverages Java 21 Virtual Threads, ensuring high-latency ONNX vision extraction does not block the Tomcat HTTP event loop.
+7. **IX. Disposability:** The extraction worker queues use atomic `FOR UPDATE SKIP LOCKED` database transactions. If the backend container is killed mid-extraction, the job safely rolls back to `PENDING` state with zero data corruption.
+8. **X. Dev/Prod Parity:** Developers use the exact same Docker Images locally as the production servers use. The only difference is the deployment topology (e.g., using `tmpfs` mounts in local dev vs named physical volumes in production).
+9. **XI. Logs:** The Spring Boot backend streams unbuffered logs straight to `stdout`, completely ignoring local logfile management, deferring to the Docker daemon (`json-file` driver) to manage log rotation.
+10. **XII. Identity:** Secure, short-lived stateless JWTs establish workload identity between the client, backend, and external backing services.
+
+---
 
 ## Microservice Tiers
 
@@ -8,7 +25,7 @@ The application operates as a mature, containerized poly-service ecosystem. Conf
 
 - **Image:** `pgvector/pgvector:pg18`
 - **Function:** Handles all relational constraints and `hnsw` distance mathematics.
-- **Storage:** Uses `tmpfs` mounts in local/preview environments to enforce deterministic zero-state testing of Flyway migrations, and physical `pgdata` volumes in production.
+- **Storage Parity:** Uses `tmpfs` mounts in local/preview environments to enforce deterministic zero-state testing of Flyway migrations, and physical `pgdata` volumes in production.
 
 ### 2. Object Storage (`garage` & `garage-init`)
 

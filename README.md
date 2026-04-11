@@ -2,8 +2,8 @@
 
 **Live Environments:**
 
-- 🟢 **Production URL:** `http://bigpdlaser.duckdns.org/`
-- 🟡 **Preview URL:** `https://bigpreviewlaser.duckdns.org/gallery`
+- **Production URL:** `http://bigpdlaser.duckdns.org/`
+- **Preview URL:** `https://bigpreviewlaser.duckdns.org/gallery`
 
 ## Overview
 
@@ -11,73 +11,115 @@ PDLaser is a full-stack, AI-augmented image management system built for high-per
 
 **Next-Gen Tech Stack:**
 
-- **Backend:** Java 21, Spring Boot 4.0.5, Spring Data JDBC, Flyway, BoofCV 1.3.0, ONNX Runtime 1.17.1
-- **Frontend:** Vue.js 3.5, TypeScript 6.0, Vite 8.0, Vue Router 5
+- **Backend:** Java 21, Spring Boot 4.0.5, Spring Data JDBC, Flyway, BoofCV 1.3.0, ONNX Runtime 1.24.3
+- **Frontend:** Vue.js 3.5, TypeScript 6.0, Vite 8.0.8, Vue Router 5
 - **Database:** PostgreSQL 18 + `pgvector` (HNSW Indexing)
-- **Infrastructure:** Docker, Docker Compose, Nginx, Dokploy
+- **Infrastructure:** Docker, Docker Compose, Nginx, Garage S3 (v2.2.0)
 
-## Architectural & Organizational Decisions
+---
 
-To accommodate the intense computational requirements of image vectorization and AI inference, several strict architectural decisions were made:
+## [The Twelve-Factor App](https://12factor.net/) Methodology
 
-1. **Distributed Monolith over Microservices:** We retained a monolithic Spring Boot architecture to reduce network latency between the database and the vision processor. However, we decoupled the execution context by offloading all BoofCV and ONNX computations to background **Virtual Threads** via a custom `ThreadPoolTaskExecutor`. This prevents the heavy CPU workload from blocking the main Tomcat HTTP event loop.
-2. **HNSW Indexing over IVFFlat:** For our `pgvector` database, we chose Hierarchical Navigable Small World (HNSW) indexes. While they require more RAM to build than IVFFlat, they provide drastically superior recall speed for our high-dimensional vectors (e.g., 1000D Semantic, 512D CIELAB).
-3. **HTTP Long-Polling (`DeferredResult`):** Instead of introducing the architectural overhead of WebSockets, Redis, and STOMP to track background image extraction, we implemented Long-Polling. The client sends a request to `/status`, and the Spring backend hangs the connection securely in-memory using `DeferredResult` until the virtual thread finishes processing. This maintains statelessness while providing real-time frontend feedback.
-4. **Ephemeral Local Storage (`tmpfs`):** Local and preview Docker databases are strictly mounted to RAM (`tmpfs`). This organizational decision enforces a "clean slate" upon every container restart, guaranteeing that our Flyway schema migrations (`V1` through `V3`) are always tested from zero, completely eliminating configuration drift between developer machines.
-5. **Nginx Reverse Proxying:** To bypass the complexities and performance hits of CORS preflight `OPTIONS` requests, the production Vue 3.5 SPA is served via Nginx, which internally reverse-proxies `/images`, `/auth`, and `/admin` traffic directly to the backend container.
+This application strictly adheres to the modern Twelve-Factor App methodology, ensuring maximum portability, disposability, and dev/prod parity.
 
-## Documentation (Wiki)
+- **I. Codebase:** One repository tracks all microservices, triggering isolated CI/CD builds.
+- **III. Config:** Zero hardcoded credentials. All routing and S3 keys are passed dynamically via environment variables (`application.yaml` / Docker).
+- **IV. Backing Services:** PostgreSQL and Garage S3 are treated as detached, swappable resources.
+- **VI. Processes:** The Java Spring Boot API and Vue SPA are completely stateless. JWT tokens manage sessions.
+- **VIII. Concurrency:** Workloads are scaled horizontally via the process model, heavily utilizing Java 21 Virtual Threads for concurrent ONNX tensor extraction.
+- **IX. Disposability:** Atomic DB row locks (`FOR UPDATE SKIP LOCKED`) and `DeferredResult` ensure the ML extraction queue recovers gracefully from sudden container death.
 
-Detailed project documentation is maintained in the `docs/wiki` folder and our GitLab Wiki:
+---
 
-- 📖 https://gitlab.emi.u-bordeaux.fr/pdl-l3/teams/2026/v3/v3a/-/wikis/home
+## Development Standards & Contributing
 
-### Critical Enterprise Artifacts
+To maintain code quality and a clean Git history, this project enforces strict standards for all contributions:
 
-As part of our commitment to highly scalable, enterprise-ready cloud-native development, two critical components are actively maintained:
+- **[Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):** All commit messages must follow the Conventional Commits specification (e.g., `feat: add SigLIP extraction`, `fix: correct HNSW indexing parameters`). This allows for automated semantic versioning and changelog generation.
+- **Code Formatting:** We use Prettier to enforce a universal, standardized code style across the entire stack (Java, TypeScript, Vue, Markdown). Before submitting any commits, you must format your files by running the following command from the root directory:
+  ```bash
+  npm run format
+  ```
 
-1. **Zero-Trust State Validation:** To prevent localized supply chain tampering, the backend performs a cryptographic Subresource Integrity (SRI) validation via the Spring Boot Health Actuator. The server calculates the SHA-256 hash of a dense internal static asset (_The Whole War and Peace Novel.pdf_) bundled within the compiled `.jar`. If this deterministic baseline is altered, the system triggers a fatal structural collapse to protect runtime execution.
-2. **Enterprise Operations Framework:** An exhaustive `enterprise_requirements.tex` document is included. This defines the systemic limitations of our current architecture and provides strategic guidance mandated by our lead Cloud Architect.
+---
 
-## Getting Started
+## Getting Started & Running the Application
 
 ### Prerequisites
 
-- Docker & Docker Compose
-- Java JDK 21 & Maven 3.9+ (For local non-Docker dev)
-- Node.js 25+ (For local non-Docker dev)
+- **Docker** & **Docker Compose**
+- **Java JDK 21** & **Maven 3.9+** (For local native backend development)
+- **Node.js 24+** (For local native frontend development)
 
-### Quickstart (Docker Containerized Environment)
+### Method A: Fully Containerized (Recommended)
 
-The easiest way to run the entire stack locally is via Docker Compose:
+The project utilizes explicit docker-compose overrides to guarantee Dev/Prod parity.
 
-```bash
-# Build and start the database, backend, and frontend
-docker-compose up --build
-```
-
-- **Frontend:** Available at `http://localhost:3000`
-- **Backend API:** Available at `http://localhost:8080`
-- **Database:** Exposed on port `5432`
-
-_Note: The default `admin` account is automatically seeded (Username: `admin` | Password: `admin`)._
-
-### Development & Formatting
-
-To ensure consistent code styling across both the frontend and backend, we use Prettier. Before committing your code, please run the following command from the root directory:
+**1. Development Environment (Hot-reloading simulated, tmpfs RAM storage):**
 
 ```bash
-npm run format
+docker compose -f docker-compose.dev.yml up --build
 ```
+
+**2. Preview Environment (Logging enabled, isolated network tests):**
+
+```bash
+docker compose -f docker-compose.preview.yml up --build
+```
+
+**3. Production Environment (Persistent SSD Volumes, auto-restart policies):**
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+- **Frontend UI:** `http://localhost:3000`
+- **Backend API:** `http://localhost:8080`
+- **Grafana Telemetry:** `http://localhost:3001` (Requires Prometheus integration)
+
+> **Note:** The default Administrator account is automatically seeded into the database on the first boot (Username: `admin` | Password: `admin`).
+
+---
+
+### Method B: Local Native Execution (Without full Docker)
+
+If you need to run the code natively on your host OS (Arch/Ubuntu) for debugging or IDE breakpoints, you must still spin up the backing services.
+
+**Step 1: Start the Backing Services (DB & Garage S3)**
+
+```bash
+docker compose -f docker-compose.dev.yml up db garage garage-init -d
+```
+
+**Step 2: Run the Java Backend natively**
+The `application.yaml` is pre-configured with default fallbacks to `localhost` for native execution.
+
+```bash
+cd backend
+./mvnw spring-boot:run
+```
+
+**Step 3: Run the Vue Frontend natively**
+_(Note: If running natively, temporarily edit `frontend/vite.config.ts` and change `target: "http://backend:8080"` to `target: "http://localhost:8080"` so Vite proxies to your local host instead of the docker bridge)._
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+---
 
 ## System Compatibility & Validation (Requirement 27)
 
 In accordance with the project specifications, the client, server, and distributed object storage infrastructure have been rigorously compiled, tested, and validated across multiple architectures:
 
 **Server / Infrastructure Environments (x86_64 & ARM64):**
+
 - **Ubuntu 24.04.4 LTS (aarch64):** Oracle Cloud (Neoverse-N1, Linux 6.17.0-1009-oracle). Proves ARM64 Docker compilation and ONNX/pgvector cross-architecture stability.
 - **Arch Linux (x86_64):** AMD Ryzen 5 7640U, Linux 6.19.11-zen1-1-zen.
 
 **Client Environments:**
+
 - **OS:** Arch Linux (KDE Plasma 6.6.4 / Wayland)
 - **Browsers Tested:** Mozilla Firefox, Zen Browser
