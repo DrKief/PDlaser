@@ -49,5 +49,5 @@ We have engineered the system to maximize disposability, parity, and horizontal 
 
 - **Build Stage:** `node:24-alpine`
 - **Runtime Image:** `nginx:alpine`
-- **Function:** Nginx is configured to serve the Vue.js 3.5.32 static files directly.
+- **Function:** Nginx is configured to serve the Vue.js ^3.5.32 static files directly.
 - **Proxy Configuration:** Configured to internally intercept API calls (`/images`, `/auth`, `/admin`) and proxy them directly over the docker bridge network to the Java Backend, completely obfuscating the backend from public internet exposure and resolving CORS issues.

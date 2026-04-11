@@ -12,7 +12,7 @@ Comprehensive guide to the Spring Boot 4.0.5 REST API, including core S3 image s
 
 ### [Frontend Architecture & Views](frontend-architecture)
 
-Detailed overview of the Vue.js 3.5.32 SPA, exploring the component structure, Vue Router 5.0.4 routing, HTTP Long-Polling logic for async tasks, Axios 1.15.0 interceptors, and the Cruelty Squad easter-egg aesthetic (HUX).
+Detailed overview of the Vue.js ^3.5.32 SPA, exploring the component structure, Vue Router 5.0.4 routing, HTTP Long-Polling logic for async tasks, Axios 1.15.0 interceptors, and the Cruelty Squad easter-egg aesthetic (HUX).
 
 ### [Frontend Views Routing](frontend-views)
 

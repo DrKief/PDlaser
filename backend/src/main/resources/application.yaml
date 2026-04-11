@@ -35,6 +35,8 @@ management:
   endpoint:
     health:
       show-details: always
+      cache:
+        time-to-live: 15s
   endpoints:
     web:
       exposure:
