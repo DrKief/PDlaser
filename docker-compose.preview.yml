@@ -1,16 +1,77 @@
-# docker-compose.preview.yml
 services:
   db:
-    image: pgvector/pgvector:pg16
+    image: pgvector/pgvector:pg18
     environment:
       POSTGRES_USER: pdl_user
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-preview_secure_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: pdl_db
+      PGDATA: /var/lib/postgresql/18/data
     expose:
       - "5432"
     tmpfs:
-      - /var/lib/postgresql/data
+      - /var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pdl_user -d pdl_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
+    logging: &default-logging
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  garage:
+    image: dxflrs/garage:v2.2.0
+    expose:
+      - "3900"
+    environment:
+      - GARAGE_RPC_SECRET=${GARAGE_RPC_SECRET:?GARAGE_RPC_SECRET is required}
+    tmpfs:
+      - /var/lib/garage/data
+      - /var/lib/garage/meta
+    volumes:
+      - ./garage.toml:/etc/garage.toml
+    command: ["/garage", "server"]
+    restart: unless-stopped
+    logging: *default-logging
+
+  garage-init:
+    image: alpine:3.23
+    depends_on:
+      garage:
+        condition: service_started
+    network_mode: "service:garage"
+    pid: "service:garage"
+    environment:
+      - ACCESS_KEY=${S3_ACCESS_KEY:?S3_ACCESS_KEY is required}
+      - SECRET_KEY=${S3_SECRET_KEY:?S3_SECRET_KEY is required}
+      - BUCKET_NAME=pdl-images
+      - GARAGE_RPC_SECRET=${GARAGE_RPC_SECRET:?GARAGE_RPC_SECRET is required}
+    restart: "on-failure:3"
+    entrypoint:
+      - /bin/sh
+      - -eu
+      - -c
+      - |
+        G="chroot /proc/1/root /garage"
+        echo "Waiting for Garage daemon..."
+        for i in $$(seq 1 20); do
+          if $$G node id -q 2>/dev/null; then break; fi
+          sleep 2
+        done
+        if $$G status 2>&1 | grep -q "NO ROLE ASSIGNED"; then
+          echo "Initializing single-node layout..."
+          NODE_ID=$$($$G node id -q)
+          $$G layout assign "$$NODE_ID" -z dc1 -c 1G
+          $$G layout apply --version 1
+        fi
+        echo "Configuring bucket and credentials..."
+        $$G key import --yes -n pdl-key "$$ACCESS_KEY" "$$SECRET_KEY" || true
+        $$G bucket create "$$BUCKET_NAME" || true
+        $$G bucket allow "$$BUCKET_NAME" --read --write --owner --key pdl-key || true
+        echo "Garage S3 initialized successfully."
 
   backend:
     build:
@@ -20,13 +81,51 @@ services:
       - HOST_NAME=db
       - DATABASE_NAME=pdl_db
       - DATABASE_USER=pdl_user
-      - DATABASE_PASSWORD=${POSTGRES_PASSWORD:-preview_secure_password}
-      - APP_IMAGE_DIRECTORY=/app/src/main/resources/images
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      - APP_UNSPLASH_DATASET_DIR=/var/lib/pdl/datasets
+      - APP_MODELS_DIR=/var/lib/pdl/models
+      - ADMIN_USERNAME=${ADMIN_USERNAME:?ADMIN_USERNAME is required}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
+      - S3_ENDPOINT=http://garage:3900
+      - S3_REGION=garage
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY:?S3_ACCESS_KEY is required}
+      - S3_SECRET_KEY=${S3_SECRET_KEY:?S3_SECRET_KEY is required}
+      - S3_BUCKET=pdl-images
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
+      - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK=WARN
     expose:
       - "8080"
+    tmpfs:
+      - /var/lib/pdl/datasets
+      - /var/lib/pdl/models
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      garage:
+        condition: service_started
     restart: unless-stopped
+    logging: *default-logging
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--log.level=warn"]
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+    expose:
+      - "9090"
+    depends_on:
+      - backend
+    logging: *default-logging
+
+  grafana:
+    image: grafana/grafana:12.4.2
+    environment:
+      - GF_LOG_LEVEL=warn
+    expose:
+      - "3000"
+    depends_on:
+      - prometheus
+    logging: *default-logging
 
   frontend:
     build:
@@ -37,3 +136,10 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true

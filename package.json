@@ -4,7 +4,8 @@
   "description": "**Live Environments (Coming Soon):** * Production URL: `[Insert Public Production Link Here]` * Preview URL: `[Insert Public Preview Link Here]`",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "format": "prettier -w ."
   },
   "repository": {
     "type": "git",
@@ -15,7 +16,9 @@
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
-    "prettier": "^3.8.1",
-    "prettier-plugin-java": "^2.8.1"
+    "@prettier/plugin-xml": "^3.4.2",
+    "prettier": "3.8.1",
+    "prettier-plugin-java": "2.8.1",
+    "prettier-plugin-sh": "^0.18.0"
   }
 }
