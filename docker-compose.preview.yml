@@ -36,10 +36,10 @@ services:
     volumes:
       - ./garage.toml:/etc/garage.toml
     command: ["/garage", "server"]
-    healthcheck: # FIX: Use internal CLI instead of HTTP wget
-      test: ["CMD-SHELL", "garage node id -q || exit 1"]
+    healthcheck: # FIX: Direct array execution, no shell interpretation
+      test: ["CMD", "/garage", "status"]
       interval: 5s
-      timeout: 5s
+      timeout: 3s
       retries: 5
     restart: unless-stopped
     logging: *default-logging

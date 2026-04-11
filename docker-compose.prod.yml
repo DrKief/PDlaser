@@ -35,10 +35,10 @@ services:
       - garagemeta:/var/lib/garage/meta
       - ./garage.toml:/etc/garage.toml
     command: ["/garage", "server"]
-    healthcheck: # FIX: Use internal CLI instead of HTTP wget
-      test: ["CMD-SHELL", "garage node id -q || exit 1"]
+    healthcheck:
+      test: ["CMD", "/garage", "status"]
       interval: 5s
-      timeout: 5s
+      timeout: 3s
       retries: 5
     restart: unless-stopped
     logging: *default-logging
@@ -116,6 +116,30 @@ services:
     restart: unless-stopped
     logging: *default-logging
 
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--log.level=warn"]
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - promdata:/prometheus
+    expose:
+      - "9090"
+    depends_on:
+      - backend
+    logging: *default-logging
+
+  grafana:
+    image: grafana/grafana:12.4.2
+    environment:
+      - GF_LOG_LEVEL=warn
+    expose:
+      - "3000"
+    volumes:
+      - grafanadata:/var/lib/grafana
+    depends_on:
+      - prometheus
+    logging: *default-logging
+
   frontend:
     build:
       context: ./frontend
@@ -134,6 +158,8 @@ volumes:
   pgdata:
   garagedata:
   garagemeta:
+  promdata:
+  grafanadata:
 
 networks:
   dokploy-network:
