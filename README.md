@@ -11,10 +11,10 @@ PDLaser is a full-stack, AI-augmented image management system built for high-per
 
 **Next-Gen Tech Stack:**
 
-- **Backend:** Java 21, Spring Boot 4.0.5, Spring Data JDBC, Flyway, BoofCV 1.3.0, ONNX Runtime 1.24.3
-- **Frontend:** Vue.js 3.5, TypeScript 6.0, Vite 8.0.8, Vue Router 5
-- **Database:** PostgreSQL 18 + `pgvector` (HNSW Indexing)
-- **Infrastructure:** Docker, Docker Compose, Nginx, Garage S3 (v2.2.0)
+- **Backend:** Java 21, Spring Boot 4.0.5, Spring Data JDBC, Flyway, BoofCV 1.3.0, ONNX Runtime 1.24.3, Twelvemonkeys ImageIO 3.13.1
+- **Frontend:** Vue.js 3.5.32, TypeScript 6.0.2, Vite 8.0.8, Vue Router 5.0.4, Axios 1.15.0
+- **Database:** PostgreSQL 18 + `pgvector` 0.1.6 (HNSW Indexing)
+- **Infrastructure:** Docker, Docker Compose, Nginx (alpine), Garage S3 (v2.2.0)
 
 ---
 

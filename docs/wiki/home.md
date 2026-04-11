@@ -12,7 +12,7 @@ Comprehensive guide to the Spring Boot 4.0.5 REST API, including core S3 image s
 
 ### [Frontend Architecture & Views](frontend-architecture)
 
-Detailed overview of the Vue 3.5 SPA, exploring the component structure, Vue Router 5 routing, HTTP Long-Polling logic for async tasks, Axios 1.15.0 interceptors, and the Cruelty Squad easter-egg aesthetic (HUX).
+Detailed overview of the Vue.js 3.5.32 SPA, exploring the component structure, Vue Router 5.0.4 routing, HTTP Long-Polling logic for async tasks, Axios 1.15.0 interceptors, and the Cruelty Squad easter-egg aesthetic (HUX).
 
 ### [Frontend Views Routing](frontend-views)
 
@@ -24,7 +24,7 @@ Extensive details on the PostgreSQL 18 implementation utilizing the `pgvector` 0
 
 ### [Docker, Deployment & Twelve-Factor](deployment)
 
-Guide to our containerized microservices orchestration and **Twelve-Factor App** compliance. Explains the multi-tier Docker Compose environments, Garage S3 blob storage initialization, Prometheus 3.5 / Grafana 12.4 telemetry observability, and Cryptographic Subresource Integrity limits.
+Guide to our containerized microservices orchestration and **Twelve-Factor App** compliance. Explains the multi-tier Docker Compose environments, Garage S3 blob storage initialization, Prometheus 3.5.0 / Grafana 12.4.2 telemetry observability, and Cryptographic Subresource Integrity limits.
 
 ---
 

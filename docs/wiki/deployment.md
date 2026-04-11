@@ -29,14 +29,15 @@ We have engineered the system to maximize disposability, parity, and horizontal 
 
 ### 2. Object Storage (`garage` & `garage-init`)
 
-- **Image:** `dxflrs/garage:v2.2.0`
+- **Images:** `dxflrs/garage:v2.2.0` (Storage Node) and `alpine:3.23` (Init Job)
 - **Function:** Replaces local filesystem IO with an S3-compatible API cluster. High-performance, distributed blob storage for images.
-- **Provisioning:** A lightweight `alpine:3.23` init container automatically pings the Garage RPC daemon, configures the single-node deployment layout, and provisions the access keys / buckets upon startup.
+- **Provisioning:** A lightweight alpine init container automatically pings the Garage RPC daemon, configures the single-node deployment layout, and provisions the access keys / buckets upon startup.
 
 ### 3. Java Backend (`backend`)
 
-- **Image:** Multi-stage `maven:3.9.6-eclipse-temurin-21-alpine` build $\rightarrow$ `eclipse-temurin:21-jre` runtime.
-- **Function:** Houses the Spring Boot 4.0.5 executable, DJL 0.36.0, and ONNX Runtime 1.24.3 engines. Uses AWS SDK v2.42.32 to interface seamlessly with the Garage container.
+- **Build Stage:** `maven:3.9.6-eclipse-temurin-21-alpine`
+- **Runtime Image:** `eclipse-temurin:21-jre`
+- **Function:** Houses the Spring Boot 4.0.5 executable, DJL Tokenizers 0.36.0, and ONNX Runtime 1.24.3 engines. Uses AWS SDK BOM v2.42.32 to interface seamlessly with the Garage container.
 - **Integrity Safeguard:** Incorporates a rigorous Cryptographic Subresource Integrity check on boot. Validates a hardcoded SHA-256 hash against an internal multi-megabyte PDF payload to guarantee deployment immutability.
 
 ### 4. Telemetry Observability (`prometheus` & `grafana`)
@@ -46,6 +47,7 @@ We have engineered the system to maximize disposability, parity, and horizontal 
 
 ### 5. Frontend & Reverse Proxy (`frontend`)
 
-- **Image:** Multi-stage `node:24-alpine` build (Vite 8.0.8) $\rightarrow$ `nginx:alpine` runtime.
-- **Function:** Nginx is configured to serve the Vue 3.5 static files directly.
+- **Build Stage:** `node:24-alpine`
+- **Runtime Image:** `nginx:alpine`
+- **Function:** Nginx is configured to serve the Vue.js 3.5.32 static files directly.
 - **Proxy Configuration:** Configured to internally intercept API calls (`/images`, `/auth`, `/admin`) and proxy them directly over the docker bridge network to the Java Backend, completely obfuscating the backend from public internet exposure and resolving CORS issues.
