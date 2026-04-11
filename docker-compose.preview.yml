@@ -48,6 +48,7 @@ services:
       - ACCESS_KEY=${S3_ACCESS_KEY:?S3_ACCESS_KEY is required}
       - SECRET_KEY=${S3_SECRET_KEY:?S3_SECRET_KEY is required}
       - BUCKET_NAME=pdl-images
+      - GARAGE_RPC_SECRET=${GARAGE_RPC_SECRET:?GARAGE_RPC_SECRET is required}
     restart: "on-failure:3"
     entrypoint:
       - /bin/sh
@@ -146,6 +147,8 @@ services:
     networks:
       - default
       - dokploy-network
+    labels:
+      - "traefik.docker.network=dokploy-network"
 
 networks:
   default:
