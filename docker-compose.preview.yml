@@ -25,7 +25,7 @@ services:
   garage:
     image: dxflrs/garage:v2.2.0
     expose:
-      - "3900" # S3 API
+      - "3900" 
     environment:
       - GARAGE_RPC_SECRET=${GARAGE_RPC_SECRET:?GARAGE_RPC_SECRET is required}
     tmpfs:
@@ -55,29 +55,22 @@ services:
       - -eu
       - -c
       - |
-        # Use the binary from the live Garage container
         G="chroot /proc/1/root /garage"
-
         echo "Waiting for Garage daemon..."
         for i in $$(seq 1 20); do
           if $$G node id -q 2>/dev/null; then break; fi
           sleep 2
         done
-
-        # 1. Initialize the layout if it hasn't been assigned yet
         if $$G status 2>&1 | grep -q "NO ROLE ASSIGNED"; then
           echo "Initializing single-node layout..."
           NODE_ID=$$($$G node id -q)
           $$G layout assign "$$NODE_ID" -z dc1 -c 1G
           $$G layout apply --version 1
         fi
-
-        # 2. Provision Bucket and Key
         echo "Configuring bucket and credentials..."
         $$G key import --yes -n pdl-key "$$ACCESS_KEY" "$$SECRET_KEY" || true
         $$G bucket create "$$BUCKET_NAME" || true
         $$G bucket allow "$$BUCKET_NAME" --read --write --owner --key pdl-key || true
-
         echo "Garage S3 initialized successfully."
 
   backend:
@@ -145,13 +138,8 @@ services:
     restart: unless-stopped
     logging: *default-logging
     networks:
-      - default
       - dokploy-network
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=dokploy-network"
 
 networks:
-  default:
   dokploy-network:
     external: true
