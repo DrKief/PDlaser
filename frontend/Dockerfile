@@ -28,5 +28,9 @@ RUN addgroup -S appgroup && adduser -S -G appgroup appuser \
   && chown -R appuser:appgroup /var/run/nginx.pid
 
 USER appuser
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget -qO- http://localhost:8080/ || exit 1 
+
 EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]

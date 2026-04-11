@@ -15,7 +15,7 @@ RUN --mount=type=cache,target=/root/.m2 mvn $MAVEN_ARGS clean package -DskipTest
 FROM eclipse-temurin:21-jre
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y gosu && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends gosu curl && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user without forcing UID 1000 (avoids Ubuntu OS collisions)
 RUN groupadd -r appgroup && useradd -r -g appgroup appuser
@@ -27,6 +27,9 @@ RUN mkdir -p /var/lib/pdl/datasets /var/lib/pdl/models \
 COPY --from=builder /app/target/*.jar app.jar
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:8080/actuator/health || exit 1
 
 EXPOSE 8080
 
