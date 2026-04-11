@@ -5,7 +5,27 @@ import http from "../api/http-client";
 const route = useRoute();
 const router = useRouter();
 const imageId = route.params.id as string;
-const metadata = ref<any>(null);
+interface Keyword {
+  keyword: string;
+  isAi?: boolean;
+}
+
+interface ImageMetadata {
+  Name: string;
+  format: string;
+  width: number;
+  height: number;
+  extraction_status: string;
+  user_id?: number;
+  photographer_name?: string;
+  camera_make?: string;
+  location_country?: string;
+  stats_downloads?: number;
+  description?: string;
+  Keywords: Keyword[];
+}
+
+const metadata = ref<ImageMetadata | null>(null);
 const isLoading = ref(true);
 
 const newTag = ref("");
@@ -42,9 +62,11 @@ const addTag = async () => {
   isAddingTag.value = true;
   try {
     await http.put(`/images/${imageId}/keywords?tag=${encodeURIComponent(tag)}`);
-    if (!metadata.value.Keywords) metadata.value.Keywords = [];
-    if (!metadata.value.Keywords.find((k: any) => k.keyword === tag)) {
-      metadata.value.Keywords.push({ keyword: tag, isAi: false });
+    if (metadata.value) {
+      if (!metadata.value.Keywords) metadata.value.Keywords = [];
+      if (!metadata.value.Keywords.find((k: Keyword) => k.keyword === tag)) {
+        metadata.value.Keywords.push({ keyword: tag, isAi: false });
+      }
     }
     newTag.value = "";
   } catch (error) {

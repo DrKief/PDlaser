@@ -20,6 +20,9 @@ import java.util.List;
  */
 public class FeatureExtractor {
 
+  private static final int HOG_DIMENSIONS = 31;
+  private static final float COLOR_SCALE = 256.0f;
+
   public static BufferedImage resizeImageLanczos3(
     BufferedImage inputImage,
     int targetWidth,
@@ -42,7 +45,7 @@ public class FeatureExtractor {
     List<TupleDesc_F64> descriptions = describer.getDescriptions();
 
     if (descriptions.isEmpty()) {
-      return new float[31];
+      return new float[HOG_DIMENSIONS];
     }
 
     int singleDescSize = descriptions.get(0).size();
@@ -109,8 +112,8 @@ public class FeatureExtractor {
         float b = lab.getBand(2).get(x, y);
 
         int lIndex = (int) ((l / 100.0f) * binsPerChannel);
-        int aIndex = (int) (((a + 128) / 256.0f) * binsPerChannel);
-        int bIndex = (int) (((b + 128) / 256.0f) * binsPerChannel);
+        int aIndex = (int) (((a + 128) / COLOR_SCALE) * binsPerChannel);
+        int bIndex = (int) (((b + 128) / COLOR_SCALE) * binsPerChannel);
 
         if (lIndex >= binsPerChannel) lIndex = binsPerChannel - 1;
         if (aIndex >= binsPerChannel) aIndex = binsPerChannel - 1;
@@ -138,9 +141,9 @@ public class FeatureExtractor {
         float g = rgb.getBand(1).get(x, y);
         float b = rgb.getBand(2).get(x, y);
 
-        int rIndex = (int) ((r / 256.0f) * bins);
-        int gIndex = (int) ((g / 256.0f) * bins);
-        int bIndex = (int) ((b / 256.0f) * bins);
+        int rIndex = (int) ((r / COLOR_SCALE) * bins);
+        int gIndex = (int) ((g / COLOR_SCALE) * bins);
+        int bIndex = (int) ((b / COLOR_SCALE) * bins);
 
         if (rIndex >= bins) rIndex = bins - 1;
         if (gIndex >= bins) gIndex = bins - 1;

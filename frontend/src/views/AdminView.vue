@@ -8,10 +8,18 @@ const limit = ref(5000);
 const offset = ref(0);
 const fileType = ref("PHOTOS");
 const selectedFile = ref<File | null>(null);
-let pollingInterval: any = null;
+let pollingInterval: ReturnType<typeof setInterval> | null = null;
 
 // Catalog State
-const catalogImages = ref<any[]>([]);
+interface CatalogImage {
+  id: number;
+  remote_url: string;
+  photographer_name: string;
+  camera_make?: string;
+  location_country?: string;
+  stats_downloads?: number;
+}
+const catalogImages = ref<CatalogImage[]>([]);
 const searchQuery = ref("");
 const searchCamera = ref("");
 const searchCountry = ref("");
@@ -138,7 +146,11 @@ const handleSearch = () => {
 };
 
 // Users Tab
-const pendingUsers = ref<any[]>([]);
+interface PendingUser {
+  id: number;
+  username: string;
+}
+const pendingUsers = ref<PendingUser[]>([]);
 const autoApprove = ref(false);
 
 const fetchAutoApprove = async () => {
@@ -207,7 +219,9 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-  clearInterval(pollingInterval);
+  if (pollingInterval !== null) {
+    clearInterval(pollingInterval);
+  }
 });
 </script>
 

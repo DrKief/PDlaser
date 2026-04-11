@@ -52,7 +52,7 @@ public class SimilarityRepository {
         "  FROM imagedescriptors d " +
         "  JOIN images i ON d.imageid = i.id " +
         "  WHERE d.imageid != ? AND i.extraction_status = 'COMPLETED' " +
-        "  ORDER BY distance ASC LIMIT ?" +
+        "  ORDER BY (? * (d.hogvector <=> ?) + ? * (d.labvector <=> ?) + ? * (d.hsvvector <=> ?)) ASC LIMIT ?" +
         ") " +
         "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
         "FROM vector_matches v JOIN images i ON v.imageid = i.id " +
@@ -67,6 +67,12 @@ public class SimilarityRepository {
         WEIGHT_HSV,
         vectors[1],
         targetId,
+        WEIGHT_HOG,
+        vectors[0],
+        WEIGHT_LAB,
+        vectors[2],
+        WEIGHT_HSV,
+        vectors[1],
         limit
       );
     }
@@ -100,13 +106,13 @@ public class SimilarityRepository {
       "  FROM imagedescriptors d " +
       "  JOIN images i ON d.imageid = i.id " +
       "  WHERE d.imageid != ? AND i.extraction_status = 'COMPLETED' " +
-      "  ORDER BY distance ASC LIMIT ?" +
+      "  ORDER BY " + vectorColumn + " <=> ? LIMIT ?" +
       ") " +
       "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
       "FROM vector_matches v JOIN images i ON v.imageid = i.id " +
       "ORDER BY v.distance ASC";
 
-    return jdbcTemplate.queryForList(sql, targetVector, targetId, limit);
+    return jdbcTemplate.queryForList(sql, targetVector, targetId, targetVector, limit);
   }
 
   public List<Map<String, Object>> findSimilarByVector(
@@ -132,12 +138,12 @@ public class SimilarityRepository {
       "  FROM imagedescriptors d " +
       "  JOIN images i ON d.imageid = i.id " +
       "  WHERE i.extraction_status = 'COMPLETED' " +
-      "  ORDER BY distance ASC LIMIT ?" +
+      "  ORDER BY " + vectorColumn + " <=> ? LIMIT ?" +
       ") " +
       "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
       "FROM vector_matches v JOIN images i ON v.imageid = i.id " +
       "ORDER BY v.distance ASC";
 
-    return jdbcTemplate.queryForList(sql, targetVector, limit);
+    return jdbcTemplate.queryForList(sql, targetVector, targetVector, limit);
   }
 }

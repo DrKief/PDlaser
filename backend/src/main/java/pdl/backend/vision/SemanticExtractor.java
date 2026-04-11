@@ -24,6 +24,9 @@ public class SemanticExtractor {
   private static OrtSession textSession;
   private static HuggingFaceTokenizer tokenizer;
 
+  private static final int TARGET_RESOLUTION = 224;
+  private static final int SIGLIP_DIMENSIONS = 768;
+
   private static final String MODELS_DIR =
     System.getenv("APP_MODELS_DIR") != null ? System.getenv("APP_MODELS_DIR") : "models";
   private static final String VISION_URL =
@@ -125,13 +128,13 @@ public class SemanticExtractor {
   }
 
   public static float[] extractSemanticFeatures(BufferedImage img) {
-    if (visionSession == null) return new float[768];
+    if (visionSession == null) return new float[SIGLIP_DIMENSIONS];
     try {
-      BufferedImage resized = FeatureExtractor.resizeImageLanczos3(img, 224, 224);
-      float[][][][] inputTensor = new float[1][3][224][224];
+      BufferedImage resized = FeatureExtractor.resizeImageLanczos3(img, TARGET_RESOLUTION, TARGET_RESOLUTION);
+      float[][][][] inputTensor = new float[1][3][TARGET_RESOLUTION][TARGET_RESOLUTION];
 
-      for (int y = 0; y < 224; y++) {
-        for (int x = 0; x < 224; x++) {
+      for (int y = 0; y < TARGET_RESOLUTION; y++) {
+        for (int x = 0; x < TARGET_RESOLUTION; x++) {
           int rgb = resized.getRGB(x, y);
           float r = ((rgb >> 16) & 0xFF) / 255.0f;
           float g = ((rgb >> 8) & 0xFF) / 255.0f;
@@ -154,12 +157,12 @@ public class SemanticExtractor {
       }
     } catch (Exception e) {
       e.printStackTrace();
-      return new float[768];
+      return new float[SIGLIP_DIMENSIONS];
     }
   }
 
   private static float[] extractTextFeature(String text) {
-    if (textSession == null || tokenizer == null) return new float[768];
+    if (textSession == null || tokenizer == null) return new float[SIGLIP_DIMENSIONS];
     try {
       Encoding encoding = tokenizer.encode(text);
       long[] ids = encoding.getIds();
@@ -176,13 +179,13 @@ public class SemanticExtractor {
       }
     } catch (Exception e) {
       e.printStackTrace();
-      return new float[768];
+      return new float[SIGLIP_DIMENSIONS];
     }
   }
 
   public static List<String> getAutoTags(float[] imageVector) {
     List<String> detected = new ArrayList<>();
-    if (cachedTextEmbeddings.isEmpty() || imageVector.length != 768) return detected;
+    if (cachedTextEmbeddings.isEmpty() || imageVector.length != SIGLIP_DIMENSIONS) return detected;
 
     List<Map.Entry<String, float[]>> entries = new ArrayList<>(cachedTextEmbeddings.entrySet());
 

@@ -3,8 +3,10 @@ import { ref, onMounted, computed } from "vue";
 import { useRouter } from "vue-router";
 import http from "../api/http-client";
 
+import { type Image } from "../composables/useGallerySearch";
+
 const router = useRouter();
-const displayedImages = ref<any[]>([]);
+const displayedImages = ref<Image[]>([]);
 const isLoading = ref(true);
 
 const currentUserRole = computed(() => {
@@ -32,7 +34,7 @@ onMounted(async () => {
   }
 });
 
-const deleteImage = async (id: number, event: Event) => {
+const deleteImage = async (id: number | string, event: Event) => {
   event.stopPropagation();
   if (!confirm("Are you sure you want to permanently delete this image?")) return;
   try {
@@ -64,7 +66,7 @@ const deleteImage = async (id: number, event: Event) => {
         class="artifact-card"
         @click="router.push(`/image/${image.id}`)"
       >
-        <img :src="'/images/' + image.id" class="artifact-img" loading="lazy" />
+        <img :src="'/images/' + image.id" class="artifact-img" loading="lazy" draggable="false" />
 
         <div class="hover-actions">
           <button

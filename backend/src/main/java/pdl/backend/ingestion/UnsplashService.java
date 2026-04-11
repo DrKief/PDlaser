@@ -57,7 +57,7 @@ public class UnsplashService {
     return defaultVal;
   }
 
-  @Async("taskExecutor")
+  @Async
   public void syncMetadataFromFile(Path tempFilePath, int limit, int offset) {
     status = "SYNCING_METADATA";
     UserAccount admin = userRepository.findByUsername("admin").orElseThrow();
@@ -144,7 +144,7 @@ public class UnsplashService {
     }
   }
 
-  @Async("taskExecutor")
+  @Async
   public void syncKeywordsFromFile(Path tempFilePath, int limit, int offset) {
     status = "SYNCING_KEYWORDS";
 
@@ -270,7 +270,7 @@ public class UnsplashService {
     return result;
   }
 
-  @Async("taskExecutor")
+  @Async
   public void importSelectedImages(List<Long> imageIds) {
     if (imageIds == null || imageIds.isEmpty()) return;
 

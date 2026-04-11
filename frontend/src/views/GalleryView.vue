@@ -31,7 +31,12 @@ const openSimilarityForImage = (id: number | string) => {
   }
 };
 
-const handleSimilarityResults = (payload: any) => {
+const handleSimilarityResults = (payload: {
+  results: any[];
+  sourceId: number | null;
+  isEphemeral?: boolean;
+  fileUrl?: string;
+}) => {
   const { results, sourceId, isEphemeral, fileUrl } = payload;
 
   // 1. Establish the visual Source Image highlight
@@ -52,7 +57,7 @@ const handleSimilarityResults = (payload: any) => {
   }
 
   // 2. Map the mathematical results
-  similarityResultsOverride.value = results.map((res: any) => ({
+  similarityResultsOverride.value = results.map((res: { id: number; score: number }) => ({
     id: res.id,
     url: `/images/${res.id}`,
     uploader: "Matched Result",
@@ -68,7 +73,7 @@ const loadImages = async (reset = false) => {
 
   try {
     const activeTag = route.query.tags as string;
-    let response: any;
+    let response: { data: { content: any[]; totalElements: number } };
     if (activeTag) {
       response = await http.get("/images/search", {
         params: { keywords: activeTag, page: currentPage.value, size: displayLimit.value },
@@ -77,16 +82,18 @@ const loadImages = async (reset = false) => {
       response = await http.get(`/images?page=${currentPage.value}&size=${displayLimit.value}`);
     }
 
-    const { content, totalElements } = response.data as { content: any[]; totalElements: number };
+    const { content, totalElements } = response.data;
 
     // Map full backend data including extraction_status
-    displayedImages.value = content.map((img: any) => ({
-      id: img.id,
-      url: `/images/${img.id}`,
-      uploader: img.uploader,
-      keywords: img.keywords || [],
-      extraction_status: img.extraction_status,
-    }));
+    displayedImages.value = content.map(
+      (img: { id: number; uploader: string; keywords: any[]; extraction_status: string }) => ({
+        id: img.id,
+        url: `/images/${img.id}`,
+        uploader: img.uploader,
+        keywords: img.keywords || [],
+        extraction_status: img.extraction_status,
+      }),
+    );
     totalPages.value = Math.ceil(totalElements / displayLimit.value) || 1;
   } catch (error) {
     if (reset) {
@@ -180,7 +187,7 @@ const goToImage = (id: number | string) => {
               <span class="material-symbols-outlined" style="font-size: 1rem">target</span>
               SOURCE TARGET
             </div>
-            <img :src="similaritySourceOverride.url" class="artifact-img" />
+            <img :src="similaritySourceOverride.url" class="artifact-img" draggable="false" />
           </article>
 
           <article
@@ -193,6 +200,7 @@ const goToImage = (id: number | string) => {
               @click="goToImage(image.id)"
               class="artifact-img"
               loading="lazy"
+              draggable="false"
             />
 
             <div class="hover-actions" v-if="typeof image.id === 'number'">

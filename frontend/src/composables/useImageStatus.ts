@@ -3,6 +3,7 @@ import http from "../api/http-client";
 
 const statusCache = reactive<Record<number, string>>({});
 const activeConnections = new Set<number>();
+const abortControllers = new Map<number, AbortController>();
 
 export function useImageStatus() {
   const getStatus = (id: number) => statusCache[id];
@@ -19,6 +20,14 @@ export function useImageStatus() {
     }
   };
 
+  const abortPoll = (id: number) => {
+    if (abortControllers.has(id)) {
+      abortControllers.get(id)?.abort();
+      abortControllers.delete(id);
+    }
+    activeConnections.delete(id);
+  };
+
   const pollStatus = async (id: number) => {
     if (activeConnections.has(id)) return;
     activeConnections.add(id);
@@ -29,8 +38,16 @@ export function useImageStatus() {
           break;
         }
 
+        const controller = new AbortController();
+        abortControllers.set(id, controller);
+
         // This will now "hang" securely until the server returns an update or a timeout triggers.
-        const response = await http.get(`/images/${id}/status`);
+        const response = await http.get(`/images/${id}/status`, {
+          signal: controller.signal,
+        });
+
+        abortControllers.delete(id);
+
         const status = response.data.extraction_status;
         statusCache[id] = status;
 
@@ -38,9 +55,12 @@ export function useImageStatus() {
           break;
         }
       }
-    } catch (e) {
-      console.error(`Error in long polling for image ${id}`, e);
+    } catch (e: any) {
+      if (e.name !== "CanceledError") {
+        console.error(`Error in long polling for image ${id}`, e);
+      }
     } finally {
+      abortControllers.delete(id);
       activeConnections.delete(id);
     }
   };
@@ -50,5 +70,6 @@ export function useImageStatus() {
     getStatus,
     fetchStatus,
     pollStatus,
+    abortPoll,
   };
 }
