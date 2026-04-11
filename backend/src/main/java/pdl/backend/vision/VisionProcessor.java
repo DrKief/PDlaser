@@ -48,7 +48,7 @@ public class VisionProcessor {
   public void startWorkers() {
     log.info("Starting 2 dedicated VisionProcessor ML worker threads");
     for (int i = 0; i < 2; i++) {
-Thread worker = Thread.ofVirtual().name("MLWorker-", i).start(this::processQueue);
+      Thread worker = Thread.ofVirtual().name("MLWorker-", i).start(this::processQueue);
       workers.add(worker);
     }
   }

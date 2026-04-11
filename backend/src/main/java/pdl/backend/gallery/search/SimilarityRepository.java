@@ -106,7 +106,9 @@ public class SimilarityRepository {
       "  FROM imagedescriptors d " +
       "  JOIN images i ON d.imageid = i.id " +
       "  WHERE d.imageid != ? AND i.extraction_status = 'COMPLETED' " +
-      "  ORDER BY " + vectorColumn + " <=> ? LIMIT ?" +
+      "  ORDER BY " +
+      vectorColumn +
+      " <=> ? LIMIT ?" +
       ") " +
       "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
       "FROM vector_matches v JOIN images i ON v.imageid = i.id " +
@@ -138,7 +140,9 @@ public class SimilarityRepository {
       "  FROM imagedescriptors d " +
       "  JOIN images i ON d.imageid = i.id " +
       "  WHERE i.extraction_status = 'COMPLETED' " +
-      "  ORDER BY " + vectorColumn + " <=> ? LIMIT ?" +
+      "  ORDER BY " +
+      vectorColumn +
+      " <=> ? LIMIT ?" +
       ") " +
       "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
       "FROM vector_matches v JOIN images i ON v.imageid = i.id " +

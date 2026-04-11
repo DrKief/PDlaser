@@ -25,7 +25,7 @@ services:
   garage:
     image: dxflrs/garage:v2.2.0
     expose:
-      - "3900" 
+      - "3900"
     environment:
       - GARAGE_RPC_SECRET=${GARAGE_RPC_SECRET:?GARAGE_RPC_SECRET is required}
     tmpfs:

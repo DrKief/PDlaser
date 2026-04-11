@@ -30,10 +30,7 @@ public class FileStorageService {
   @Value("${s3.bucket}")
   private String bucketName;
 
-  public FileStorageService(
-    MediaRepository recordRepository,
-    S3Client s3Client
-  ) {
+  public FileStorageService(MediaRepository recordRepository, S3Client s3Client) {
     this.recordRepository = recordRepository;
     this.s3Client = s3Client;
   }

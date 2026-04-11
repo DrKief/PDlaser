@@ -7,7 +7,7 @@
   <modelVersion>4.0.0</modelVersion>
   <parent>
     <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-parent</artifactId> 
+    <artifactId>spring-boot-starter-parent</artifactId>
     <version>4.0.5</version>
     <relativePath />
   </parent>
@@ -23,7 +23,7 @@
     <mockito.version>5.23.0</mockito.version>
     <argLine />
     <tomcat.version>11.0.21</tomcat.version>
-    </properties>
+  </properties>
 
   <dependencyManagement>
     <dependencies>

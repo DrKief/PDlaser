@@ -130,7 +130,11 @@ public class SemanticExtractor {
   public static float[] extractSemanticFeatures(BufferedImage img) {
     if (visionSession == null) return new float[SIGLIP_DIMENSIONS];
     try {
-      BufferedImage resized = FeatureExtractor.resizeImageLanczos3(img, TARGET_RESOLUTION, TARGET_RESOLUTION);
+      BufferedImage resized = FeatureExtractor.resizeImageLanczos3(
+        img,
+        TARGET_RESOLUTION,
+        TARGET_RESOLUTION
+      );
       float[][][][] inputTensor = new float[1][3][TARGET_RESOLUTION][TARGET_RESOLUTION];
 
       for (int y = 0; y < TARGET_RESOLUTION; y++) {
