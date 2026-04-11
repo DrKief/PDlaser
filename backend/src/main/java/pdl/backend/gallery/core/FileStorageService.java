@@ -1,9 +1,7 @@
 package pdl.backend.gallery.core;
 
 import java.io.ByteArrayInputStream;
-import java.io.IOException;
 import java.security.MessageDigest;
-import java.time.Duration;
 import java.util.HexFormat;
 import java.util.Iterator;
 import java.util.Optional;
@@ -21,8 +19,6 @@ import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.*;
-import software.amazon.awssdk.services.s3.presigner.S3Presigner;
-import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
 
 @Service
 public class FileStorageService {
@@ -30,19 +26,16 @@ public class FileStorageService {
   private static final Logger log = LoggerFactory.getLogger(FileStorageService.class);
   private final MediaRepository recordRepository;
   private final S3Client s3Client;
-  private final S3Presigner s3Presigner;
 
   @Value("${s3.bucket}")
   private String bucketName;
 
   public FileStorageService(
     MediaRepository recordRepository,
-    S3Client s3Client,
-    S3Presigner s3Presigner
+    S3Client s3Client
   ) {
     this.recordRepository = recordRepository;
     this.s3Client = s3Client;
-    this.s3Presigner = s3Presigner;
   }
 
   @Transactional

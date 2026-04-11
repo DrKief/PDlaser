@@ -160,7 +160,9 @@ To ensure the system scales efficiently under the load of computational computer
 \subsection*{Environment \& Quality}
 
 \noindent\textbf{Requirement 24 : [Amended (Up) to Requirement 24] Continuous Integration \& Code Quality}\\
-\textbf{Description :} Gitlab pipelines construct isolated execution layers. \textbf{Amendment:} A global Prettier (\texttt{.prettierrc}) integration enforces universal styling standardization.
+\textbf{Description :} Gitlab pipelines construct isolated execution layers. \textbf{Amendment:} A global Prettier (\texttt{.prettierrc}) integration enforces universal styling standardization.\\
+\textbf{DevSecOps Pipeline Integration:} The codebase is strictly audited using \texttt{gitleaks} to prevent cryptographic key exposure and \texttt{trivy} to ensure zero High/Critical CVEs exist within the Alpine Docker images and Maven dependency tree.\\
+\textbf{Container Orchestration Resilience:} All Dockerfiles implement native Docker \texttt{HEALTHCHECK} directives wired to Spring Boot Actuators, allowing Docker Swarm/Compose to automatically restart unhealthy or deadlocked containers.
 \vspace{1em}
 
 \noindent\textbf{Requirement 25 : [Amended (Up) to Requirement 25] Server compatibility}\\
