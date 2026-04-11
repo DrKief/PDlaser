@@ -3,7 +3,7 @@ services:
     image: pgvector/pgvector:pg18
     environment:
       POSTGRES_USER: pdl_user
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: pdl_db
       PGDATA: /var/lib/postgresql/18/data
     expose:
@@ -24,26 +24,39 @@ services:
 
   garage:
     image: dxflrs/garage:v2.2.0
+    env_file:
+      - .env
+    environment:
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET}
+    expose:
+      - "3900"
     volumes:
       - garagedata:/var/lib/garage/data
       - garagemeta:/var/lib/garage/meta
       - ./garage.toml:/etc/garage.toml
     command: ["/garage", "server"]
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3900"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     restart: unless-stopped
     logging: *default-logging
 
   garage-init:
     image: alpine:3.23
+    env_file:
+      - .env
     depends_on:
       garage:
-        condition: service_started
+        condition: service_healthy # FIX: Wait for garage to be fully healthy
     network_mode: "service:garage"
     pid: "service:garage"
     environment:
-      - ACCESS_KEY=${S3_ACCESS_KEY:?S3_ACCESS_KEY is required}
-      - SECRET_KEY=${S3_SECRET_KEY:?S3_SECRET_KEY is required}
+      - ACCESS_KEY=${S3_ACCESS_KEY}
+      - SECRET_KEY=${S3_SECRET_KEY}
       - BUCKET_NAME=pdl-images
-      - GARAGE_RPC_SECRET=${GARAGE_RPC_SECRET:?GARAGE_RPC_SECRET is required}
+      - GARAGE_RPC_SECRET=${GARAGE_RPC_SECRET}
     restart: "on-failure:3"
     entrypoint:
       - /bin/sh
@@ -72,21 +85,23 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    env_file:
+      - .env
     environment:
       - HOST_NAME=db
       - DATABASE_NAME=pdl_db
       - DATABASE_USER=pdl_user
-      - DATABASE_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      - DATABASE_PASSWORD=${POSTGRES_PASSWORD}
       - APP_UNSPLASH_DATASET_DIR=/var/lib/pdl/datasets
       - APP_MODELS_DIR=/var/lib/pdl/models
-      - ADMIN_USERNAME=${ADMIN_USERNAME:?ADMIN_USERNAME is required}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
       - S3_ENDPOINT=http://garage:3900
       - S3_REGION=garage
-      - S3_ACCESS_KEY=${S3_ACCESS_KEY:?S3_ACCESS_KEY is required}
-      - S3_SECRET_KEY=${S3_SECRET_KEY:?S3_SECRET_KEY is required}
+      - S3_ACCESS_KEY=${S3_ACCESS_KEY}
+      - S3_SECRET_KEY=${S3_SECRET_KEY}
       - S3_BUCKET=pdl-images
-      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
+      - JWT_SECRET=${JWT_SECRET}
       - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK=WARN
     expose:
       - "8080"
@@ -97,29 +112,8 @@ services:
       db:
         condition: service_healthy
       garage:
-        condition: service_started
+        condition: service_healthy # FIX: Wait for garage to be fully healthy
     restart: unless-stopped
-    logging: *default-logging
-
-  prometheus:
-    image: prom/prometheus:v3.5.0
-    command: ["--config.file=/etc/prometheus/prometheus.yml", "--log.level=warn"]
-    volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-    expose:
-      - "9090"
-    depends_on:
-      - backend
-    logging: *default-logging
-
-  grafana:
-    image: grafana/grafana:12.4.2
-    environment:
-      - GF_LOG_LEVEL=warn
-    expose:
-      - "3000"
-    depends_on:
-      - prometheus
     logging: *default-logging
 
   frontend:
