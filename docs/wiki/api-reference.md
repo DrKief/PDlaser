@@ -64,7 +64,7 @@ Retrieves the background extraction status. Hangs the HTTP connection securely u
 - **Method:** `GET`
 - **Response:** `200 OK` (State Changed) or `202 Accepted` (Timeout - reconnect)
 
-### Download Original (Presigned S3 / Stream)
+### Download Original (S3 / Stream)
 
 Forces a browser attachment download stream of the original artifact.
 
