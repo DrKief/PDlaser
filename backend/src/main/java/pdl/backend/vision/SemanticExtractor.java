@@ -16,8 +16,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SemanticExtractor {
+
+  private static final Logger log = LoggerFactory.getLogger(SemanticExtractor.class);
 
   private static OrtEnvironment env;
   private static OrtSession visionSession;
@@ -122,8 +126,7 @@ public class SemanticExtractor {
         }
       }
     } catch (Exception e) {
-      System.err.println("CRITICAL: Failed to initialize SemanticExtractor.");
-      e.printStackTrace();
+      log.error("CRITICAL: Failed to initialize SemanticExtractor.", e);
     }
   }
 
@@ -160,7 +163,7 @@ public class SemanticExtractor {
         return normalizeL2(output[0]);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      log.error("Failed to extract semantic features", e);
       return new float[SIGLIP_DIMENSIONS];
     }
   }
@@ -182,7 +185,7 @@ public class SemanticExtractor {
         return normalizeL2(output[0]);
       }
     } catch (Exception e) {
-      e.printStackTrace();
+      log.error("Failed to extract text features", e);
       return new float[SIGLIP_DIMENSIONS];
     }
   }

@@ -1,8 +1,8 @@
 # PDLaser Documentation Wiki
 
-Welcome to the official documentation for the **PDLaser Image Management System (v3a)**.
+This is the documentation for the **PDLaser Image Management System (v3a)**.
 
-This wiki contains the comprehensive technical documentation detailing our bleeding-edge architectural decisions, backend API, frontend SPA structure, distributed S3-compatible storage, database schema tuning, and poly-container deployment infrastructure.
+This wiki contains technical documentation for the backend API, frontend SPA, Garage S3 storage, database schema, and deployment infrastructure.
 
 ## Navigation
 

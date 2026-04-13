@@ -4,10 +4,10 @@ The application persists relational and vector data using **PostgreSQL 18** via 
 
 _Note: Flyway migrations (`V1` through `V3`) strictly version-control this schema._
 
-## Structural Paradigm Shift: Garage S3 Integration
+## Garage S3 Integration
 
-As of v3a, physical file blobs are **no longer** stored on the container's local disk or inside the relational database. Binary persistence is completely offloaded to a distributed object storage layer running **Garage v2.2.0** (An S3-compatible backend).
-PostgreSQL merely acts as a high-speed pointer/metadata layer indexing the `S3 Key` identifiers.
+As of v3a, physical file blobs are no longer stored on the container's local disk or inside the database. Images are stored in **Garage v2.2.0** (an S3-compatible backend).
+PostgreSQL stores metadata and `S3 Key` identifiers.
 
 ## Tables
 
@@ -36,7 +36,7 @@ Stores mathematical arrays extracted via BoofCV 1.3.0 and ONNX 1.24.3.
 
 ## Architectural Decision: HNSW Indexes
 
-To perform similarity searches on massive tables at sub-millisecond latencies, we utilize Hierarchical Navigable Small World (HNSW) algorithms integrated directly into PostgreSQL, bypassing the need to drag data into Java memory.
+The database uses Hierarchical Navigable Small World (HNSW) indexes for similarity searches.
 
 Parameters tuned for high-dimensional recall vs. build cost:
 

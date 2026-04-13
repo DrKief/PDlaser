@@ -7,36 +7,36 @@
 
 ## Overview
 
-PDLaser is a full-stack, AI-augmented image management system built for high-performance visual archiving. Moving beyond basic metadata storage, it executes deep content-based image retrieval (CBIR) using advanced mathematical histograms and localized SigLIP 2 semantic embeddings.
+PDLaser is an image management system built for visual archiving. It executes content-based image retrieval (CBIR) using mathematical histograms and SigLIP 2 semantic embeddings.
 
-**Next-Gen Tech Stack:**
+**Tech Stack:**
 
 - **Backend:** Java 21, Spring Boot 4.0.5, Spring Data JDBC, Flyway, BoofCV 1.3.0, ONNX Runtime 1.24.3, Twelvemonkeys ImageIO 3.13.1
 - **Frontend:** Vue.js ^3.5.32, TypeScript 6.0.2, Vite 8.0.8, Vue Router 5.0.4, Axios 1.15.0
 - **Database:** PostgreSQL 18 + `pgvector` 0.1.6 (HNSW Indexing)
-- **Infrastructure:** Docker, Docker Compose, Nginx (alpine), Garage S3 (v2.2.0)
+- **Infrastructure:** Docker, Nginx (alpine), Garage S3 (v2.2.0)
 
 ---
 
 ## [The Twelve-Factor App](https://12factor.net/) Methodology
 
-This application strictly adheres to the modern Twelve-Factor App methodology, ensuring maximum portability, disposability, and dev/prod parity.
+This application follows the Twelve-Factor App methodology for portability and dev/prod parity.
 
 - **I. Codebase:** One repository tracks all microservices, triggering isolated CI/CD builds.
-- **III. Config:** Zero hardcoded credentials. All routing and S3 keys are passed dynamically via environment variables (`application.yaml` / Docker).
+- **III. Config:** Routing and S3 keys are passed via environment variables.
 - **IV. Backing Services:** PostgreSQL and Garage S3 are treated as detached, swappable resources.
 - **VI. Processes:** The Java Spring Boot API and Vue SPA are completely stateless. JWT tokens manage sessions.
-- **VIII. Concurrency:** Workloads are scaled horizontally via the process model, heavily utilizing Java 21 Virtual Threads for concurrent ONNX tensor extraction.
-- **IX. Disposability:** Atomic DB row locks (`FOR UPDATE SKIP LOCKED`) and `DeferredResult` ensure the ML extraction queue recovers gracefully from sudden container death.
+- **VIII. Concurrency:** Workloads scale horizontally. Java 21 Virtual Threads handle ONNX tensor extraction.
+- **IX. Disposability:** Database row locks (`FOR UPDATE SKIP LOCKED`) allow the extraction queue to recover if a container crashes.
 
 ---
 
 ## Development Standards & Contributing
 
-To maintain code quality and a clean Git history, this project enforces strict standards for all contributions:
+This project enforces the following standards for contributions:
 
-- **[Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):** All commit messages must follow the Conventional Commits specification (e.g., `feat: add SigLIP extraction`, `fix: correct HNSW indexing parameters`). This allows for automated semantic versioning and changelog generation.
-- **Code Formatting:** We use Prettier to enforce a universal, standardized code style across the entire stack (Java, TypeScript, Vue, Markdown). Before submitting any commits, you must format your files by running the following command from the root directory:
+- **[Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):** Commit messages must follow the Conventional Commits specification.
+- **Code Formatting:** We use Prettier to format code (Java, TypeScript, Vue, Markdown). Format your files before committing:
   ```bash
   npm run format
   ```
@@ -112,11 +112,11 @@ npm run dev
 
 ## System Compatibility & Validation (Requirement 27)
 
-In accordance with the project specifications, the client, server, and distributed object storage infrastructure have been rigorously compiled, tested, and validated across multiple architectures:
+The client, server, and object storage infrastructure have been tested across the following architectures:
 
 **Server / Infrastructure Environments (x86_64 & ARM64):**
 
-- **Ubuntu 24.04.4 LTS (aarch64):** Oracle Cloud (Neoverse-N1, Linux 6.17.0-1009-oracle). Proves ARM64 Docker compilation and ONNX/pgvector cross-architecture stability.
+- **Ubuntu 24.04.4 LTS (aarch64):** Oracle Cloud (Neoverse-N1, Linux 6.17.0-1009-oracle). Validates ARM64 Docker/ONNX/pgvector stability.
 - **Arch Linux (x86_64):** AMD Ryzen 5 7640U, Linux 6.19.11-zen1-1-zen.
 
 **Client Environments:**

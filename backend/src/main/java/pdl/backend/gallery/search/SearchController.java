@@ -56,7 +56,7 @@ public class SearchController {
   ) {
     try {
       if (file.isEmpty()) {
-        return ResponseEntity.badRequest().body(Map.of("error", "File is empty"));
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is empty");
       }
 
       // 1. Process the image directly in RAM
@@ -65,7 +65,7 @@ public class SearchController {
       // 2. Grab the requested algorithm's vector
       float[] targetArray = vectors.get(descriptor.toLowerCase());
       if (targetArray == null) {
-        return ResponseEntity.badRequest().body(Map.of("error", "Invalid descriptor"));
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid descriptor");
       }
 
       // 3. Search the DB without inserting
@@ -78,7 +78,7 @@ public class SearchController {
 
       return ResponseEntity.ok(results);
     } catch (Exception e) {
-      return ResponseEntity.internalServerError().body(Map.of("error", "Failed to process image"));
+      throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to process image", e);
     }
   }
 }

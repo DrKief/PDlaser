@@ -104,7 +104,7 @@ public class UnsplashService {
         long downloads = 0;
         try {
           downloads = Long.parseLong(getCol(cols, colMap, "stats_downloads", "0"));
-        } catch (Exception ignored) {}
+        } catch (NumberFormatException ignored) {}
 
         Integer existing = jdbcTemplate.queryForObject(
           "SELECT COUNT(*) FROM images WHERE provider_id = ?",

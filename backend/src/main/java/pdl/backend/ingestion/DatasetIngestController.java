@@ -5,8 +5,10 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -39,7 +41,7 @@ public class DatasetIngestController {
       !unsplashService.getStatus().startsWith("ERROR") &&
       !unsplashService.getStatus().startsWith("COMPLETED")
     ) {
-      return ResponseEntity.badRequest().body(Map.of("message", "A job is already in progress."));
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A job is already in progress.");
     }
 
     try {
@@ -55,9 +57,7 @@ public class DatasetIngestController {
 
       return ResponseEntity.ok(Map.of("message", "File uploaded. Sync initiated."));
     } catch (Exception e) {
-      return ResponseEntity.internalServerError().body(
-        Map.of("message", "Failed to process uploaded file.")
-      );
+      throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to process uploaded file.", e);
     }
   }
 
@@ -79,7 +79,7 @@ public class DatasetIngestController {
       !unsplashService.getStatus().startsWith("ERROR") &&
       !unsplashService.getStatus().startsWith("COMPLETED")
     ) {
-      return ResponseEntity.badRequest().body(Map.of("message", "A job is already in progress."));
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A job is already in progress.");
     }
     unsplashService.importSelectedImages(imageIds);
     return ResponseEntity.ok(Map.of("message", "Batch import initiated."));
@@ -97,7 +97,7 @@ public class DatasetIngestController {
       !unsplashService.getStatus().startsWith("ERROR") &&
       !unsplashService.getStatus().startsWith("COMPLETED")
     ) {
-      return ResponseEntity.badRequest().body(Map.of("message", "A job is already in progress."));
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A job is already in progress.");
     }
     unsplashService.importBatchImages(limit, query, camera, country);
     return ResponseEntity.ok(Map.of("message", "Batch import initiated."));

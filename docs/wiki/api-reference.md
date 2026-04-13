@@ -2,7 +2,7 @@
 
 All backend endpoints are relative to the application's base URL (e.g., `http://localhost:8080`).
 
-**Note on Error Handling:** The Spring Boot API uses RFC 7807 Problem Details for standardizing error responses. All errors globally return a unique `traceId` for telemetry tracing in production environments.
+**Note on Error Handling:** The API returns RFC 7807 Problem Details for errors.
 
 ## 1. Authentication & Users
 
@@ -17,7 +17,7 @@ Creates a new account with `ROLE_USER` privileges. Will auto-approve if the Admi
 
 ### Login
 
-Authenticates a user via `AuthenticationManager` and issues a stateless JSON Web Token (JWT) valid for 24 hours.
+Authenticates a user and returns a JSON Web Token (JWT) valid for 24 hours.
 
 - **URL:** `/auth/login`
 - **Method:** `POST`
@@ -30,7 +30,7 @@ Authenticates a user via `AuthenticationManager` and issues a stateless JSON Web
 
 ### List All Images (Paginated)
 
-Retrieves a paginated list of all images. Fully respects privacy scoping and ownership.
+Retrieves a paginated list of all images. Filters based on user ownership.
 
 - **URL:** `/images`
 - **Method:** `GET`
@@ -39,7 +39,7 @@ Retrieves a paginated list of all images. Fully respects privacy scoping and own
 
 ### Get Image Content
 
-Retrieves the actual binary payload of a specific image streamed directly from **Garage S3 Storage**.
+Retrieves the binary payload of an image from Garage S3.
 
 - **URL:** `/images/{id}`
 - **Method:** `GET`
@@ -47,7 +47,7 @@ Retrieves the actual binary payload of a specific image streamed directly from *
 
 ### Upload Image (Asynchronous)
 
-Uploads a new image file. Saves the binary to Garage S3 and computes a SHA-256 hash. Feature vectors (HOG, HSV, RGB, CIELAB, Semantic 768D) are extracted **asynchronously** in the background using Java 21 Threads.
+Uploads a new image file. Saves the binary to Garage S3 and computes a SHA-256 hash. Feature vectors are extracted asynchronously.
 
 - **URL:** `/images`
 - **Method:** `POST`
@@ -58,7 +58,7 @@ Uploads a new image file. Saves the binary to Garage S3 and computes a SHA-256 h
 
 ### Check Image Processing Status (HTTP Long-Polling)
 
-Retrieves the background extraction status. Hangs the HTTP connection securely using Spring's `DeferredResult` until a status change occurs (or a 10s timeout triggers), delivering pseudo-WebSocket real-time updates.
+Retrieves the background extraction status. Uses Spring's `DeferredResult` to hold the connection until a status change occurs or a 10-second timeout is reached.
 
 - **URL:** `/images/{id}/status`
 - **Method:** `GET`
@@ -66,7 +66,7 @@ Retrieves the background extraction status. Hangs the HTTP connection securely u
 
 ### Download Original (S3 / Stream)
 
-Forces a browser attachment download stream of the original artifact.
+Returns the image with a `Content-Disposition: attachment` header.
 
 - **URL:** `/images/{id}/download`
 - **Method:** `GET`
@@ -74,7 +74,7 @@ Forces a browser attachment download stream of the original artifact.
 
 ### Delete Image
 
-Permanently deletes an image from PostgreSQL and issues a Delete object request to the S3 bucket.
+Deletes the image from PostgreSQL and Garage S3.
 
 - **URL:** `/images/{id}`
 - **Method:** `DELETE`

@@ -5,6 +5,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
@@ -48,7 +49,7 @@ public class AuthController {
   @PostMapping("/register")
   public ResponseEntity<?> register(@RequestBody Map<String, String> request) {
     if (userRepository.findByUsername(request.get("username")).isPresent()) {
-      return ResponseEntity.badRequest().body(Map.of("error", "Username taken"));
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Username taken");
     }
     boolean autoApprove = appSettingRepository
       .findById("auto_approve_users")
@@ -92,13 +93,9 @@ public class AuthController {
 
       return ResponseEntity.ok(Map.of("token", token));
     } catch (DisabledException e) {
-      return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
-        Map.of("error", "Your account is pending administrator approval.")
-      );
+      throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Your account is pending administrator approval.");
     } catch (BadCredentialsException e) {
-      return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(
-        Map.of("error", "Invalid credentials.")
-      );
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials.");
     }
   }
 }
