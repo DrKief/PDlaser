@@ -54,11 +54,11 @@ public class SearchController {
     @RequestParam(value = "number", defaultValue = "10") int number,
     @RequestParam(value = "descriptor", defaultValue = "semantic") String descriptor
   ) {
-    try {
-      if (file.isEmpty()) {
-        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is empty");
-      }
+    if (file.isEmpty() || file.getSize() == 0) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is empty");
+    }
 
+    try {
       // 1. Process the image directly in RAM
       Map<String, float[]> vectors = visionProcessor.extractEphemeralVectors(file.getBytes());
 
