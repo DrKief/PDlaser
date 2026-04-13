@@ -5,6 +5,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.ArrayList;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -20,6 +23,8 @@ import pdl.backend.vision.UploadStatusTracker;
 @RestController
 @RequestMapping("/images")
 public class GalleryController {
+
+  private static final Logger log = LoggerFactory.getLogger(GalleryController.class);
 
   private final FileStorageService storageService;
   private final TagRepository queryRepo;
@@ -147,12 +152,14 @@ public class GalleryController {
     long id = image.getId();
 
     if (keywords != null && !keywords.isEmpty()) {
+      List<String> allTags = new ArrayList<>();
       for (String k : keywords) {
         String[] splits = k.split(",");
         for (String tag : splits) {
-          queryRepo.addKeyword(id, tag.trim());
+          allTags.add(tag.trim());
         }
       }
+      queryRepo.addKeywords(id, allTags);
     }
 
     return ResponseEntity.accepted().body(Map.of("id", id));
@@ -196,7 +203,7 @@ public class GalleryController {
 
       return ResponseEntity.ok().body(response);
     } catch (Exception e) {
-      e.printStackTrace();
+      log.error("Error retrieving metadata for image id: {}", id, e);
       throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Image not found", e);
     }
   }

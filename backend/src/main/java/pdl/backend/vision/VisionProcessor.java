@@ -147,9 +147,7 @@ public class VisionProcessor {
 
       // Auto-Tagging logic
       List<String> aiTags = SemanticExtractor.getAutoTags(semanticVector);
-      for (String tag : aiTags) {
-        queryRepoLayer.addKeyword(id, tag, true);
-      }
+      queryRepoLayer.addKeywords(id, aiTags, true);
 
       if (hogData.length != 31) {
         float[] adjustedHog = new float[31];

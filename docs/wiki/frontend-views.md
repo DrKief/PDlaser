@@ -18,7 +18,7 @@ The primary browsing interface for the dataset.
 ### 3. Image Detail View (`/image/:id`)
 
 - **Component:** `src/views/ImageDetailView.vue`
-- **Functionality:** Connects to `/images/{id}/metadata` and streams the full-scale original artifact from the S3 backend via `/images/{id}`. Includes triggers to initiate presigned browser downloads and real-time inline keyword mutation.
+- **Functionality:** Connects to `/images/{id}/metadata` and streams the full-scale original artifact from the S3 backend via `/images/{id}`. Includes triggers to initiate browser downloads and real-time inline keyword mutation.
 
 ### 4. Authentication Views (`/login` & `/register`)
 

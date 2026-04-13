@@ -5,7 +5,6 @@ db_engine = "lmdb"
 replication_factor = 1
 consistency_mode = "consistent"
 
-# FIX 1: Moved rpc_bind_addr to the top level (removed the [rpc] block)
 rpc_bind_addr = "[::]:3901"
 
 [s3_api]

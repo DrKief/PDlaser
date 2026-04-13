@@ -92,6 +92,33 @@ public class TagRepository {
     return addKeyword(id, keyword, false);
   }
 
+  public void addKeywords(long id, List<String> keywords, boolean isAiGenerated) {
+    if (keywords == null) return;
+    List<Object[]> batchArgs = keywords
+      .stream()
+      .map(this::normalizeTag)
+      .filter(tag -> tag != null && !tag.isEmpty())
+      .distinct()
+      .map(tag -> new Object[] { id, tag, isAiGenerated })
+      .collect(Collectors.toList());
+
+    if (batchArgs.isEmpty()) return;
+
+    try {
+      jdbcTemplate.queryForObject("SELECT id FROM images WHERE id = ?", Long.class, id);
+      jdbcTemplate.batchUpdate(
+        "INSERT INTO imagekeywords (imageid, keyword, is_ai_generated) VALUES (?, ?, ?) ON CONFLICT DO NOTHING",
+        batchArgs
+      );
+    } catch (Exception e) {
+      log.error("Failed to add keywords in batch", e);
+    }
+  }
+
+  public void addKeywords(long id, List<String> keywords) {
+    addKeywords(id, keywords, false);
+  }
+
   public boolean hasKeyword(long id, String keyword) {
     Integer count = jdbcTemplate.queryForObject(
       "SELECT count(*) FROM imagekeywords WHERE imageid = ? AND keyword = ?",
