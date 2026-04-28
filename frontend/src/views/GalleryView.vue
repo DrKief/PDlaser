@@ -23,10 +23,21 @@ const currentPage = ref(0);
 const totalPages = ref(1);
 
 const isSidebarOpen = ref(false);
+const pendingSource = ref<{ url: string; isEphemeral: boolean } | null>(null);
+const selectedForSimilarity = ref<number[]>([]);
 
-const openSimilarityForImage = (id: number | string) => {
-  if (typeof id === "number") {
-    selectedSourceId.value = id;
+const toggleSimilaritySelection = (id: number) => {
+  if (selectedForSimilarity.value.includes(id)) {
+    selectedForSimilarity.value = selectedForSimilarity.value.filter((i) => i !== id);
+  } else {
+    if (selectedForSimilarity.value.length >= 5) return;
+    selectedForSimilarity.value = [...selectedForSimilarity.value, id];
+  }
+};
+
+const openSimilarityWithSelection = () => {
+  if (selectedForSimilarity.value.length > 0) {
+    selectedSourceId.value = selectedForSimilarity.value[0] ?? null;
     isSidebarOpen.value = true;
   }
 };
@@ -56,6 +67,9 @@ const handleSimilarityResults = (payload: {
     };
   }
 
+  // Clear pending source since we now have a completed search source
+  pendingSource.value = null;
+
   // 2. Map the mathematical results
   similarityResultsOverride.value = results.map((res: { id: number; score: number }) => ({
     id: res.id,
@@ -64,6 +78,25 @@ const handleSimilarityResults = (payload: {
     extraction_status: "COMPLETED",
     keywords: [{ keyword: `${((1 - res.score) * 100).toFixed(2)}% Match`, isAi: false }],
   }));
+};
+
+const clearSourceSelection = () => {
+  selectedSourceId.value = null;
+  pendingSource.value = null;
+  isSidebarOpen.value = false;
+  clearSimilaritySearch();
+};
+
+const handleSourceSelected = (payload: {
+  sourceId?: number | null;
+  fileUrl?: string;
+  isEphemeral: boolean;
+}) => {
+  if (payload.isEphemeral && payload.fileUrl) {
+    pendingSource.value = { url: payload.fileUrl, isEphemeral: true };
+  } else if (payload.sourceId) {
+    pendingSource.value = { url: `/images/${payload.sourceId}`, isEphemeral: false };
+  }
 };
 
 const loadImages = async (reset = false) => {
@@ -146,14 +179,30 @@ const goToImage = (id: number | string) => {
         <h2 class="filter-title" v-else>Gallery</h2>
 
         <div class="header-actions">
-          <button class="btn btn-outline" @click="isSidebarOpen = !isSidebarOpen">
-            <span
-              class="material-symbols-outlined"
-              style="vertical-align: middle; margin-right: 0.25rem"
-              >image_search</span
-            >
-            Similarity Search
-          </button>
+          <div class="search-button-group">
+            <button class="btn btn-outline" @click="isSidebarOpen = !isSidebarOpen">
+              <span
+                class="material-symbols-outlined"
+                style="vertical-align: middle; margin-right: 0.25rem"
+                >image_search</span
+              >
+              Similarity Search
+            </button>
+            <div v-if="similaritySourceOverride || pendingSource" class="source-thumbnail-badge">
+              <img
+                :src="similaritySourceOverride?.url || pendingSource?.url"
+                :alt="similaritySourceOverride?.uploader || 'Selected source'"
+                class="thumbnail-image"
+              />
+              <button
+                @click="clearSourceSelection"
+                class="btn-icon thumbnail-clear"
+                title="Clear selection"
+              >
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+          </div>
           <button
             class="btn btn-outline"
             v-if="route.query.tags || similarityResultsOverride"
@@ -205,11 +254,18 @@ const goToImage = (id: number | string) => {
 
             <div class="hover-actions" v-if="typeof image.id === 'number'">
               <button
-                @click.stop="openSimilarityForImage(image.id)"
-                title="Find Similar"
+                @click.stop="toggleSimilaritySelection(image.id as number)"
+                :title="
+                  selectedForSimilarity.includes(image.id as number)
+                    ? 'Remove from search'
+                    : 'Add to search'
+                "
                 class="btn-icon similarity-btn"
+                :class="{ 'is-selected': selectedForSimilarity.includes(image.id as number) }"
               >
-                <span class="material-symbols-outlined">image_search</span>
+                <span class="material-symbols-outlined">{{
+                  selectedForSimilarity.includes(image.id as number) ? "remove" : "add"
+                }}</span>
               </button>
             </div>
 
@@ -279,12 +335,24 @@ const goToImage = (id: number | string) => {
     <AdvancedSearchSidebar
       v-if="isSidebarOpen"
       :initial-source-id="selectedSourceId"
+      :initial-source-ids="selectedForSimilarity"
       @close="
         isSidebarOpen = false;
         selectedSourceId = null;
+        selectedForSimilarity = [];
       "
       @executeSimilarity="handleSimilarityResults"
+      @sourceSelected="handleSourceSelected"
     />
+
+    <div v-if="selectedForSimilarity.length > 0 && !isSidebarOpen" class="similarity-float">
+      <button class="btn similarity-float-btn" @click="openSimilarityWithSelection">
+        <span class="material-symbols-outlined">image_search</span>
+        Search {{ selectedForSimilarity.length }} image{{
+          selectedForSimilarity.length > 1 ? "s" : ""
+        }}
+      </button>
+    </div>
   </div>
 </template>
 
@@ -352,6 +420,29 @@ const goToImage = (id: number | string) => {
 }
 .similarity-btn:hover {
   color: var(--color-accent);
+}
+.similarity-btn.is-selected {
+  background: var(--color-accent);
+  color: var(--bg-surface);
+}
+.similarity-btn.is-selected:hover {
+  background: var(--color-accent-hover);
+}
+
+.similarity-float {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 50;
+}
+.similarity-float-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  box-shadow:
+    var(--shadow-subtle),
+    0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .gallery-header {
@@ -562,5 +653,51 @@ const goToImage = (id: number | string) => {
   background: var(--color-accent);
   color: #fff;
   border-color: var(--color-accent);
+}
+
+.search-button-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+@media (min-width: 768px) {
+  .search-button-group {
+    width: auto;
+  }
+}
+
+.source-thumbnail-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: var(--bg-surface);
+  border: 2px solid var(--color-accent);
+  border-radius: 4px;
+  box-shadow: var(--shadow-subtle);
+  flex-shrink: 0;
+}
+
+.thumbnail-image {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 2px;
+  display: block;
+}
+
+.thumbnail-clear {
+  padding: 0.25rem;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+}
+.thumbnail-clear:hover {
+  background: var(--bg-element);
+  color: var(--color-accent);
 }
 </style>

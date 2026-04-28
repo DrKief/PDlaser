@@ -1,6 +1,7 @@
 package pdl.backend.gallery.search;
 
 import com.pgvector.PGvector;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -48,28 +49,105 @@ public class SearchController {
     return ResponseEntity.ok(results);
   }
 
-  @PostMapping("/search/ephemeral")
-  public ResponseEntity<?> searchByEphemeralUpload(
-    @RequestPart("file") MultipartFile file,
+  @PostMapping("/search/batch")
+  public ResponseEntity<?> searchByMultipleIds(
+    @RequestBody List<Long> ids,
     @RequestParam(value = "number", defaultValue = "10") int number,
     @RequestParam(value = "descriptor", defaultValue = "semantic") String descriptor
   ) {
-    if (file.isEmpty() || file.getSize() == 0) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is empty");
+    if (ids == null || ids.isEmpty()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one image ID is required");
+    }
+
+    if (ids.size() > 5) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Maximum 5 image IDs allowed");
+    }
+
+    List<String> validDescriptors = List.of(
+      "gradient",
+      "saturation",
+      "rgb",
+      "cielab",
+      "semantic"
+    );
+    String descriptorLower = descriptor.toLowerCase();
+    if (!validDescriptors.contains(descriptorLower)) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid descriptor");
     }
 
     try {
-      // 1. Process the image directly in RAM
-      Map<String, float[]> vectors = visionProcessor.extractEphemeralVectors(file.getBytes());
+      List<float[]> allVectors = similarityRepo.getVectorsForIds(ids, descriptorLower);
+      
+      for (float[] v : allVectors) {
+        if (v == null) {
+          throw new ResponseStatusException(HttpStatus.NOT_FOUND, "One or more images not found or not processed");
+        }
+      }
 
-      // 2. Grab the requested algorithm's vector
-      float[] targetArray = vectors.get(descriptor.toLowerCase());
-      if (targetArray == null) {
+      float[] aggregatedVector = VectorAggregator.aggregate(allVectors);
+      PGvector pgVector = new PGvector(aggregatedVector);
+      
+      List<Map<String, Object>> results = similarityRepo.findSimilarByVectorExcluding(
+        pgVector,
+        descriptor,
+        number,
+        ids
+      );
+
+      return ResponseEntity.ok(results);
+    } catch (ResponseStatusException e) {
+      throw e;
+    } catch (Exception e) {
+      throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to process images", e);
+    }
+  }
+
+  @PostMapping("/search/ephemeral")
+  public ResponseEntity<?> searchByEphemeralUpload(
+    @RequestPart("files") List<MultipartFile> files,
+    @RequestParam(value = "number", defaultValue = "10") int number,
+    @RequestParam(value = "descriptor", defaultValue = "semantic") String descriptor
+  ) {
+    if (files == null || files.isEmpty()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "At least one image is required");
+    }
+
+    if (files.size() > 5) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Maximum 5 images allowed");
+    }
+
+    for (MultipartFile file : files) {
+      if (file.isEmpty() || file.getSize() == 0) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "One or more files are empty");
+      }
+    }
+
+    try {
+      List<String> validDescriptors = List.of(
+        "gradient",
+        "saturation",
+        "rgb",
+        "cielab",
+        "semantic"
+      );
+      String descriptorLower = descriptor.toLowerCase();
+      if (!validDescriptors.contains(descriptorLower)) {
         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid descriptor");
       }
 
-      // 3. Search the DB without inserting
-      PGvector pgVector = new PGvector(targetArray);
+      List<float[]> allVectors = new ArrayList<>();
+      for (MultipartFile file : files) {
+        Map<String, float[]> vectors = visionProcessor.extractEphemeralVectors(file.getBytes());
+        float[] targetVector = vectors.get(descriptorLower);
+        if (targetVector == null) {
+          throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid descriptor");
+        }
+        allVectors.add(targetVector);
+      }
+
+      float[] aggregatedVector = VectorAggregator.aggregate(allVectors);
+
+      PGvector pgVector = new PGvector(aggregatedVector);
       List<Map<String, Object>> results = similarityRepo.findSimilarByVector(
         pgVector,
         descriptor,
@@ -77,6 +155,8 @@ public class SearchController {
       );
 
       return ResponseEntity.ok(results);
+    } catch (ResponseStatusException e) {
+      throw e;
     } catch (Exception e) {
       throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to process image", e);
     }

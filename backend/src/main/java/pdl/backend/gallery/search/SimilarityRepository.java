@@ -1,6 +1,7 @@
 package pdl.backend.gallery.search;
 
 import com.pgvector.PGvector;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.jspecify.annotations.NonNull;
@@ -149,5 +150,82 @@ public class SimilarityRepository {
       "ORDER BY v.distance ASC";
 
     return jdbcTemplate.queryForList(sql, targetVector, targetVector, limit);
+  }
+
+  public List<float[]> getVectorsForIds(List<Long> ids, String type) {
+    String vectorColumn = switch (type.toLowerCase()) {
+      case "gradient" -> "hogvector";
+      case "saturation" -> "hsvvector";
+      case "rgb" -> "rgbvector";
+      case "cielab" -> "labvector";
+      case "semantic" -> "semanticvector";
+      default -> "hogvector";
+    };
+
+    String placeholders = String.join(",", java.util.Collections.nCopies(ids.size(), "?"));
+    String sql = String.format("SELECT imageid, %s FROM imagedescriptors WHERE imageid IN (%s)", vectorColumn, placeholders);
+
+    List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql, ids.toArray());
+    
+    List<float[]> vectors = new ArrayList<>();
+    for (Long id : ids) {
+      float[] vector = null;
+      for (Map<String, Object> row : rows) {
+        if (row.get("imageid").equals(id)) {
+          PGvector pgVector = (PGvector) row.get(vectorColumn);
+          if (pgVector != null) {
+            vector = pgVector.toArray();
+          }
+          break;
+        }
+      }
+      vectors.add(vector);
+    }
+    
+    return vectors;
+  }
+
+  public List<Map<String, Object>> findSimilarByVectorExcluding(
+    PGvector targetVector,
+    String type,
+    int limit,
+    List<Long> excludeIds
+  ) {
+    String vectorColumn = switch (type.toLowerCase()) {
+      case "gradient" -> "hogvector";
+      case "saturation" -> "hsvvector";
+      case "rgb" -> "rgbvector";
+      case "cielab" -> "labvector";
+      case "semantic" -> "semanticvector";
+      default -> "hogvector";
+    };
+
+    String placeholders = String.join(",", java.util.Collections.nCopies(excludeIds.size(), "?"));
+    String excludeClause = String.format("AND d.imageid NOT IN (%s)", placeholders);
+
+    String sql =
+      "WITH vector_matches AS (" +
+      "  SELECT d.imageid, " +
+      vectorColumn +
+      " <=> ? as distance " +
+      "  FROM imagedescriptors d " +
+      "  JOIN images i ON d.imageid = i.id " +
+      "  WHERE i.extraction_status = 'COMPLETED' " +
+      excludeClause +
+      "  ORDER BY " +
+      vectorColumn +
+      " <=> ? LIMIT ?" +
+      ") " +
+      "SELECT v.imageid as id, i.filename, (1.0 - (1.0 / (1.0 + v.distance))) AS score " +
+      "FROM vector_matches v JOIN images i ON v.imageid = i.id " +
+      "ORDER BY v.distance ASC";
+
+    List<Object> params = new ArrayList<>();
+    params.add(targetVector);
+    params.addAll(excludeIds);
+    params.add(targetVector);
+    params.add(limit);
+
+    return jdbcTemplate.queryForList(sql, params.toArray());
   }
 }
