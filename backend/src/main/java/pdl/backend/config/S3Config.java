@@ -33,7 +33,7 @@ public class S3Config {
       .credentialsProvider(
         StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey))
       )
-      .forcePathStyle(true) // Crucial for Garage
+      .forcePathStyle(true) // Crucial for RustFS S3 compatibility
       .serviceConfiguration(
         software.amazon.awssdk.services.s3.S3Configuration.builder()
           .chunkedEncodingEnabled(false)

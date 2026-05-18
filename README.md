@@ -14,7 +14,7 @@ PDLaser is an image management system built for visual archiving. It executes co
 - **Backend:** Java 21, Spring Boot 4.0.5, Spring Data JDBC, Flyway, BoofCV 1.3.0, ONNX Runtime 1.24.3, Twelvemonkeys ImageIO 3.13.1
 - **Frontend:** Vue.js ^3.5.32, TypeScript 6.0.2, Vite 8.0.8, Vue Router 5.0.4, Axios 1.15.0
 - **Database:** PostgreSQL 18 + `pgvector` 0.1.6 (HNSW Indexing)
-- **Infrastructure:** Docker, Nginx (alpine), Garage S3 (v2.2.0)
+- **Infrastructure:** Docker, Nginx (alpine), RustFS
 
 ---
 
@@ -24,7 +24,7 @@ This application follows the Twelve-Factor App methodology for portability and d
 
 - **I. Codebase:** One repository tracks all microservices, triggering isolated CI/CD builds.
 - **III. Config:** Routing and S3 keys are passed via environment variables.
-- **IV. Backing Services:** PostgreSQL and Garage S3 are treated as detached, swappable resources.
+- **IV. Backing Services:** PostgreSQL and RustFS are treated as detached, swappable resources.
 - **VI. Processes:** The Java Spring Boot API and Vue SPA are completely stateless. JWT tokens manage sessions.
 - **VIII. Concurrency:** Workloads scale horizontally. Java 21 Virtual Threads handle ONNX tensor extraction.
 - **IX. Disposability:** Database row locks (`FOR UPDATE SKIP LOCKED`) allow the extraction queue to recover if a container crashes.
@@ -91,10 +91,10 @@ docker compose -f docker-compose.prod.yml up -d --build
 
 If you need to run the code natively on your host OS (Arch/Ubuntu) for debugging or IDE breakpoints, you must still spin up the backing services.
 
-**Step 1: Start the Backing Services (DB & Garage S3)**
+**Step 1: Start the Backing Services (DB & RustFS)**
 
 ```bash
-docker compose -f docker-compose.dev.yml up db garage garage-init -d
+docker compose -f docker-compose.dev.yml up db rustfs rustfs-init -d
 ```
 
 **Step 2: Run the Java Backend natively**

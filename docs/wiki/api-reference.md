@@ -39,7 +39,7 @@ Retrieves a paginated list of all images. Filters based on user ownership.
 
 ### Get Image Content
 
-Retrieves the binary payload of an image from Garage S3.
+Retrieves the binary payload of an image from RustFS.
 
 - **URL:** `/images/{id}`
 - **Method:** `GET`
@@ -47,7 +47,7 @@ Retrieves the binary payload of an image from Garage S3.
 
 ### Upload Image (Asynchronous)
 
-Uploads a new image file. Saves the binary to Garage S3 and computes a SHA-256 hash. Feature vectors are extracted asynchronously.
+Uploads a new image file. Saves the binary to RustFS and computes a SHA-256 hash. Feature vectors are extracted asynchronously.
 
 - **URL:** `/images`
 - **Method:** `POST`
@@ -74,7 +74,7 @@ Returns the image with a `Content-Disposition: attachment` header.
 
 ### Delete Image
 
-Deletes the image from PostgreSQL and Garage S3.
+Deletes the image from PostgreSQL and RustFS.
 
 - **URL:** `/images/{id}`
 - **Method:** `DELETE`

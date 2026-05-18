@@ -93,7 +93,7 @@ public class FileStorageService {
         img.setData(bytes);
         return Optional.of(img);
       } catch (S3Exception e) {
-        log.error("Failed to load from Garage S3 for ID: " + id, e);
+        log.error("Failed to load from RustFS for ID: " + id, e);
       }
     }
     return Optional.empty();
@@ -112,7 +112,7 @@ public class FileStorageService {
           .build();
         s3Client.deleteObject(delReq);
       } catch (S3Exception e) {
-        log.error("Failed to delete from Garage S3 for ID: " + id, e);
+        log.error("Failed to delete from RustFS for ID: " + id, e);
       }
       recordRepository.delete(img);
       return true;

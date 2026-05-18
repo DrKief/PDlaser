@@ -21,30 +21,33 @@ services:
       retries: 5
     restart: unless-stopped
 
-  garage:
-    image: dxflrs/garage:v2.2.0
+  rustfs:
+    image: rustfs/rustfs:latest
     env_file:
       - path: .env.example
         required: true
       - path: .env
         required: false
+    environment:
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY}
+      RUSTFS_CONSOLE_ENABLE: "true"
+      RUSTFS_ADDRESS: ":9000"
     ports:
-      - "3900:3900" # S3 API
-    tmpfs:
-      - /var/lib/garage/data
-      - /var/lib/garage/meta
+      - "3900:9000" # S3 API
+      - "3901:9001" # Web UI Console
     volumes:
-      - ./garage.toml:/etc/garage.toml
-    command: ["/garage", "server"]
+      - type: tmpfs
+        target: /data
+        tmpfs:
+          mode: 0777
+    command: ["/data"]
     restart: unless-stopped
 
-  garage-init:
-    image: alpine:3.23
+  rustfs-init:
+    image: minio/mc:latest
     depends_on:
-      garage:
-        condition: service_started
-    network_mode: "service:garage"
-    pid: "service:garage"
+      - rustfs
     env_file:
       - path: .env.example
         required: true
@@ -58,30 +61,13 @@ services:
       - -eu
       - -c
       - |
-        # Use the binary from the live Garage container
-        G="chroot /proc/1/root /garage"
-
-        echo "Waiting for Garage daemon..."
-        for i in $$(seq 1 20); do
-          if $$G node id -q 2>/dev/null; then break; fi
+        echo "Waiting for RustFS to start..."
+        until mc alias set localrustfs http://rustfs:9000 "$${S3_ACCESS_KEY}" "$${S3_SECRET_KEY}" > /dev/null 2>&1; do
           sleep 2
         done
-
-        # 1. Initialize the layout if it hasn't been assigned yet
-        if $$G status 2>&1 | grep -q "NO ROLE ASSIGNED"; then
-          echo "Initializing single-node layout..."
-          NODE_ID=$$($$G node id -q)
-          $$G layout assign "$$NODE_ID" -z dc1 -c 1G
-          $$G layout apply --version 1
-        fi
-
-        # 2. Provision Bucket and Key
-        echo "Configuring bucket and credentials..."
-        $$G key import --yes -n pdl-key "$$ACCESS_KEY" "$$SECRET_KEY" || true
-        $$G bucket create "$$BUCKET_NAME" || true
-        $$G bucket allow "$$BUCKET_NAME" --read --write --owner --key pdl-key || true
-
-        echo "Garage S3 initialized successfully."
+        echo "Creating bucket $${BUCKET_NAME}..."
+        mc mb localrustfs/$${BUCKET_NAME} || true
+        echo "RustFS Initialized successfully."
 
   backend:
     build:
@@ -98,8 +84,8 @@ services:
       - DATABASE_USER=pdl_user
       - APP_UNSPLASH_DATASET_DIR=/var/lib/pdl/datasets
       - APP_MODELS_DIR=/var/lib/pdl/models
-      - S3_ENDPOINT=http://garage:3900
-      - S3_REGION=garage
+      - S3_ENDPOINT=http://rustfs:9000
+      - S3_REGION=us-east-1
       - S3_BUCKET=pdl-images
       - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK=WARN
     volumes:
@@ -110,7 +96,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      garage:
+      rustfs:
         condition: service_started
     restart: unless-stopped
 

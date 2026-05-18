@@ -9,7 +9,7 @@ Key aspects include:
 1. **I. Codebase:** One repository contains the frontend, backend, and infrastructure code.
 2. **II. Dependencies:** All backend and frontend dependencies are explicitly declared in `pom.xml` and `package.json`, isolated entirely within Docker multi-stage builds. No system-level packages leak into the containers.
 3. **III. Config:** Zero hardcoded credentials exist in the source. S3 keys, Postgres passwords, and JWT Secrets are injected dynamically into the `application.yaml` via OS-level Environment Variables.
-4. **IV. Backing Services:** Garage S3 and PostgreSQL are treated as attached resources.
+4. **IV. Backing Services:** RustFS and PostgreSQL are treated as attached resources.
 5. **VI. Processes:** The backend and frontend are stateless. Authentication is handled client-side via JSON Web Tokens (JWT).
 6. **VIII. Concurrency:** The application uses Java 21 Virtual Threads for ONNX model execution.
 7. **IX. Disposability:** Database transactions use `FOR UPDATE SKIP LOCKED` for task queues.
@@ -27,17 +27,17 @@ Key aspects include:
 - **Function:** Handles all relational constraints and `hnsw` distance mathematics.
 - **Storage Parity:** Uses `tmpfs` mounts in local/preview environments to enforce deterministic zero-state testing of Flyway migrations, and physical `pgdata` volumes in production.
 
-### 2. Object Storage (`garage` & `garage-init`)
-
-- **Images:** `dxflrs/garage:v2.2.0` (Storage Node) and `alpine:3.23` (Init Job)
-- **Function:** Replaces local filesystem IO with an S3-compatible API cluster. High-performance, distributed blob storage for images.
-- **Provisioning:** A lightweight alpine init container automatically pings the Garage RPC daemon, configures the single-node deployment layout, and provisions the access keys / buckets upon startup.
+### 2. Object Storage (`rustfs` & `rustfs-init`)
+ 
+- **Images:** `rustfs/rustfs:latest` (Storage Node) and `minio/mc:latest` (Init Job)
+- **Function:** Replaces local filesystem IO with a high-performance, S3-compatible Rust storage engine. 
+- **Provisioning:** A lightweight init container utilizes the MinIO Client (`mc`) to provision access keys, structure layouts, and create buckets immediately upon startup.
 
 ### 3. Java Backend (`backend`)
 
 - **Build Stage:** `maven:3.9.6-eclipse-temurin-21-alpine`
 - **Runtime Image:** `eclipse-temurin:21-jre`
-- **Function:** Houses the Spring Boot 4.0.5 executable, DJL Tokenizers 0.36.0, and ONNX Runtime 1.24.3 engines. Uses AWS SDK BOM v2.42.32 to interface with the Garage container.
+- **Function:** Houses the Spring Boot 4.0.5 executable, DJL Tokenizers 0.36.0, and ONNX Runtime 1.24.3 engines. Uses AWS SDK BOM v2.42.32 to interface with the RustFS container.
 - **Integrity Safeguard:** Incorporates a rigorous Cryptographic Subresource Integrity check on boot. Validates a hardcoded SHA-256 hash against an internal multi-megabyte PDF payload to guarantee deployment immutability.
 
 ### 4. Telemetry Observability (`prometheus` & `grafana`)

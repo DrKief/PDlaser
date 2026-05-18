@@ -23,7 +23,7 @@
 \maketitle
 
 \section*{Introduction}
-This document outlines the requirements for developing an image similarity search application using a containerized architecture backed by PostgreSQL 18, Garage S3 blob storage, and vector mathematics.
+This document outlines the requirements for developing an image similarity search application using a containerized architecture backed by PostgreSQL 18, RustFS blob storage, and vector mathematics.
 
 \subsection*{Requirement Classifications}
 To clarify the state of each requirement relative to the initial specifications (Besoins 1--27), the following tags are used.
@@ -49,7 +49,7 @@ To support computer vision tasks, the following architectural standards were est
 
 \begin{itemize}
     \item \textbf{Decoupled Background Execution:} Image vectorization (BoofCV) and semantic extraction (ONNX) are offloaded to Virtual Threads (Java 21).
-    \item \textbf{Distributed S3 Blob Storage:} The backend uses \textbf{Garage v2.2.0}, an S3-compatible object storage layer, utilizing the AWS Java SDK v2.42.32.
+    \item \textbf{Distributed S3 Blob Storage:} The backend uses \textbf{RustFS}, an S3-compatible object storage layer, utilizing the AWS Java SDK v2.42.32.
     \item \textbf{Twelve-Factor App Compliance:} The infrastructure follows the Twelve-Factor methodology by treating backing services as attached resources, using environment variables for configuration, and executing as stateless processes.
     \item \textbf{HNSW Vector Indexing:} We implemented Hierarchical Navigable Small World (HNSW) graphs in PostgreSQL 18 via \texttt{pgvector} 0.1.6 for indexing semantic vectors.
 \end{itemize}
@@ -61,7 +61,7 @@ To support computer vision tasks, the following architectural standards were est
 \subsection*{Server}
 
 \noindent\textbf{Requirement 1 : [Amended (Up) to Requirement 1] Initialize a set of images present on the server}\\
-\textbf{Description :} The server verifies the connection to the Garage S3 bucket upon launch. \textbf{Amendment:} The server calculates a SHA-256 hash of binary payloads upon upload to deduplicate images. A default \texttt{admin} user is seeded into the database.
+\textbf{Description :} The server verifies the connection to the RustFS bucket upon launch. \textbf{Amendment:} The server calculates a SHA-256 hash of binary payloads upon upload to deduplicate images. A default \texttt{admin} user is seeded into the database.
 \vspace{1em}
 
 \noindent\textbf{Requirement 2 : [Amended (Up) to Requirement 2] Manage images present on the server}\\
@@ -102,7 +102,7 @@ To support computer vision tasks, the following architectural standards were est
 \vspace{1em}
 
 \noindent\textbf{Requirement 9 : [Amended (Up) to Requirement 9] Delete an image}\\
-\textbf{Description :} A \texttt{DELETE /images/id} removes the image. \textbf{Amendment:} Protected by JWT Authority. Deletes records in PostgreSQL and the object in Garage S3.
+\textbf{Description :} A \texttt{DELETE /images/id} removes the image. \textbf{Amendment:} Protected by JWT Authority. Deletes records in PostgreSQL and the object in RustFS.
 \vspace{1em}
 
 \noindent\textbf{Requirement 10 : [Amended (Up) to Requirement 10] Transfer the list of most similar images}\\
@@ -164,7 +164,7 @@ To support computer vision tasks, the following architectural standards were est
 \vspace{1em}
 
 \noindent\textbf{Requirement 25 : [Amended (Up) to Requirement 25] Server compatibility}\\
-\textbf{Description :} Tested on Java 21, Spring Boot 4.0.5, Mockito 5.23.0, AWS SDK BOM 2.42.32, \texttt{pgvector} 0.1.6, BoofCV 1.3.0, ONNX Runtime 1.24.3, PostgreSQL 18, and Garage v2.2.0. Verified on x86\_64 Arch Linux and ARM64 Ubuntu 24.04 LTS environments.
+\textbf{Description :} Tested on Java 21, Spring Boot 4.0.5, Mockito 5.23.0, AWS SDK BOM 2.42.32, \texttt{pgvector} 0.1.6, BoofCV 1.3.0, ONNX Runtime 1.24.3, PostgreSQL 18, and RustFS. Verified on x86\_64 Arch Linux and ARM64 Ubuntu 24.04 LTS environments.
 \vspace{1em}
 
 \noindent\textbf{Requirement 26 : [Amended (Up) to Requirement 26] Client compatibility}\\

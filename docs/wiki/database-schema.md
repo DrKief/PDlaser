@@ -4,9 +4,9 @@ The application persists relational and vector data using **PostgreSQL 18** via 
 
 _Note: Flyway migrations (`V1` through `V3`) strictly version-control this schema._
 
-## Garage S3 Integration
-
-As of v3a, physical file blobs are no longer stored on the container's local disk or inside the database. Images are stored in **Garage v2.2.0** (an S3-compatible backend).
+## RustFS Integration
+ 
+As of v3a, physical file blobs are no longer stored on the container's local disk or inside the database. Images are stored in **RustFS** (a high-performance S3-compatible backend).
 PostgreSQL stores metadata and `S3 Key` identifiers.
 
 ## Tables
