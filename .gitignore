@@ -1,0 +1,30 @@
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Global IDEs
+.vscode/
+.idea/
+node_modules/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Environment Variables
+.env
+.env.*
+!.env.example
+/datasets/keywords.tsv
+/datasets/keywords.tsv
+/datasets/photos.tsv
+/datasets/unsplash-lite.zip
+
+# AI Models
+models/
