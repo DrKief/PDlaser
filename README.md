@@ -52,7 +52,9 @@ This project enforces the following standards for contributions:
 - **Node.js 24+** (For local native frontend development)
 
 ### Setup Environment Variables
+
 Before running the application, generate your local `.env` file containing secure, randomized defaults:
+
 ```bash
 ./generate_env.sh > .env
 ```

@@ -78,7 +78,11 @@ public class SearchController {
 
       return ResponseEntity.ok(results);
     } catch (Exception e) {
-      throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to process image", e);
+      throw new ResponseStatusException(
+        HttpStatus.INTERNAL_SERVER_ERROR,
+        "Failed to process image",
+        e
+      );
     }
   }
 }

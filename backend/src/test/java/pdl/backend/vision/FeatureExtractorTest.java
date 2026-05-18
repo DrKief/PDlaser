@@ -11,7 +11,7 @@ class FeatureExtractorTest {
   void testResizeImageLanczos3() {
     BufferedImage img = new BufferedImage(500, 500, BufferedImage.TYPE_INT_RGB);
     BufferedImage resized = FeatureExtractor.resizeImageLanczos3(img, 256, 256);
-    
+
     assertThat(resized.getWidth()).isEqualTo(256);
     assertThat(resized.getHeight()).isEqualTo(256);
   }
@@ -20,7 +20,7 @@ class FeatureExtractorTest {
   void testExtractGlobalHogReturnsCorrectDimensions() {
     BufferedImage img = new BufferedImage(256, 256, BufferedImage.TYPE_INT_RGB);
     float[] hog = FeatureExtractor.extractGlobalHog(img);
-    
+
     assertThat(hog).hasSize(81);
   }
 }
