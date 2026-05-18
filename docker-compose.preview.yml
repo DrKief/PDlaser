@@ -25,7 +25,10 @@ services:
   garage:
     image: dxflrs/garage:v2.2.0
     env_file:
-      - .env
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
     environment:
       GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET}
     expose:
@@ -47,7 +50,10 @@ services:
   garage-init:
     image: alpine:3.23
     env_file:
-      - .env
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
     depends_on:
       garage:
         condition: service_healthy
@@ -87,7 +93,10 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     env_file:
-      - .env
+      - path: .env.example
+        required: true
+      - path: .env
+        required: false
     environment:
       - HOST_NAME=db
       - DATABASE_NAME=pdl_db

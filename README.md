@@ -51,6 +51,12 @@ This project enforces the following standards for contributions:
 - **Java JDK 21** & **Maven 3.9+** (For local native backend development)
 - **Node.js 24+** (For local native frontend development)
 
+### Setup Environment Variables
+Before running the application, generate your local `.env` file containing secure, randomized defaults:
+```bash
+./generate_env.sh > .env
+```
+
 ### Method A: Fully Containerized (Recommended)
 
 The project utilizes explicit docker-compose overrides to guarantee Dev/Prod parity.
