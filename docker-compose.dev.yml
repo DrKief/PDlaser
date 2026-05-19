@@ -23,6 +23,7 @@ services:
 
   rustfs:
     image: rustfs/rustfs:latest
+    user: "0:0"
     env_file:
       - path: .env.example
         required: true
@@ -39,8 +40,6 @@ services:
     volumes:
       - type: tmpfs
         target: /data
-        tmpfs:
-          mode: 0777
     command: ["/data"]
     restart: unless-stopped
 

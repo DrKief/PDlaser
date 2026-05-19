@@ -41,8 +41,6 @@ services:
     volumes:
       - type: tmpfs
         target: /data
-        tmpfs:
-          mode: "0777"
     command: ["/data"]
     restart: unless-stopped
     logging: *default-logging
