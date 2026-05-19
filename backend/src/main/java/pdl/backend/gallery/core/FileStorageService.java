@@ -30,6 +30,9 @@ public class FileStorageService {
   @Value("${s3.bucket}")
   private String bucketName;
 
+  @Value("${s3.encryption-key}")
+  private String encryptionKey;
+
   public FileStorageService(MediaRepository recordRepository, S3Client s3Client) {
     this.recordRepository = recordRepository;
     this.s3Client = s3Client;
@@ -77,6 +80,8 @@ public class FileStorageService {
         .bucket(bucketName)
         .key(s3Key)
         .contentType("image/" + img.getFormat())
+        .sseCustomerAlgorithm("AES256")
+        .sseCustomerKey(encryptionKey)
         .build();
       s3Client.putObject(putOb, RequestBody.fromBytes(img.getData()));
     }
@@ -88,7 +93,12 @@ public class FileStorageService {
       MediaRecord img = imageOpt.get();
       try {
         String s3Key = img.getId() + "_" + img.getName();
-        GetObjectRequest getOb = GetObjectRequest.builder().bucket(bucketName).key(s3Key).build();
+        GetObjectRequest getOb = GetObjectRequest.builder()
+          .bucket(bucketName)
+          .key(s3Key)
+          .sseCustomerAlgorithm("AES256")
+          .sseCustomerKey(encryptionKey)
+          .build();
         byte[] bytes = s3Client.getObjectAsBytes(getOb).asByteArray();
         img.setData(bytes);
         return Optional.of(img);
@@ -123,7 +133,12 @@ public class FileStorageService {
   // --- NEW: Stream from S3 ---
   public ResponseInputStream<GetObjectResponse> streamImageFromS3(long id, String filename) {
     String s3Key = id + "_" + filename;
-    GetObjectRequest getOb = GetObjectRequest.builder().bucket(bucketName).key(s3Key).build();
+    GetObjectRequest getOb = GetObjectRequest.builder()
+      .bucket(bucketName)
+      .key(s3Key)
+      .sseCustomerAlgorithm("AES256")
+      .sseCustomerKey(encryptionKey)
+      .build();
     return s3Client.getObject(getOb);
   }
 

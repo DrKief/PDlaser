@@ -8,7 +8,7 @@ Key aspects include:
 
 1. **I. Codebase:** One repository contains the frontend, backend, and infrastructure code.
 2. **II. Dependencies:** All backend and frontend dependencies are explicitly declared in `pom.xml` and `package.json`, isolated entirely within Docker multi-stage builds. No system-level packages leak into the containers.
-3. **III. Config:** Zero hardcoded credentials exist in the source. S3 keys, Postgres passwords, and JWT Secrets are injected dynamically into the `application.yaml` via OS-level Environment Variables.
+3. **III. Config:** Zero hardcoded credentials exist in the source. S3 keys, Postgres passwords, JWT Secrets, and **SSE-C Encryption Keys** are injected dynamically into the `application.yaml` via OS-level Environment Variables.
 4. **IV. Backing Services:** RustFS and PostgreSQL are treated as attached resources.
 5. **VI. Processes:** The backend and frontend are stateless. Authentication is handled client-side via JSON Web Tokens (JWT).
 6. **VIII. Concurrency:** The application uses Java 21 Virtual Threads for ONNX model execution.
@@ -30,7 +30,7 @@ Key aspects include:
 ### 2. Object Storage (`rustfs` & `rustfs-init`)
  
 - **Images:** `rustfs/rustfs:latest` (Storage Node) and `minio/mc:latest` (Init Job)
-- **Function:** Replaces local filesystem IO with a high-performance, S3-compatible Rust storage engine. 
+- **Function:** Replaces local filesystem IO with a high-performance, S3-compatible Rust storage engine. Utilizes **Server-Side Encryption with Customer-Provided Keys (SSE-C)** to enforce Zero-Knowledge encryption at rest. If the container volumes are compromised, the blobs remain cryptographically locked to the Java backend.
 - **Provisioning:** A lightweight init container utilizes the MinIO Client (`mc`) to provision access keys, structure layouts, and create buckets immediately upon startup.
 
 ### 3. Java Backend (`backend`)

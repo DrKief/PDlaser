@@ -86,6 +86,7 @@ services:
       - S3_ENDPOINT=http://rustfs:9000
       - S3_REGION=us-east-1
       - S3_BUCKET=pdl-images
+      - S3_ENCRYPTION_KEY=${STORAGE_ENCRYPTION_KEY}
       - LOGGING_LEVEL_ORG_SPRINGFRAMEWORK=WARN
     volumes:
       - datasets:/var/lib/pdl/datasets

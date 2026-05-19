@@ -21,7 +21,9 @@ onMounted(async () => {
   try {
     const res = await http.get("/images/keywords/popular?limit=8");
     defaultKeywords.value = res.data;
-  } catch (e) {}
+  } catch (e) {
+    console.error("Failed to fetch popular tags for autocomplete", e);
+  }
 });
 
 const onFocus = () => {

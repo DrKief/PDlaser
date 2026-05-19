@@ -140,7 +140,9 @@ public class UnsplashService {
       // Always clean up the temporary file from the container's disk
       try {
         Files.deleteIfExists(tempFilePath);
-      } catch (Exception ignored) {}
+      } catch (Exception ignored) {
+        log.debug("Failed to delete temp metadata file", ignored);
+      }
     }
   }
 
@@ -214,7 +216,9 @@ public class UnsplashService {
       // Always clean up the temporary file from the container's disk
       try {
         Files.deleteIfExists(tempFilePath);
-      } catch (Exception ignored) {}
+      } catch (Exception ignored) {
+        log.debug("Failed to delete temp keywords file", ignored);
+      }
     }
   }
 
@@ -285,16 +289,16 @@ public class UnsplashService {
       batchArgs
     );
 
-    // 2. Start the slow, polite download process
+    // 2. Resolve N+1 issue: Load all targeted records in one batch query
+    Iterable<MediaRecord> recordsToProcess = recordRepository.findAllById(imageIds);
+    
     int count = 0;
     RestTemplate restTemplate = new RestTemplate();
+    List<Object[]> failedReverts = new ArrayList<>();
 
-    for (Long id : imageIds) {
+    for (MediaRecord record : recordsToProcess) {
+      Long id = record.getId();
       try {
-        Optional<MediaRecord> opt = recordRepository.findById(id);
-        if (opt.isEmpty()) continue;
-        MediaRecord record = opt.get();
-        // Check for DOWNLOADING since we just updated it
         if (!"DOWNLOADING".equals(record.getExtractionStatus())) continue;
 
         status = "IMPORTING (" + (count + 1) + " / " + imageIds.size() + "): " + record.getName();
@@ -312,19 +316,11 @@ public class UnsplashService {
           // storageService sets it to PENDING and our ML queue takes over
           storageService.processAndSaveImage(record, true);
         } else {
-          // If bytes are null, it failed to fetch. Revert to REMOTE_METADATA so it shows up again.
-          jdbcTemplate.update(
-            "UPDATE images SET extraction_status = 'REMOTE_METADATA' WHERE id = ?",
-            id
-          );
+          failedReverts.add(new Object[]{id});
         }
       } catch (Exception e) {
         log.error("Failed to import image ID: " + id, e);
-        // On any HTTP or network error, revert the status so it isn't permanently stuck as DOWNLOADING
-        jdbcTemplate.update(
-          "UPDATE images SET extraction_status = 'REMOTE_METADATA' WHERE id = ?",
-          id
-        );
+        failedReverts.add(new Object[]{id});
       } finally {
         try {
           Thread.sleep(1000); // Politeness delay regardless of success or failure
@@ -334,6 +330,12 @@ public class UnsplashService {
       }
       count++;
     }
+    
+    // 3. Resolve N+1 issue: Bulk revert failures instead of executing per loop
+    if (!failedReverts.isEmpty()) {
+        jdbcTemplate.batchUpdate("UPDATE images SET extraction_status = 'REMOTE_METADATA' WHERE id = ?", failedReverts);
+    }
+    
     status = "IDLE";
   }
 

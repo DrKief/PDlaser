@@ -152,13 +152,11 @@ public class GalleryController {
     long id = image.getId();
 
     if (keywords != null && !keywords.isEmpty()) {
-      List<String> allTags = new ArrayList<>();
-      for (String k : keywords) {
-        String[] splits = k.split(",");
-        for (String tag : splits) {
-          allTags.add(tag.trim());
-        }
-      }
+      List<String> allTags = keywords.stream()
+        .flatMap(k -> java.util.Arrays.stream(k.split(",")))
+        .map(String::trim)
+        .filter(t -> !t.isEmpty())
+        .toList();
       queryRepo.addKeywords(id, allTags);
     }
 

@@ -52,3 +52,4 @@ s3:
   access-key: ${S3_ACCESS_KEY}
   secret-key: ${S3_SECRET_KEY}
   bucket: ${S3_BUCKET:pdl-images}
+  encryption-key: ${S3_ENCRYPTION_KEY}

@@ -39,7 +39,7 @@ Retrieves a paginated list of all images. Filters based on user ownership.
 
 ### Get Image Content
 
-Retrieves the binary payload of an image from RustFS.
+Retrieves the binary payload of an image from RustFS, dynamically decrypted via SSE-C.
 
 - **URL:** `/images/{id}`
 - **Method:** `GET`
@@ -47,7 +47,7 @@ Retrieves the binary payload of an image from RustFS.
 
 ### Upload Image (Asynchronous)
 
-Uploads a new image file. Saves the binary to RustFS and computes a SHA-256 hash. Feature vectors are extracted asynchronously.
+Uploads a new image file. Encrypts and saves the binary to RustFS via SSE-C and computes a SHA-256 hash. Feature vectors are extracted asynchronously.
 
 - **URL:** `/images`
 - **Method:** `POST`

@@ -65,14 +65,12 @@ public class SemanticExtractor {
     }
     File file = new File(dir, fileName);
     if (!file.exists()) {
-      System.out.println(
-        "Downloading " + fileName + " from HuggingFace (This may take a while, please wait...)"
-      );
+      log.info("Downloading {} from HuggingFace (This may take a while, please wait...)", fileName);
       URL url = URI.create(urlStr).toURL();
       try (InputStream in = url.openStream()) {
         Files.copy(in, file.toPath(), StandardCopyOption.REPLACE_EXISTING);
       }
-      System.out.println("Successfully downloaded: " + fileName);
+      log.info("Successfully downloaded: {}", fileName);
     }
     return file;
   }
@@ -109,10 +107,10 @@ public class SemanticExtractor {
         }
         if (changed) {
           Files.writeString(tokenizerFile.toPath(), content);
-          System.out.println("Sanitized tokenizer.json for compatibility.");
+          log.info("Sanitized tokenizer.json for compatibility.");
         }
       } catch (Exception e) {
-        System.err.println("Failed to sanitize tokenizer.json: " + e.getMessage());
+        log.error("Failed to sanitize tokenizer.json: {}", e.getMessage());
       }
 
       try (InputStream stream = new FileInputStream(tokenizerFile)) {
@@ -120,7 +118,7 @@ public class SemanticExtractor {
       }
 
       if (textSession != null && tokenizer != null) {
-        System.out.println("Caching text embeddings for tags...");
+        log.info("Caching text embeddings for tags...");
         for (Map.Entry<String, String> entry : CUSTOM_TAGS.entrySet()) {
           cachedTextEmbeddings.put(entry.getKey(), extractTextFeature(entry.getValue()));
         }
