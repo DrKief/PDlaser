@@ -1,0 +1,23 @@
+type token =
+    TILDE
+  | RPAREN
+  | QUOTED_STRING of string
+  | PLUS
+  | OR
+  | NOT
+  | MINUS
+  | LPAREN
+  | INT of int
+  | EOF
+  | COMMA
+  | COLON
+  | BARE_WORD of string
+  | AND
+val menhir_begin_marker : int
+val xv_value : string list
+val xv_simple : Ast.expr
+val xv_parse_query : Ast.expr
+val xv_or_expr : Ast.expr
+val xv_clause : Ast.expr
+val xv_and_expr : Ast.expr
+val menhir_end_marker : int

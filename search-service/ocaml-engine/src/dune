@@ -1,0 +1,8 @@
+(executable
+ (name main)
+ (libraries yojson menhirLib)
+ (modules ast lexer parser main)
+)
+
+(ocamllex lexer)
+(menhir (modules parser))
